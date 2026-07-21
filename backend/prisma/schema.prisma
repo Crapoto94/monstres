@@ -94,6 +94,14 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Vérification d'email (Phase 1). TTL configurable via `settings`.
+  emailVerificationToken     String?   @unique
+  emailVerificationExpiresAt DateTime?
+
+  // Mot de passe oublié (Phase 1). TTL configurable via `settings`.
+  passwordResetToken     String?   @unique
+  passwordResetExpiresAt DateTime?
+
   socialAccounts  SocialAccount[]
   items           Item[]
   reservations    Reservation[]

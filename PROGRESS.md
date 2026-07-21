@@ -9,8 +9,9 @@
 
 Dernière mise à jour : **2026-07-21**
 
-**Statut : Phase 0 (Initialisation) terminée et validée.** Prochaine étape :
-**Phase 1 — Authentification** (voir détail plus bas).
+**Statut : Phases 0 (Initialisation) et 1 (Authentification) terminées et
+validées.** Prochaine étape : **Phase 2 — Création des Monstres** (voir
+détail plus bas).
 
 ---
 
@@ -132,16 +133,133 @@ démarrent tous les deux sans erreur.
 
 ---
 
+## Phase 1 — Authentification : terminée et validée
+
+Objectif (§17) : inscription email, validation email, connexion,
+déconnexion, mot de passe oublié, profil. Tables `users`, `social_accounts`.
+Pages `/login`, `/register`, `/profile`. Tests : création compte, email
+envoyé, connexion, accès protégé.
+
+### Décisions prises pendant cette session
+- **JWT simple, sans refresh token.** Un seul cookie httpOnly
+  (`access_token`, 7 jours par défaut) signé avec `JWT_SECRET`. Pas de
+  refresh token séparé ni de table de révocation : plus simple, suffisant
+  pour le V1. Si un vrai besoin de révocation apparaît (session courte +
+  refresh long pour mobile), à ajouter en V2 sans bloquer maintenant.
+  `backend/.env.example` a été simplifié en conséquence (`JWT_EXPIRES_IN`
+  au lieu de `JWT_ACCESS_EXPIRES_IN`/`JWT_REFRESH_EXPIRES_IN`).
+- **Inscription = connexion automatique.** Cohérent avec l'exigence UX
+  « créer un compte/Monstre en moins de 30 s » — pas de blocage en attendant
+  la validation email. L'utilisateur reste `emailVerifiedAt: null` jusqu'à
+  clic sur le lien (ou validation manuelle admin, voir plus bas) ; rien
+  n'est bloqué derrière cette vérification pour l'instant (à revoir si le
+  produit veut restreindre certaines actions aux emails vérifiés).
+- **Module `settings` construit dès maintenant** (pas juste pour l'auth) :
+  `SettingsService.getString/getNumber/getBoolean(key, fallback)` lit la
+  table `settings`, seedée via `npm run prisma:seed`
+  (`backend/scripts/seed.js`) avec toutes les valeurs par défaut du §12.10
+  **plus** les TTL des tokens auth (`email_verification_token_ttl_hours=24`,
+  `password_reset_token_ttl_minutes=60`). Toutes les phases suivantes
+  (réservation, seuils de signalement, points de scoring…) doivent lire
+  leurs valeurs via ce service, jamais en dur.
+- **Module `email` (Brevo) avec fallback dev.** `EmailService.send()` logge
+  en console (niveau `warn`, lien complet inclus) si `BREVO_API_KEY` est
+  absent, au lieu d'échouer — permet de développer et tester tout le flux
+  auth sans compte Brevo. Voir `backend/README.md` section Emails.
+  L'envoi d'email ne bloque jamais l'inscription/le mot de passe oublié
+  (erreur catchée et loggée), même esprit que la règle Facebook du §11.
+- **Endpoint admin de validation d'email manuelle**, demandé explicitement
+  par l'utilisateur : `PATCH /api/v1/admin/users/:id/verify-email`, protégé
+  par `JwtAuthGuard` + `RolesGuard` (`ADMIN`/`SUPER_ADMIN` uniquement). Vit
+  dans `src/admin/` (préfixe `admin/users`), pensé pour préfigurer la
+  Phase 9 sans construire toute l'admin maintenant. **Aucun compte admin
+  n'existe par défaut** : pour promouvoir un compte après inscription,
+  ouvrir `npm run prisma:studio` et changer la colonne `role` sur
+  `ADMIN`/`SUPER_ADMIN` (documenté dans `backend/README.md`) — une vraie UI
+  viendra en Phase 9. Le rôle est embarqué dans le JWT à la connexion :
+  après une promotion, l'utilisateur doit se reconnecter pour que le nouveau
+  rôle soit pris en compte.
+- **Google/Facebook Login reportés** (décision utilisateur) : nécessitent
+  des identifiants OAuth que seul l'utilisateur peut créer sur les consoles
+  Google/Meta. L'architecture reste ouverte (table `social_accounts` déjà
+  dans le schéma) ; à implémenter dans une passe dédiée une fois les
+  identifiants disponibles.
+- **`prisma migrate dev` ne fonctionne pas dans un terminal non
+  interactif** (agent automatisé) dès qu'il y a un warning de contrainte
+  unique, même sur une base vide — Prisma refuse purement et simplement.
+  Workaround utilisé et documenté dans `backend/README.md` :
+  `prisma migrate diff --from-migrations ... --to-schema ... --script` pour
+  générer le SQL, l'écrire à la main dans un nouveau dossier
+  `prisma/migrations/<horodatage>_<nom>/migration.sql`, puis
+  `prisma migrate deploy` (non interactif) pour l'appliquer. **Réutiliser ce
+  workaround pour toutes les migrations futures faites par une IA en
+  session non interactive.**
+- **Seed non exécutable via `ts-node` directement** : le client Prisma
+  généré (`moduleFormat=cjs`) référence ses propres fichiers internes avec
+  des specifiers `.js` (convention `nodenext`), que `ts-node` ne résout pas
+  tant qu'ils n'ont pas été réellement compilés. Solution : `scripts/seed.js`
+  est un script **JS pur** qui `require()` le client compilé dans `dist/` ;
+  `npm run prisma:seed` build automatiquement avant de le lancer.
+
+### Fait
+- [x] Schéma Prisma étendu : `emailVerificationToken`/`ExpiresAt`,
+      `passwordResetToken`/`ExpiresAt` sur `User` (migration
+      `20260721180000_add_auth_tokens`).
+- [x] `src/settings/` : `SettingsService` + `SettingsModule` (global).
+      `backend/scripts/seed.js` + `npm run prisma:seed`.
+- [x] `src/email/` : `EmailService` (Brevo, fallback log dev) +
+      `EmailModule` (global). `sendEmailVerification`, `sendPasswordReset`.
+- [x] `src/auth/` : `AuthService`, `AuthController`, `AuthModule`,
+      `JwtStrategy` (lit le cookie), `JwtAuthGuard`, `RolesGuard` +
+      `@Roles()`, `@CurrentUser()`. DTOs validés (`class-validator`) :
+      `RegisterDto`, `LoginDto`, `ForgotPasswordDto`, `ResetPasswordDto`.
+      Routes : `POST /auth/register`, `POST /auth/login`,
+      `POST /auth/logout`, `GET /auth/verify-email?token=`,
+      `POST /auth/forgot-password`, `POST /auth/reset-password`,
+      `GET /auth/me` (protégé).
+- [x] `src/users/` : `UsersService` (`toSafeUser`, `findSafeById`,
+      `findPublicProfile`), `UsersController` (`GET /users/:id`, profil
+      public sans email ni trustScore).
+- [x] `src/admin/` : `AdminUsersController`/`AdminUsersService`
+      (`PATCH /admin/users/:id/verify-email`, rôles `ADMIN`/`SUPER_ADMIN`).
+- [x] Backend testé de bout en bout en local (curl + cookies) : register →
+      cookie posé → `/auth/me` 200 → email loggé en dev → verify-email →
+      logout → `/auth/me` 401 → login → forgot-password (anti-énumération
+      vérifiée : même message compte existant/inexistant) → reset-password
+      → login avec le nouveau mot de passe → profil public sans champs
+      privés → promotion `ADMIN` via Prisma → reconnexion → action admin
+      `verify-email` acceptée (403 avant promotion, 200 après).
+- [x] Frontend : `src/services/auth.ts` (appels API typés),
+      `src/stores/auth.ts` (`init`, `register`, `login`, `logout`, état
+      `loading`/`error`), vues `LoginView`, `RegisterView`,
+      `ForgotPasswordView`, `ResetPasswordView`, `VerifyEmailView`,
+      `ProfileView` (adaptatif connecté/non connecté). Routes ajoutées :
+      `/connexion`, `/inscription`, `/mot-de-passe-oublie`,
+      `/reinitialiser-mot-de-passe`, `/verifier-email`. Guard global
+      `router.beforeEach` qui restaure la session via `/auth/me` une fois
+      au chargement de l'app.
+- [x] Testé dans le navigateur (Chrome via Claude Browser) : inscription →
+      redirection profil → déconnexion → mauvais mot de passe (message
+      d'erreur affiché) → bon mot de passe → session persistée après un
+      rechargement complet de la page. Zéro erreur console/réseau.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Google Login / Facebook Login (§10) — en attente des identifiants
+      OAuth côté utilisateur.
+- [ ] Changement d'email, suppression de compte (§10) — pas couverts par les
+      critères de validation du §17 pour la Phase 1 ; à ajouter si besoin
+      avant de passer à la Phase 2, ou plus tard.
+- [ ] Tests automatisés (Jest) pour le module `auth` — la validation de
+      cette session est manuelle (curl + navigateur). §16 recommande des
+      tests backend sur l'authentification.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 1 — Authentification.** Inscription email + validation email,
-      connexion/déconnexion, mot de passe oublié, profil. Implémente le JWT
-      cookie httpOnly décrit dans les décisions ci-dessus (module `auth` +
-      `users` NestJS, tables `users`/`social_accounts` déjà présentes dans
-      le schéma Prisma). Pages frontend `/login`, `/register`, `/profile`.
 - [ ] **Phase 2 — Création des Monstres.** Formulaire 4 étapes (photo →
       position → infos → publication). Module `items` (`ImageService` pour
       upload/compression/miniature/EXIF). Tables `items`/`item_photos`/
@@ -180,11 +298,15 @@ phases à la fois.
 2. `git log --oneline` et `git status` pour voir l'état réel du dépôt (ce
    fichier peut avoir dérivé si des sessions n'ont pas mis à jour les cases).
 3. Vérifier que tout démarre toujours :
-   - `backend/` : `npm install` puis `npm run start:dev`, tester
+   - `backend/` : `npm install`, `npm run prisma:migrate`,
+     `npm run prisma:seed`, puis `npm run start:dev`, tester
      `GET http://localhost:3000/api/v1/health`.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
-     `http://localhost:5173`.
-4. La Phase 0 est terminée. Continuer sur la première case non cochée de
-   **Phase 1 — Authentification** (section « Phases suivantes » ci-dessus),
-   puis enchaîner les phases dans l'ordre. Ne pas paralléliser plusieurs
-   phases à la fois (§0).
+     `http://localhost:5173`. Tester une inscription sur `/inscription`
+     pour confirmer que l'auth fonctionne toujours de bout en bout.
+4. Les Phases 0 et 1 sont terminées. Continuer sur la première case non
+   cochée de **Phase 2 — Création des Monstres** (section « Phases
+   suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser
+   plusieurs phases à la fois (§0). Pour toute nouvelle migration Prisma en
+   session non interactive, voir le workaround documenté dans
+   `backend/README.md` (section Base de données).
