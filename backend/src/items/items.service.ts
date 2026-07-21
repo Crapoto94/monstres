@@ -81,7 +81,10 @@ export class ItemsService {
     await this.scoring.award(userId, item.id, ScoringEventType.USER_CREATED_ITEM, pointsCreation);
 
     // §6.10/§6.11 : notifie les abonnés dont une zone surveillée couvre ce nouveau Monstre.
-    await this.subscriptions.notifyNearbySubscribers(item);
+    await this.subscriptions.notifyNearbySubscribers({
+      ...item,
+      photoUrl: this.photoUrl(item.photos[0]),
+    });
 
     return this.serialize(item, { id: userId } as AuthenticatedUser);
   }
@@ -331,6 +334,16 @@ export class ItemsService {
         },
       },
     };
+  }
+
+  /** URL de la miniature (ou photo pleine taille à défaut), pour les notifications. */
+  private photoUrl(photo: ItemWithRelations['photos'][number] | undefined): string | null {
+    if (!photo) return null;
+    const imgBaseUrl = this.config.get<string>(
+      'IMG_BASE_URL',
+      'http://localhost:3000/uploads',
+    );
+    return `${imgBaseUrl}/${photo.thumbnailPath ?? photo.path}`;
   }
 
   /** §9 : position approximative pour les visiteurs non connectés, exacte pour les connectés. */

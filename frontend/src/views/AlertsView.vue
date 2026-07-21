@@ -221,16 +221,35 @@ async function handleDeleteSubscription(id: string) {
           <li
             v-for="notification in notifications"
             :key="notification.id"
-            class="cursor-pointer rounded-lg border p-3 text-sm"
+            class="rounded-lg border text-sm"
             :class="
               notification.readAt
                 ? 'border-gray-200 text-gray-500 dark:border-gray-800 dark:text-gray-400'
                 : 'border-violet-300 bg-violet-50 font-medium text-gray-900 dark:border-violet-700 dark:bg-violet-950 dark:text-gray-100'
             "
-            @click="onOpen(notification)"
           >
-            <p>{{ label(notification) }}</p>
-            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</p>
+            <RouterLink
+              v-if="notification.type === 'NEW_ITEM_NEARBY'"
+              :to="`/monstres/${notification.data.itemId}`"
+              class="flex items-center gap-3 p-3"
+              @click="onOpen(notification)"
+            >
+              <img
+                v-if="notification.data.itemPhotoUrl"
+                :src="notification.data.itemPhotoUrl"
+                alt=""
+                class="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
+              />
+              <div class="min-w-0">
+                <p class="truncate">{{ label(notification) }}</p>
+                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</p>
+              </div>
+            </RouterLink>
+
+            <div v-else class="cursor-pointer p-3" @click="onOpen(notification)">
+              <p>{{ label(notification) }}</p>
+              <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</p>
+            </div>
           </li>
         </ul>
       </div>

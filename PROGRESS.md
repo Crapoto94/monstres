@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (zones surveillées affichées sur la
-carte, v0.1.5)
+Dernière mise à jour : **2026-07-22** (photo + lien dans les notifications
+« Monstre près de chez toi », v0.1.6)
 
 **Statut : Phases 0 à 8 terminées et validées.** Prochaine étape :
 **Phase 9 — Administration** (voir détail plus bas). Le projet est déployé
@@ -1102,6 +1102,51 @@ liste dans `AlertsView`.
       violet vérifié dans le DOM (`fill`/`stroke` du path SVG Leaflet) et
       popup vérifié au clic (« Chez moi (test) (1.5 km) »). Utilisateur et
       zone de test supprimés de `dev.db` après vérification.
+- [x] Build + typecheck backend et frontend sans erreur.
+
+---
+
+## Fonctionnalité : photo + lien vers le Monstre dans les notifications de proximité
+
+Demande utilisateur : dans les alertes « Monstre près de chez moi », afficher
+la photo du Monstre et un lien vers sa page de détail (jusqu'ici seul le
+titre en texte était affiché, sans moyen d'accéder directement au Monstre).
+
+### Décisions
+- **`NotificationData['NEW_ITEM_NEARBY']` étendu avec `itemPhotoUrl`**
+  (`string | null`), construit une seule fois côté `ItemsService.create()`
+  (URL absolue via `IMG_BASE_URL`, même logique que `serialize()`) puis
+  transmis à `SubscriptionsService.notifyNearbySubscribers()` — pas de
+  requête supplémentaire côté `SubscriptionsService`, qui n'a pas accès à
+  `ConfigService`.
+- **`ItemsService.photoUrl()` (privé)** : utilise la miniature
+  (`thumbnailPath`) si disponible, sinon la photo pleine taille — cohérent
+  avec l'usage habituel des miniatures dans les listes.
+- **Seul le type `NEW_ITEM_NEARBY` devient cliquable/illustré** dans
+  `AlertsView.vue` (`RouterLink` vers `/monstres/:itemId` + `<img>`) ; les
+  autres types (`RESERVATION_CREATED`, `ITEM_COLLECTED`, `BADGE_UNLOCKED`)
+  restent de simples `<div>` non cliquables, scope limité à la demande.
+  Pourrait être généralisé plus tard si demandé (les deux premiers ont
+  aussi un `itemId` en données).
+- **Email de notification inchangé** — la demande portait explicitement sur
+  la page Alertes, pas sur l'email.
+
+### Fait
+- [x] Backend : `NotificationData['NEW_ITEM_NEARBY']` + `NotifiableItem`
+      (`subscriptions.service.ts`) étendus avec `itemPhotoUrl`/`photoUrl` ;
+      `ItemsService.create()` calcule l'URL de la miniature avant d'appeler
+      `notifyNearbySubscribers()`.
+- [x] Frontend : `AlertsView.vue` — notifications `NEW_ITEM_NEARBY` rendues
+      en `RouterLink` (photo + titre + lien vers la page du Monstre),
+      passage au clic toujours suivi du marquage "lu".
+- [x] Testé de bout en bout : deux utilisateurs de test créés via API
+      (abonné + créateur), zone de surveillance créée, Monstre créé avec
+      une vraie photo (réutilisée depuis `backend/storage/`) à proximité
+      → notification vérifiée en base (`itemPhotoUrl` correctement rempli),
+      connexion réelle du navigateur en tant qu'abonné, clic sur la
+      notification dans `/alertes` vérifié : navigation vers
+      `/monstres/:id` et `PATCH /notifications/:id/read` déclenché.
+      Utilisateurs/Monstre/photo de test supprimés après vérification.
 - [x] Build + typecheck backend et frontend sans erreur.
 
 ---

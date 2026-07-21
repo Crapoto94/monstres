@@ -11,7 +11,7 @@ import { NotificationType } from '../generated/prisma/enums';
 export interface NotificationData {
   RESERVATION_CREATED: { itemId: string; itemTitle: string; reserverName: string };
   ITEM_COLLECTED: { itemId: string; itemTitle: string; collectorName: string };
-  NEW_ITEM_NEARBY: { itemId: string; itemTitle: string };
+  NEW_ITEM_NEARBY: { itemId: string; itemTitle: string; itemPhotoUrl: string | null };
   BADGE_UNLOCKED: { badgeName: string };
 }
 

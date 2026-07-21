@@ -14,6 +14,7 @@ interface NotifiableItem {
   latitude: number;
   longitude: number;
   userId: string;
+  photoUrl: string | null;
 }
 
 /**
@@ -94,6 +95,7 @@ export class SubscriptionsService {
       await this.notifications.notify(userId, NotificationType.NEW_ITEM_NEARBY, {
         itemId: item.id,
         itemTitle: item.title,
+        itemPhotoUrl: item.photoUrl,
       });
     }
   }
