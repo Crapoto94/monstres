@@ -53,6 +53,13 @@ cp .env.example .env.local
 npm run dev               # http://localhost:5173
 ```
 
+Une fois `npm install` fait une première fois dans chaque dossier, le script
+[`dev.bat`](./dev.bat) (Windows) lance les deux serveurs en une commande,
+chacun dans sa propre fenêtre :
+```bat
+dev.bat
+```
+
 Vérification : [http://localhost:3000/api/v1/health](http://localhost:3000/api/v1/health)
 doit répondre `{ "success": true, "data": { "status": "ok", "database": "connected" } }`,
 et [http://localhost:5173](http://localhost:5173) doit afficher l'application
