@@ -96,17 +96,36 @@ démarrent tous les deux sans erreur.
       `npm run dev` démarre sur :5173, page vérifiée dans le navigateur
       (rendu correct, 0 erreur console, 0 requête en échec). Icônes PWA =
       placeholder SVG à remplacer lors du travail de branding.
-- [ ] **`docker-compose.yml`** à la racine (services `nginx`, `frontend`,
-      `backend`, `storage` — pour le déploiement Proxmox uniquement, voir
-      §12.2). Pas encore écrit.
-- [ ] **`.env.example` racine** regroupant les variables de déploiement
-      (domaines, secrets partagés) — distinct des `.env.example` propres à
-      chaque app. Pas encore écrit.
-- [ ] **`README.md` racine** : vue d'ensemble du monorepo, instructions de
-      démarrage local (backend + frontend, sans Docker) et de déploiement
-      (avec Docker sur Proxmox). Pas encore écrit.
-- [ ] **Validation finale Phase 0** : lancer backend (`npm run start:dev`)
-      ET frontend (`npm run dev`) simultanément, vérifier absence d'erreur.
+- [x] **`docker-compose.yml`** à la racine : services `nginx` (reverse proxy
+      de façade, `nginx/nginx.conf`, un `server{}` par sous-domaine),
+      `frontend` (build multi-stage → nginx statique, `frontend/Dockerfile` +
+      `frontend/nginx.conf`), `backend` (build multi-stage, `backend/Dockerfile`,
+      lance `prisma migrate deploy` puis `node dist/main.js`), `storage`
+      (nginx statique sur un volume partagé avec le backend, sert
+      `img.monstres.fbc.fr`, `storage/nginx.conf`). Volumes nommés
+      `backend_data` (SQLite) et `storage_data` (photos). **Non testé avec
+      un vrai moteur Docker** (absent de la machine de dev) — seule la
+      cohérence des fichiers a été relue manuellement. TLS non géré par
+      `nginx/nginx.conf`, à terminer côté Proxmox avant prod.
+      ⚠️ **À valider réellement au premier déploiement.**
+- [x] **`.env.example` racine** (variables de déploiement Docker :
+      `DATABASE_URL` pointant vers `/app/data`, domaines prod, secrets JWT/
+      OAuth/Brevo, `VITE_API_URL` en build-arg frontend) — distinct de
+      `backend/.env.example` et `frontend/.env.example` (dev local).
+- [x] **`README.md` racine** : vue d'ensemble, démarrage local sans Docker,
+      déploiement Docker/Proxmox.
+- [x] **Validation locale (sans Docker)** : backend (`npm run start:dev`) ET
+      frontend (`npm run dev`) démarrent simultanément sans erreur ; healthcheck
+      API et page frontend vérifiés. **C'est le critère de validation retenu
+      pour la Phase 0** (le cahier des charges original visait `docker compose
+      up`, adapté suite à la décision « pas de Docker en local », voir
+      décisions de session).
+- [x] **Fix build backend** : `prisma generate` sort désormais dans
+      `src/generated/prisma` (et non `../generated/prisma`) pour que
+      `nest build` produise un `dist/main.js` à plat (compatible
+      `npm run start:prod` / `CMD` Docker). `prisma.config.ts` exclu de la
+      compilation Nest (`tsconfig.build.json`) — inutile au runtime, seul le
+      CLI Prisma le lit directement.
 
 ---
 

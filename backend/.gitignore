@@ -6,7 +6,7 @@ coverage/
 .env
 
 # Prisma generated client (regenerated via `npm run prisma:generate`)
-/generated/prisma
+/src/generated/prisma
 
 # SQLite dev database
 /dev.db

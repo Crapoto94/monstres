@@ -1,0 +1,44 @@
+# Déploiement (Proxmox). Non utilisé en développement local — voir README.md
+# et CLAUDE.md : en local, backend et frontend tournent en processus Node
+# natifs (`npm run start:dev` / `npm run dev`), sans Docker.
+
+services:
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+      - storage
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - backend_data:/app/data
+      - storage_data:/app/storage
+
+  storage:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - storage_data:/usr/share/nginx/html:ro
+      - ./storage/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  backend_data:
+  storage_data:
