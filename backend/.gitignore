@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+
+# Environment variables
+.env
+
+# Prisma generated client (regenerated via `npm run prisma:generate`)
+/generated/prisma
+
+# SQLite dev database
+/dev.db
+/dev.db-journal

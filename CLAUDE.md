@@ -4,6 +4,10 @@ Mémoire de projet pour Claude Code. **La référence complète est
 [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md) —
 lis-le avant toute décision d'architecture ou de fonctionnalité.**
 
+**Avant de commencer à travailler, lis aussi
+[`PROGRESS.md`](./PROGRESS.md)** : état d'avancement réel, décisions prises
+en session, tâches restantes. À tenir à jour à chaque session.
+
 ## Le projet en une phrase
 Plateforme communautaire mobile-first pour repérer, partager et récupérer les
 objets encombrants abandonnés dans la rue. Un objet abandonné = un **Monstre**.
