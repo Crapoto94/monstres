@@ -1,14 +1,21 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { ReservationStatus } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
 import { FindItemsQueryDto } from './dto/find-items-query.dto';
 
-type ItemWithRelations = NonNullable<Awaited<ReturnType<ItemsService['findRaw']>>>;
+type ItemWithRelations = NonNullable<
+  Awaited<ReturnType<ItemsService['findRaw']>>
+>;
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -21,7 +28,11 @@ export class ItemsService {
     private readonly config: ConfigService,
   ) {}
 
-  async create(userId: string, dto: CreateItemDto, files: Express.Multer.File[] | undefined) {
+  async create(
+    userId: string,
+    dto: CreateItemDto,
+    files: Express.Multer.File[] | undefined,
+  ) {
     const maxPhotos = await this.settings.getNumber('max_photos_per_item', 3);
 
     if (!files || files.length === 0) {
@@ -104,9 +115,15 @@ export class ItemsService {
       // La distance est calculée sur les coordonnées telles que le viewer
       // les verra (arrondies pour un visiteur non connecté, §9), pour rester
       // cohérente avec la position exposée dans la réponse.
-      const itemLat = isAuthenticated ? item.latitude : roundApprox(item.latitude);
-      const itemLng = isAuthenticated ? item.longitude : roundApprox(item.longitude);
-      const distanceKm = hasPosition ? haversineKm(query.lat!, query.lng!, itemLat, itemLng) : null;
+      const itemLat = isAuthenticated
+        ? item.latitude
+        : roundApprox(item.latitude);
+      const itemLng = isAuthenticated
+        ? item.longitude
+        : roundApprox(item.longitude);
+      const distanceKm = hasPosition
+        ? haversineKm(query.lat!, query.lng!, itemLat, itemLng)
+        : null;
 
       const proximityScore = distanceKm !== null ? 1 / (1 + distanceKm) : 0;
       const popularityScore = item.votesScore / (item.votesScore + 5);
@@ -115,21 +132,32 @@ export class ItemsService {
       const trustScore = item.user.trustScore / 100;
 
       const score =
-        wDistance * proximityScore + wPopularity * popularityScore + wRecency * recencyScore + wTrust * trustScore;
+        wDistance * proximityScore +
+        wPopularity * popularityScore +
+        wRecency * recencyScore +
+        wTrust * trustScore;
 
       return { item, distanceKm, score };
     });
 
     if (hasPosition && query.radius) {
-      scored = scored.filter((entry) => entry.distanceKm !== null && entry.distanceKm <= query.radius!);
+      scored = scored.filter(
+        (entry) =>
+          entry.distanceKm !== null && entry.distanceKm <= query.radius!,
+      );
     }
 
     scored.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      if (a.distanceKm !== null && b.distanceKm !== null && a.distanceKm !== b.distanceKm) {
+      if (
+        a.distanceKm !== null &&
+        b.distanceKm !== null &&
+        a.distanceKm !== b.distanceKm
+      ) {
         return a.distanceKm - b.distanceKm;
       }
-      if (a.item.votesScore !== b.item.votesScore) return b.item.votesScore - a.item.votesScore;
+      if (a.item.votesScore !== b.item.votesScore)
+        return b.item.votesScore - a.item.votesScore;
       return b.item.createdAt.getTime() - a.item.createdAt.getTime();
     });
 
@@ -139,7 +167,13 @@ export class ItemsService {
 
     return {
       items: pageEntries.map((entry) =>
-        this.serialize(entry.item, viewer, entry.distanceKm !== null ? Math.round(entry.distanceKm * 10) / 10 : null),
+        this.serialize(
+          entry.item,
+          viewer,
+          entry.distanceKm !== null
+            ? Math.round(entry.distanceKm * 10) / 10
+            : null,
+        ),
       ),
       page,
       pageSize,
@@ -149,22 +183,45 @@ export class ItemsService {
   }
 
   private findRaw(id: string) {
-    return this.prisma.item.findUnique({ where: { id }, include: this.includeRelations() });
+    return this.prisma.item.findUnique({
+      where: { id },
+      include: this.includeRelations(),
+    });
   }
 
   private includeRelations() {
     return {
       photos: { orderBy: { order: 'asc' as const } },
       category: true,
-      user: { select: { id: true, name: true, avatar: true, trustScore: true } },
+      user: {
+        select: { id: true, name: true, avatar: true, trustScore: true },
+      },
+      reservations: {
+        where: { status: ReservationStatus.ACTIVE },
+        take: 1,
+        select: {
+          id: true,
+          user: { select: { id: true, name: true, avatar: true } },
+          expiresAt: true,
+        },
+      },
     };
   }
 
   /** §9 : position approximative pour les visiteurs non connectés, exacte pour les connectés. */
-  private serialize(item: ItemWithRelations, viewer: AuthenticatedUser | null, distanceKm: number | null = null) {
+  private serialize(
+    item: ItemWithRelations,
+    viewer: AuthenticatedUser | null,
+    distanceKm: number | null = null,
+  ) {
     const isAuthenticated = viewer !== null;
-    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
-    const { trustScore: _trustScore, ...userWithoutTrust } = item.user;
+    const imgBaseUrl = this.config.get<string>(
+      'IMG_BASE_URL',
+      'http://localhost:3000/uploads',
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { trustScore: _, ...userWithoutTrust } = item.user;
+    const activeReservation = item.reservations?.[0] ?? null;
 
     return {
       ...item,
@@ -173,10 +230,13 @@ export class ItemsService {
       address: isAuthenticated ? item.address : null,
       distance: distanceKm,
       user: userWithoutTrust,
+      activeReservation,
       photos: item.photos.map((photo) => ({
         ...photo,
         path: `${imgBaseUrl}/${photo.path}`,
-        thumbnailPath: photo.thumbnailPath ? `${imgBaseUrl}/${photo.thumbnailPath}` : null,
+        thumbnailPath: photo.thumbnailPath
+          ? `${imgBaseUrl}/${photo.thumbnailPath}`
+          : null,
       })),
     };
   }
@@ -188,12 +248,18 @@ function roundApprox(value: number): number {
 }
 
 /** Distance à vol d'oiseau en km (calcul serveur V1 — PostGIS prévu ensuite, §12.5). */
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function haversineKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
-    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 

@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ImageModule } from './images/image.module';
 import { ItemsModule } from './items/items.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ItemsModule } from './items/items.module';
     AdminModule,
     CategoriesModule,
     ItemsModule,
+    ReservationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

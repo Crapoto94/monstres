@@ -21,6 +21,11 @@ export interface Item {
   photos: ItemPhoto[]
   category: { id: string; name: string; icon: string | null } | null
   user: { id: string; name: string; avatar: string | null }
+  activeReservation: {
+    id: string
+    user: { id: string; name: string; avatar: string | null }
+    expiresAt: string
+  } | null
 }
 
 export interface ItemsPage {
