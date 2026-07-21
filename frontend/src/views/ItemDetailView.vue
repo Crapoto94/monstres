@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchItem, type Item } from '@/services/items'
+import { fetchItem, collectItem, type Item } from '@/services/items'
 import { reserveItem, cancelReservation } from '@/services/reservations'
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
@@ -13,7 +13,11 @@ const error = ref<string | null>(null)
 const loading = ref(true)
 const reserving = ref(false)
 const cancelling = ref(false)
+const collecting = ref(false)
 const reserveError = ref<string | null>(null)
+const collectError = ref<string | null>(null)
+const collectPreview = ref<string | null>(null)
+const collectFile = ref<File | null>(null)
 const now = ref(Date.now())
 
 let timer: ReturnType<typeof setInterval> | null = null
@@ -51,6 +55,21 @@ const isMyItem = computed(() => {
   return auth.isAuthenticated && item.value?.user.id === auth.user?.id
 })
 
+const collectionPhotos = computed(() => {
+  return item.value?.photos.filter(p => p.type === 'COLLECTION') ?? []
+})
+
+function onCollectFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  collectFile.value = file
+  if (file) {
+    collectPreview.value = URL.createObjectURL(file)
+  } else {
+    collectPreview.value = null
+  }
+}
+
 async function handleReserve() {
   if (!item.value) return
   reserving.value = true
@@ -85,6 +104,22 @@ async function handleCancel() {
     cancelling.value = false
   }
 }
+
+async function handleCollect() {
+  if (!item.value || !collectFile.value) return
+  collecting.value = true
+  collectError.value = null
+  try {
+    const updated = await collectItem(item.value.id, collectFile.value)
+    item.value = updated
+    collectPreview.value = null
+    collectFile.value = null
+  } catch (e: any) {
+    collectError.value = e.response?.data?.error?.message ?? 'Impossible de valider la récupération.'
+  } finally {
+    collecting.value = false
+  }
+}
 </script>
 
 <template>
@@ -95,7 +130,7 @@ async function handleCancel() {
     <div v-else class="flex flex-col gap-3">
       <div class="flex gap-2 overflow-x-auto">
         <img
-          v-for="photo in item.photos"
+          v-for="photo in item.photos.filter(p => p.type !== 'COLLECTION')"
           :key="photo.id"
           :src="photo.path"
           class="h-48 w-48 flex-shrink-0 rounded-lg object-cover"
@@ -143,6 +178,24 @@ async function handleCancel() {
         </button>
       </div>
 
+      <!-- Récupération validée -->
+      <div v-if="item.status === 'COLLECTED'" class="rounded-lg border border-green-300 bg-green-50 p-3 dark:border-green-700 dark:bg-green-950">
+        <p class="text-sm font-medium text-green-800 dark:text-green-200">
+          Récupéré
+          <span v-if="item.collectedAt">{{ formatRelativeTime(item.collectedAt) }}</span>
+        </p>
+        <div v-if="collectionPhotos.length" class="mt-2 flex gap-2">
+          <img
+            v-for="photo in collectionPhotos"
+            :key="photo.id"
+            :src="photo.path"
+            class="h-24 w-24 rounded-lg object-cover"
+            alt="Photo du lieu vide"
+          />
+        </div>
+      </div>
+
+      <!-- Réserver -->
       <button
         v-if="item.status === 'AVAILABLE' && auth.isAuthenticated && !isMyItem"
         type="button"
@@ -158,7 +211,30 @@ async function handleCancel() {
         pour réserver ce Monstre.
       </p>
 
+      <!-- Valider la récupération -->
+      <div v-if="item.status === 'RESERVED' && isMyReservation" class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          J'ai récupéré ce Monstre — photo du lieu vide :
+        </label>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-green-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-green-700 hover:file:bg-green-100"
+          @change="onCollectFileChange"
+        />
+        <img v-if="collectPreview" :src="collectPreview" class="h-32 w-32 rounded-lg object-cover" alt="Aperçu" />
+        <button
+          type="button"
+          :disabled="!collectFile || collecting"
+          class="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-40"
+          @click="handleCollect"
+        >
+          {{ collecting ? 'Validation…' : 'Confirmer la récupération' }}
+        </button>
+      </div>
+
       <p v-if="reserveError" class="text-sm text-red-600 dark:text-red-400">{{ reserveError }}</p>
+      <p v-if="collectError" class="text-sm text-red-600 dark:text-red-400">{{ collectError }}</p>
     </div>
   </section>
 </template>

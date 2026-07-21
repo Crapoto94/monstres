@@ -182,6 +182,65 @@ export class ItemsService {
     };
   }
 
+  async collect(
+    itemId: string,
+    user: AuthenticatedUser,
+    file: Express.Multer.File,
+  ) {
+    this.imageService.validateFormat(file.mimetype);
+
+    const item = await this.prisma.item.findUnique({
+      where: { id: itemId },
+      include: {
+        reservations: {
+          where: { status: ReservationStatus.ACTIVE },
+          take: 1,
+        },
+      },
+    });
+
+    if (!item) throw new NotFoundException('Monstre introuvable.');
+    if (item.status !== 'RESERVED') {
+      throw new BadRequestException(
+        "Ce Monstre n'est pas en cours de réservation.",
+      );
+    }
+
+    const activeReservation = item.reservations[0];
+    if (!activeReservation || activeReservation.userId !== user.id) {
+      throw new BadRequestException(
+        'Seul le réservateur peut valider la récupération.',
+      );
+    }
+
+    const processedPhoto = await this.imageService.process(file.buffer, itemId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.itemPhoto.create({
+        data: {
+          itemId,
+          type: 'COLLECTION',
+          path: processedPhoto.path,
+          thumbnailPath: processedPhoto.thumbnailPath,
+          order: 0,
+        },
+      });
+      await tx.reservation.update({
+        where: { id: activeReservation.id },
+        data: { status: ReservationStatus.COMPLETED },
+      });
+      await tx.item.update({
+        where: { id: itemId },
+        data: {
+          status: 'COLLECTED',
+          collectedAt: new Date(),
+        },
+      });
+    });
+
+    return this.findById(itemId, user);
+  }
+
   private findRaw(id: string) {
     return this.prisma.item.findUnique({
       where: { id },

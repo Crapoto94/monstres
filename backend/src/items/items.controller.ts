@@ -1,5 +1,16 @@
-import { Body, Controller, Get, Param, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -20,7 +31,11 @@ export class ItemsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(FilesInterceptor('photos', MAX_UPLOAD_FILES, { limits: { fileSize: MAX_FILE_SIZE_BYTES } }))
+  @UseInterceptors(
+    FilesInterceptor('photos', MAX_UPLOAD_FILES, {
+      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+    }),
+  )
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateItemDto,
@@ -31,13 +46,32 @@ export class ItemsController {
 
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
-  findAll(@Query() query: FindItemsQueryDto, @CurrentUser() user: AuthenticatedUser | null) {
+  findAll(
+    @Query() query: FindItemsQueryDto,
+    @CurrentUser() user: AuthenticatedUser | null,
+  ) {
     return this.itemsService.findMany(query, user);
   }
 
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
-  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser | null) {
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser | null,
+  ) {
     return this.itemsService.findById(id, user);
+  }
+
+  @Post(':id/collect')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('photo', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
+  )
+  collect(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.itemsService.collect(id, user, file);
   }
 }

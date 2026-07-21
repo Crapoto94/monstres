@@ -7,11 +7,12 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-21** (Phase 4 terminée)
+Dernière mise à jour : **2026-07-21** (Phase 5 terminée)
 
 **Statut : Phases 0 (Initialisation), 1 (Authentification), 2 (Création des
-Monstres), 3 (Consultation) et 4 (Réservation) terminées et validées.**
-Prochaine étape : **Phase 5 — Validation de récupération** (voir détail plus bas).
+Monstres), 3 (Consultation), 4 (Réservation) et 5 (Validation de récupération)
+terminées et validées.** Prochaine étape :
+**Phase 6 — Système communautaire** (voir détail plus bas).
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -524,13 +525,58 @@ Tests : réservation, expiration, nouvelle disponibilité.
 
 ---
 
+## Phase 5 — Validation de récupération : terminée et validée
+
+Objectif (§17) : « J'ai récupéré ce Monstre » : photo finale, validation,
+changement de statut `RESERVED → COLLECTED`.
+
+### Décisions prises pendant cette session
+- **Endpoint `POST /items/:id/collect`** avec upload photo (`FileInterceptor`,
+  un seul fichier) — pas un endpoint séparé `POST /reservations/:id/collect`
+  car la récupération est une action sur l'Item, pas sur la réservation. Le
+  contrôleur `ItemsController` est donc le bon endroit.
+- **Seul le réservateur peut collecter.** Vérification côté serveur
+  (`activeReservation.userId === user.id`). Bob ne peut pas collecter un
+  Monstre réservé par Alice — c'est un choix de sécurité du §6.3.
+- **Photo stockée en `COLLECTION`** (enum `ItemPhotoType`) dans `item_photos`,
+  conforme au §20. La photo de validation de récupération n'est pas dans une
+  table séparée, elle cohabite avec les photos d'annonce mais avec un `type`
+  différent.
+- **`activeReservation` passe en `null`** après la récupération (reservation
+  `COMPLETED`) — la page détail ne l'affiche plus quand le statut est
+  `COLLECTED`.
+- **Frontend** : input `file` + aperçu + bouton « Confirmer la récupération ».
+  Affichage conditionnel : bouton collect visible uniquement si
+  `status === RESERVED` ET `isMyReservation`. La photo de collect est affichée
+  dans le détail avec un style `COLLECTED` (bordure verte).
+
+### Fait
+- [x] `backend/src/items/items.controller.ts` : `POST /items/:id/collect`
+      (`FileInterceptor`, `JwtAuthGuard`).
+- [x] `backend/src/items/items.service.ts` : `collect()` vérifie statut
+      `RESERVED`, vérifie que le demandeur est le réservateur, traite la photo
+      (`ImageService.process`), crée l'`ItemPhoto` en `COLLECTION`, passe la
+      réservation en `COMPLETED`, passe l'Item en `COLLECTED` + `collectedAt`.
+- [x] Frontend : `src/services/items.ts` — `collectItem(itemId, photo)` (multipart).
+      `ItemDetailView.vue` : bouton « J'ai récupéré ce Monstre — photo du lieu
+      vide » avec input file + aperçu, affichage « Récupéré » avec photo
+      collection quand `status === COLLECTED`.
+- [x] Testé de bout en bout (script Node.js) : Bob crée → Alice réserve →
+      Bob tente de collect → refusé (pas le réservateur) → Alice collecte →
+      OK, statut `COLLECTED`, 1 photo collection, `activeReservation` null →
+      Alice tente de collecter à nouveau → refusé (plus réservé).
+- [x] Build backend + lint sans erreur. Typecheck frontend sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement cette session.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 5 — Validation de récupération.** Photo « lieu vide »,
-      `RESERVED → COLLECTED`.
 - [ ] **Phase 6 — Communautaire.** `votes` (type unique `interesting`),
       `comments`, `ScoringService` + `scoring_events`.
 - [ ] **Phase 7 — Notifications.** Email uniquement via Brevo,
@@ -563,8 +609,8 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0, 1, 2, 3 et 4 sont terminées. Continuer sur la première case
-   non cochée de **Phase 5 — Validation de récupération** (section « Phases
+4. Les Phases 0, 1, 2, 3, 4 et 5 sont terminées. Continuer sur la première
+   case non cochée de **Phase 6 — Système communautaire** (section « Phases
    suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser
    plusieurs phases à la fois (§0). Pour toute nouvelle migration Prisma en
    session non interactive, voir le workaround documenté dans `backend/README.md`

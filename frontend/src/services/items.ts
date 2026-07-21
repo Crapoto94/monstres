@@ -80,3 +80,12 @@ export async function fetchItems(params: FindItemsParams) {
   const { data } = await api.get<ApiSuccess<ItemsPage>>('/items', { params })
   return data.data
 }
+
+export async function collectItem(itemId: string, photo: File) {
+  const formData = new FormData()
+  formData.append('photo', photo)
+  const { data } = await api.post<ApiSuccess<Item>>(`/items/${itemId}/collect`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data.data
+}
