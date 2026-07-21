@@ -7,6 +7,8 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { fetchItems } from '@/services/items'
+import { fetchSubscriptions } from '@/services/subscriptions'
+import { useAuthStore } from '@/stores/auth'
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -36,9 +38,16 @@ function statusIcon(status: string): L.DivIcon {
 }
 
 const router = useRouter()
+const auth = useAuthStore()
 const mapContainer = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
 let map: L.Map | null = null
+
+function escapeHtml(value: string): string {
+  const div = document.createElement('div')
+  div.textContent = value
+  return div.innerHTML
+}
 
 onMounted(async () => {
   await nextTick()
@@ -62,6 +71,22 @@ onMounted(async () => {
       marker.bindPopup(`<strong>${escapeHtml(item.title)}</strong>`)
       marker.on('click', () => router.push(`/monstres/${item.id}`))
     }
+
+    // §6.10 : zones surveillées de l'utilisateur, affichées en superposition.
+    if (auth.isAuthenticated) {
+      const subscriptions = await fetchSubscriptions()
+      for (const subscription of subscriptions) {
+        L.circle([subscription.latitude, subscription.longitude], {
+          radius: subscription.radius,
+          color: '#7c3aed',
+          weight: 2,
+          fillColor: '#7c3aed',
+          fillOpacity: 0.1,
+        })
+          .addTo(map!)
+          .bindPopup(`${escapeHtml(subscription.name)} (${subscription.radius / 1000} km)`)
+      }
+    }
   } finally {
     loading.value = false
   }
@@ -70,12 +95,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   map?.remove()
 })
-
-function escapeHtml(value: string): string {
-  const div = document.createElement('div')
-  div.textContent = value
-  return div.innerHTML
-}
 </script>
 
 <template>

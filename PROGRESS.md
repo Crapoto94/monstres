@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (correctif carte + masquage Monstres
-récupérés >24h, v0.1.4)
+Dernière mise à jour : **2026-07-22** (zones surveillées affichées sur la
+carte, v0.1.5)
 
 **Statut : Phases 0 à 8 terminées et validées.** Prochaine étape :
 **Phase 9 — Administration** (voir détail plus bas). Le projet est déployé
@@ -1069,6 +1069,39 @@ admins, qui gardent une vue complète à des fins de suivi/modération.
       correspondent bien au statut de chaque Monstre (vérifié via
       inspection du DOM, `style.background` de chaque marqueur). État de
       test restauré dans `dev.db` après vérification.
+- [x] Build + typecheck backend et frontend sans erreur.
+
+---
+
+## Fonctionnalité : zones surveillées affichées sur la carte
+
+Demande utilisateur : afficher ses zones surveillées (abonnements
+géographiques, §6.10) directement sur la carte (`/carte`), en plus de la
+liste dans `AlertsView`.
+
+### Décisions
+- **Rendu en `L.circle`** (cercle métrique centré sur `lat/lng`, rayon en
+  mètres tel que stocké), pas de marqueur ponctuel — représente fidèlement
+  la zone de couverture plutôt qu'un point.
+- **Couleur violette (`#7c3aed`)**, cohérente avec le violet déjà utilisé
+  pour les Monstres `AVAILABLE`, mais distincte visuellement (remplissage
+  semi-transparent `fillOpacity: 0.1`) pour ne pas se confondre avec les
+  marqueurs de Monstres.
+- **Chargé uniquement si `auth.isAuthenticated`** — les zones sont privées
+  à l'utilisateur (`GET /subscriptions` retourne déjà uniquement les
+  siennes côté backend, aucun changement API nécessaire).
+- **Popup au clic** affichant le nom de la zone et son rayon en km, cohérent
+  avec l'affichage dans `AlertsView`.
+
+### Fait
+- [x] Frontend : `MapView.vue` — import de `fetchSubscriptions` et
+      `useAuthStore`, ajout des cercles après le chargement des Monstres.
+- [x] Testé de bout en bout : utilisateur de test créé via API, zone de
+      surveillance créée (1,5 km), connexion réelle via le formulaire de
+      `/connexion` dans le navigateur, navigation vers `/carte`, cercle
+      violet vérifié dans le DOM (`fill`/`stroke` du path SVG Leaflet) et
+      popup vérifié au clic (« Chez moi (test) (1.5 km) »). Utilisateur et
+      zone de test supprimés de `dev.db` après vérification.
 - [x] Build + typecheck backend et frontend sans erreur.
 
 ---
