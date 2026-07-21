@@ -85,13 +85,17 @@ démarrent tous les deux sans erreur.
       `backend/.gitignore` écrits.
 
 ### Restant à faire — Phase 0
-- [ ] **Commit Git du backend** (`backend/` est actuellement untracked —
-      `git add backend && git commit`). À faire dès que le scaffold backend
-      est jugé stable.
-- [ ] **Scaffolder le frontend** : Vue 3 + TypeScript strict + Vite +
-      Tailwind + Pinia, en PWA, dans `frontend/`. Structure attendue :
-      `src/components`, `views`, `stores`, `services`, `router`, `assets`.
-      Rien n'existe encore pour le frontend à ce stade.
+- [x] **Commit Git du backend** (commit `2fdc9c5`).
+- [x] **Scaffolder le frontend** : Vue 3 + TypeScript strict + Vite +
+      Tailwind CSS v4 (`@tailwindcss/vite`) + Pinia + Vue Router, en PWA
+      (`vite-plugin-pwa`), dans `frontend/`. Structure : `src/components`
+      (dont `layout/BottomNav.vue`), `views` (Home/Map/AddItem/Alerts/
+      Profile, placeholders indiquant leur phase), `stores` (`auth.ts`
+      placeholder), `services/api.ts` (client axios `/api/v1`, cookies),
+      `router`. Alias `@` → `src/`. Testé : `vue-tsc --noEmit` sans erreur,
+      `npm run dev` démarre sur :5173, page vérifiée dans le navigateur
+      (rendu correct, 0 erreur console, 0 requête en échec). Icônes PWA =
+      placeholder SVG à remplacer lors du travail de branding.
 - [ ] **`docker-compose.yml`** à la racine (services `nginx`, `frontend`,
       `backend`, `storage` — pour le déploiement Proxmox uniquement, voir
       §12.2). Pas encore écrit.
