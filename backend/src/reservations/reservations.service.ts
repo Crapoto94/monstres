@@ -5,9 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ReservationStatus } from '../generated/prisma/enums';
+import { ReservationStatus, NotificationType } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class ReservationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: SettingsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -60,6 +62,13 @@ export class ReservationsService {
         data: { status: 'RESERVED', reservedAt: new Date() },
       });
       return r;
+    });
+
+    // §6.11 : le propriétaire est notifié qu'un connecté a réservé son Monstre.
+    await this.notifications.notify(item.userId, NotificationType.RESERVATION_CREATED, {
+      itemId: item.id,
+      itemTitle: item.title,
+      reserverName: reservation.user.name,
     });
 
     return {

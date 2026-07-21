@@ -63,5 +63,9 @@ export const useAuthStore = defineStore('auth', {
       await authService.logout()
       this.user = null
     },
+
+    async setEmailNotifications(enabled: boolean) {
+      this.user = await authService.updateEmailNotifications(enabled)
+    },
   },
 })

@@ -7,13 +7,14 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-21** (Phase 6 terminée ; premier déploiement
+Dernière mise à jour : **2026-07-22** (Phase 7 terminée ; premier déploiement
 Proxmox en ligne sur `https://monstres.fbc.fr`, v0.1.1)
 
-**Statut : Phases 0 à 6 terminées et validées.** Prochaine étape :
-**Phase 7 — Notifications** (voir détail plus bas). Le projet est déployé en
-production sur `https://monstres.fbc.fr` (domaine unique, voir la section
-dédiée plus bas pour l'historique des correctifs de déploiement).
+**Statut : Phases 0 à 7 terminées et validées.** Prochaine étape :
+**Phase 8 — Abonnements géographiques** (voir détail plus bas). Le projet
+est déployé en production sur `https://monstres.fbc.fr` (domaine unique,
+voir la section dédiée plus bas pour l'historique des correctifs de
+déploiement).
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -862,13 +863,74 @@ confirmé visuellement dans le navigateur. Zéro erreur console.
 
 ---
 
+## Phase 7 — Notifications : terminée et validée
+
+Objectif (§17, §6.11) : email uniquement via Brevo, `NotificationService`,
+table `notifications`. Types `NEW_ITEM_NEARBY`, `RESERVATION_CREATED`,
+`ITEM_COLLECTED`, `BADGE_UNLOCKED`.
+
+### Décisions prises pendant cette session
+- **Seuls `RESERVATION_CREATED` et `ITEM_COLLECTED` sont réellement
+  déclenchés** cette session. `NEW_ITEM_NEARBY` a besoin des zones
+  surveillées (`subscriptions`, Phase 8 — pas encore construite : impossible
+  de savoir *qui* est « à proximité » sans elles) et `BADGE_UNLOCKED` a
+  besoin d'un système de badges (jamais assigné à une phase précise dans le
+  §17, seulement décrit en §6.9 — non construit). Les deux types existent
+  déjà dans l'enum et `NotificationsService.notify()` sait déjà les gérer
+  (email + historique) : il suffira d'appeler `notify()` au bon endroit
+  quand ces briques arriveront, sans retoucher ce module.
+- **Consentement email ajouté** (`User.emailNotifications`, défaut `true`,
+  migration `20260721220000_add_email_notifications`) — le §9 RGPD exige
+  explicitement un consentement « notifications (email oui/non) », absent
+  du schéma jusqu'ici. Toggle exposé via `PATCH /users/me/preferences` et
+  une case à cocher dans `AlertsView.vue`. **La notification en base est
+  toujours créée** (historique conservé, §6.11) même si l'email est
+  désactivé — seul l'envoi d'email est conditionné par la préférence.
+- **Échec d'envoi d'email non bloquant**, même logique que partout ailleurs
+  dans ce projet (vérification email, mot de passe oublié, §11 Facebook) :
+  `NotificationsService.notify()` catche l'erreur d'envoi et logge, la
+  réservation/récupération ne peut jamais échouer à cause d'un problème
+  d'email.
+- **Notifications rattachées au propriétaire du Monstre**, pas au visiteur
+  qui agit (réserve/collecte) — cohérent avec l'esprit "on informe le
+  propriétaire de ce qui se passe sur son Monstre" du §6.11.
+- **Pas de badge de compteur non-lu sur l'onglet Alertes** (barre de
+  navigation basse) — nécessiterait un état global/polling, jugé disproportionné
+  pour cette passe ; la liste elle-même distingue déjà lu/non-lu visuellement.
+
+### Fait
+- [x] Schéma : `User.emailNotifications` (migration appliquée).
+- [x] `src/notifications/` : `NotificationsService.notify()` (historique +
+      email conditionnel), `findMine()`, `markAsRead()`.
+      `NotificationsController` : `GET /notifications`, `PATCH /notifications/:id/read`.
+- [x] Câblage : `ReservationsService.reserve()` → notifie le propriétaire
+      (`RESERVATION_CREATED`) ; `ItemsService.collect()` → notifie le
+      propriétaire (`ITEM_COLLECTED`).
+- [x] `UsersController` : `PATCH /users/me/preferences` (toggle
+      `emailNotifications`). `SafeUser`/`GET /auth/me` renvoient le champ.
+- [x] Frontend : `src/services/notifications.ts`, `AlertsView.vue`
+      reconstruite (liste lu/non-lu, marquage au clic, case à cocher
+      préférence email), store `auth.setEmailNotifications()`.
+- [x] Testé de bout en bout : réservation → notification créée avec les
+      bonnes données chez le propriétaire → email tenté via Brevo (clé
+      réelle configurée, pas d'erreur loggée) → marquage lu (API + clic
+      navigateur, requête réseau confirmée) → toggle préférence email
+      (API + `/auth/me` reflète le changement). Zéro erreur console.
+- [x] Build + typecheck backend et frontend sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] `NEW_ITEM_NEARBY` : à câbler en Phase 8 (dépend de `subscriptions`).
+- [ ] `BADGE_UNLOCKED` : à câbler quand un système de badges existera (non
+      assigné à une phase précise dans le cahier des charges).
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 7 — Notifications.** Email uniquement via Brevo,
-      `NotificationService`, table `notifications`.
 - [ ] **Phase 8 — Abonnements géographiques.** Table `subscriptions`
       (max 5 lieux, rayon max 5 km — valeurs dans `settings`, pas en dur).
 - [ ] **Phase 9 — Administration.** Dashboard, gestion utilisateurs/Monstres/
@@ -897,9 +959,9 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0 à 6 sont terminées. Continuer sur la première case non
-   cochée de **Phase 7 — Notifications** (section « Phases suivantes »
-   ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
+4. Les Phases 0 à 7 sont terminées. Continuer sur la première case non
+   cochée de **Phase 8 — Abonnements géographiques** (section « Phases
+   suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
    phases à la fois (§0). Pour toute nouvelle migration Prisma en session
    non interactive, voir le workaround documenté dans `backend/README.md`
    (section Base de données).

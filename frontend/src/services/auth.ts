@@ -9,6 +9,7 @@ export interface AuthUser {
   score: number
   trustScore: number
   emailVerifiedAt: string | null
+  emailNotifications: boolean
   createdAt: string
 }
 
@@ -43,5 +44,10 @@ export async function forgotPassword(email: string) {
 
 export async function resetPassword(payload: { token: string; password: string }) {
   const { data } = await api.post<ApiSuccess<{ message: string }>>('/auth/reset-password', payload)
+  return data.data
+}
+
+export async function updateEmailNotifications(emailNotifications: boolean) {
+  const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/preferences', { emailNotifications })
   return data.data
 }

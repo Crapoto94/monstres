@@ -11,6 +11,7 @@ export interface SafeUser {
   score: number;
   trustScore: number;
   emailVerifiedAt: Date | null;
+  emailNotifications: boolean;
   createdAt: Date;
 }
 
@@ -37,6 +38,7 @@ export class UsersService {
       score: user.score,
       trustScore: user.trustScore,
       emailVerifiedAt: user.emailVerifiedAt,
+      emailNotifications: user.emailNotifications,
       createdAt: user.createdAt,
     };
   }
@@ -45,6 +47,12 @@ export class UsersService {
   async findSafeById(id: string): Promise<SafeUser> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Utilisateur introuvable.');
+    return this.toSafeUser(user);
+  }
+
+  /** Consentement notifications email (§9 RGPD). */
+  async updatePreferences(id: string, emailNotifications: boolean): Promise<SafeUser> {
+    const user = await this.prisma.user.update({ where: { id }, data: { emailNotifications } });
     return this.toSafeUser(user);
   }
 

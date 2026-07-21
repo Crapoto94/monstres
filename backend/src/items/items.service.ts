@@ -9,8 +9,9 @@ import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { ScoringService, ScoringEventType } from '../scoring/scoring.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
-import { ReservationStatus, VoteType } from '../generated/prisma/enums';
+import { ReservationStatus, VoteType, NotificationType } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
 import { FindItemsQueryDto } from './dto/find-items-query.dto';
 
@@ -28,6 +29,7 @@ export class ItemsService {
     private readonly imageService: ImageService,
     private readonly config: ConfigService,
     private readonly scoring: ScoringService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(
@@ -274,6 +276,14 @@ export class ItemsService {
     // distincte pour l'instant — voir décision dans PROGRESS.md (Phase 6).
     const pointsRecuperation = await this.settings.getNumber('points_recuperation', 10);
     await this.scoring.award(user.id, itemId, ScoringEventType.USER_COLLECTED_ITEM, pointsRecuperation);
+
+    // §6.11 : le propriétaire est notifié que son Monstre a été récupéré.
+    const collector = await this.prisma.user.findUnique({ where: { id: user.id }, select: { name: true } });
+    await this.notifications.notify(item.userId, NotificationType.ITEM_COLLECTED, {
+      itemId: item.id,
+      itemTitle: item.title,
+      collectorName: collector?.name ?? 'un membre',
+    });
 
     return this.findById(itemId, user);
   }

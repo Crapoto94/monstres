@@ -18,6 +18,7 @@ import { ReservationsModule } from './reservations/reservations.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { VotesModule } from './votes/votes.module';
 import { CommentsModule } from './comments/comments.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { CommentsModule } from './comments/comments.module';
     EmailModule,
     ImageModule,
     ScoringModule,
+    NotificationsModule,
     HealthModule,
     UsersModule,
     AuthModule,
