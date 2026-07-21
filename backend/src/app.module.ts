@@ -15,6 +15,9 @@ import { CategoriesModule } from './categories/categories.module';
 import { ImageModule } from './images/image.module';
 import { ItemsModule } from './items/items.module';
 import { ReservationsModule } from './reservations/reservations.module';
+import { ScoringModule } from './scoring/scoring.module';
+import { VotesModule } from './votes/votes.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -26,6 +29,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     SettingsModule,
     EmailModule,
     ImageModule,
+    ScoringModule,
     HealthModule,
     UsersModule,
     AuthModule,
@@ -33,6 +37,8 @@ import { ReservationsModule } from './reservations/reservations.module';
     CategoriesModule,
     ItemsModule,
     ReservationsModule,
+    VotesModule,
+    CommentsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

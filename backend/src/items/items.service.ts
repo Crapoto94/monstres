@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { ScoringService, ScoringEventType } from '../scoring/scoring.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ReservationStatus } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -26,6 +27,7 @@ export class ItemsService {
     private readonly settings: SettingsService,
     private readonly imageService: ImageService,
     private readonly config: ConfigService,
+    private readonly scoring: ScoringService,
   ) {}
 
   async create(
@@ -69,6 +71,9 @@ export class ItemsService {
       },
       include: this.includeRelations(),
     });
+
+    const pointsCreation = await this.settings.getNumber('points_creation', 5);
+    await this.scoring.award(userId, item.id, ScoringEventType.USER_CREATED_ITEM, pointsCreation);
 
     return this.serialize(item, { id: userId } as AuthenticatedUser);
   }
@@ -237,6 +242,12 @@ export class ItemsService {
         },
       });
     });
+
+    // §6.8 : la « récupération » récompense qui a fait le déplacement.
+    // « Validation » (points_validation) n'est câblée sur aucune action
+    // distincte pour l'instant — voir décision dans PROGRESS.md (Phase 6).
+    const pointsRecuperation = await this.settings.getNumber('points_recuperation', 10);
+    await this.scoring.award(user.id, itemId, ScoringEventType.USER_COLLECTED_ITEM, pointsRecuperation);
 
     return this.findById(itemId, user);
   }
