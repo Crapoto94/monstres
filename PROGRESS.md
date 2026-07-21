@@ -807,6 +807,38 @@ de démo.
 
 ---
 
+## Correctif : limites de photos (taille et dimensions)
+
+Demande utilisateur : autoriser 5 Mo par photo en entrée, redimensionner à
+la volée pour que le fichier stocké fasse au plus 1200×1200 px (économie
+d'espace disque). Trois limites distinctes à corriger, dont une invisible
+depuis le code applicatif :
+
+- **`nginx/nginx.conf`** : nginx refuse par défaut tout corps de requête au
+  delà de **1 Mo** (`client_max_body_size` non défini) — c'était très
+  probablement le vrai blocage ressenti par l'utilisateur, en amont même du
+  code applicatif (échec silencieux côté nginx, jamais vu par le backend).
+  Ajouté `client_max_body_size 16m;` au niveau du `server{}` (marge pour
+  jusqu'à 3 photos × 5 Mo + overhead multipart).
+- **`backend/src/items/items.controller.ts`** : `MAX_FILE_SIZE_BYTES` passé
+  de 10 Mo à **5 Mo** (limite explicite demandée, plafond technique multer,
+  distinct de `max_photos_per_item` qui reste piloté par `settings`).
+- **`backend/src/images/image.service.ts`** : `MAX_DIMENSION` passé de
+  1920 à **1200** px (déjà en `fit: 'inside', withoutEnlargement: true` —
+  ne redimensionne que vers le bas, ne agrandit jamais une image plus petite).
+
+Testé : image de test 3000×2000 uploadée → fichier stocké vérifié à
+1200×800 (ratio conservé). Fichier factice de 6 Mo → rejeté en 413
+`PayloadTooLargeException` par multer, confirmant la limite de 5 Mo.
+
+⚠️ **Le reverse-proxy externe du Proxmox** (celui qui termine le HTTPS, en
+amont de `nginx/nginx.conf`) peut avoir sa **propre** limite de taille de
+requête, indépendante de celle-ci. Si l'upload échoue encore après ce
+correctif alors qu'il fonctionne en local, vérifier aussi cette limite côté
+proxy externe (non gérée dans ce dépôt).
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre

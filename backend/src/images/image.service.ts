@@ -6,7 +6,10 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_DIMENSION = 1920;
+// Entrée acceptée jusqu'à 5 Mo (voir MAX_FILE_SIZE_BYTES dans
+// items.controller.ts) ; toujours redimensionnée à 1200×1200 max en sortie
+// pour limiter l'espace disque, quelle que soit la taille/résolution d'origine.
+const MAX_DIMENSION = 1200;
 const THUMBNAIL_WIDTH = 400;
 
 export interface ProcessedPhoto {

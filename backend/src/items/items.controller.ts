@@ -21,9 +21,11 @@ import { ItemsService } from './items.service';
 
 // Plafond technique du transport (multer) ; la limite métier réelle
 // (`max_photos_per_item`, défaut 3) est vérifiée dans ItemsService via
-// SettingsService — jamais en dur ici.
+// SettingsService — jamais en dur ici. 5 Mo/photo autorisés en entrée ;
+// ImageService redimensionne ensuite à 1200×1200 max avant stockage
+// (voir MAX_DIMENSION dans image.service.ts).
 const MAX_UPLOAD_FILES = 10;
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
 @Controller('items')
 export class ItemsController {
