@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const email = ref('')
@@ -14,7 +15,7 @@ async function onSubmit() {
   submitting.value = true
   try {
     await auth.login({ email: email.value, password: password.value })
-    router.push('/profil')
+    router.push(String(route.query.redirect ?? '/profil'))
   } catch {
     // l'erreur est déjà exposée via auth.error
   } finally {

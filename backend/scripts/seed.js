@@ -1,6 +1,6 @@
-// Seed des paramètres administrables par défaut (§12.10 du cahier des
-// charges + TTL des tokens d'auth de la Phase 1). Idempotent : n'écrase pas
-// une valeur déjà modifiée depuis l'admin.
+// Seed des données de référence par défaut : paramètres administrables
+// (§12.10 + TTL des tokens d'auth de la Phase 1) et catégories initiales
+// (§6.7). Idempotent : n'écrase pas une valeur déjà modifiée depuis l'admin.
 //
 // Tourne contre le build compilé (dist/) — pas de ts-node : le client Prisma
 // généré utilise des specifiers ".js" que seul un vrai fichier compilé
@@ -24,6 +24,18 @@ const DEFAULT_SETTINGS = [
   { key: 'password_reset_token_ttl_minutes', value: '60', type: 'INTEGER' },
 ];
 
+const DEFAULT_CATEGORIES = [
+  { name: 'Meuble', icon: 'sofa', order: 1 },
+  { name: 'Électroménager', icon: 'plug', order: 2 },
+  { name: 'Jardin', icon: 'tree', order: 3 },
+  { name: 'Bricolage', icon: 'hammer', order: 4 },
+  { name: 'Métal', icon: 'wrench', order: 5 },
+  { name: 'Bois', icon: 'tree-deciduous', order: 6 },
+  { name: 'Vélo', icon: 'bike', order: 7 },
+  { name: 'Décoration', icon: 'lamp', order: 8 },
+  { name: 'Autre', icon: 'box', order: 9 },
+];
+
 async function main() {
   const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
@@ -32,7 +44,15 @@ async function main() {
     const existing = await prisma.setting.findUnique({ where: { key: setting.key } });
     if (!existing) {
       await prisma.setting.create({ data: setting });
-      console.log(`+ ${setting.key} = ${setting.value}`);
+      console.log(`+ setting ${setting.key} = ${setting.value}`);
+    }
+  }
+
+  for (const category of DEFAULT_CATEGORIES) {
+    const existing = await prisma.category.findFirst({ where: { name: category.name } });
+    if (!existing) {
+      await prisma.category.create({ data: { ...category, active: true } });
+      console.log(`+ catégorie ${category.name}`);
     }
   }
 

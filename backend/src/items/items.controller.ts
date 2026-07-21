@@ -1,0 +1,36 @@
+import { Body, Controller, Get, Param, Post, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import { CreateItemDto } from './dto/create-item.dto';
+import { ItemsService } from './items.service';
+
+// Plafond technique du transport (multer) ; la limite métier réelle
+// (`max_photos_per_item`, défaut 3) est vérifiée dans ItemsService via
+// SettingsService — jamais en dur ici.
+const MAX_UPLOAD_FILES = 10;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+@Controller('items')
+export class ItemsController {
+  constructor(private readonly itemsService: ItemsService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('photos', MAX_UPLOAD_FILES, { limits: { fileSize: MAX_FILE_SIZE_BYTES } }))
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateItemDto,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    return this.itemsService.create(user.id, dto, files);
+  }
+
+  @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser | null) {
+    return this.itemsService.findById(id, user);
+  }
+}

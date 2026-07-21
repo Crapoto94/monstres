@@ -7,7 +7,12 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/carte', name: 'map', component: () => import('@/views/MapView.vue') },
-    { path: '/ajouter', name: 'add-item', component: () => import('@/views/AddItemView.vue') },
+    {
+      path: '/ajouter',
+      name: 'add-item',
+      component: () => import('@/views/AddItemView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/alertes', name: 'alerts', component: () => import('@/views/AlertsView.vue') },
     { path: '/profil', name: 'profile', component: () => import('@/views/ProfileView.vue') },
     { path: '/connexion', name: 'login', component: () => import('@/views/LoginView.vue') },
@@ -30,9 +35,13 @@ export const router = createRouter({
   ],
 })
 
-// Restaure la session (cookie httpOnly) une seule fois, avant la première navigation.
-router.beforeEach(async () => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  // Restaure la session (cookie httpOnly) une seule fois, avant la première navigation.
   if (!auth.initialized) await auth.init()
+
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { path: '/connexion', query: { redirect: to.fullPath } }
+  }
   return true
 })

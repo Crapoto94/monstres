@@ -11,6 +11,9 @@ import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
+import { CategoriesModule } from './categories/categories.module';
+import { ImageModule } from './images/image.module';
+import { ItemsModule } from './items/items.module';
 
 @Module({
   imports: [
@@ -21,10 +24,13 @@ import { AdminModule } from './admin/admin.module';
     PrismaModule,
     SettingsModule,
     EmailModule,
+    ImageModule,
     HealthModule,
     UsersModule,
     AuthModule,
     AdminModule,
+    CategoriesModule,
+    ItemsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -9,9 +9,15 @@
 
 Dernière mise à jour : **2026-07-21**
 
-**Statut : Phases 0 (Initialisation) et 1 (Authentification) terminées et
-validées.** Prochaine étape : **Phase 2 — Création des Monstres** (voir
-détail plus bas).
+**Statut : Phases 0 (Initialisation), 1 (Authentification) et 2 (Création
+des Monstres) terminées et validées.** Prochaine étape :
+**Phase 3 — Consultation** (voir détail plus bas).
+
+Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
+`marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
+(ADMIN, créé cette session — mot de passe donné par l'utilisateur en chat,
+non répété ici). Plusieurs Monstres de test ont été créés pendant les
+sessions Phase 2 (photos réelles sur disque dans `backend/storage/items/`).
 
 ---
 
@@ -255,15 +261,136 @@ envoyé, connexion, accès protégé.
 
 ---
 
+## Phase 2 — Création des Monstres : terminée et validée
+
+Objectif (§17) : formulaire en 4 étapes (photo → position → informations →
+publication). Tables `items`, `item_photos`, `categories`. Tests : Monstre
+complet (photos, coordonnées, propriétaire).
+
+### Décisions prises pendant cette session
+- **Position choisie via carte Leaflet + recherche d'adresse dès la
+  création**, pas seulement en Phase 3. Le §7 décrit explicitement
+  « accepter la position, déplacer le marqueur, rechercher une adresse,
+  corriger manuellement » comme faisant partie du flux de création — ce
+  n'est pas la même chose que la Phase 3 (« Consultation »), qui porte sur
+  la liste/carte de *navigation* parmi les Monstres existants. Géolocalisation
+  navigateur (`navigator.geolocation`) pour la position initiale, marqueur
+  Leaflet déplaçable, recherche d'adresse via l'API Nominatim
+  (OpenStreetMap, gratuite, sans clé) avec debounce 400 ms.
+- **Règle vie privée du §9 implémentée dès maintenant**, pas reportée à la
+  Phase 3, car elle porte sur la sérialisation de l'endpoint `GET /items/:id`
+  qu'on construit ici : visiteur non connecté → `address: null` +
+  latitude/longitude arrondies à 2 décimales (~1,1 km) ; connecté → position
+  exacte. Nouveau `OptionalJwtAuthGuard` (`backend/src/auth/guards/`) : comme
+  `JwtAuthGuard` mais ne renvoie jamais 401, `request.user` vaut `null` sans
+  cookie valide. Réutilisable pour tout endpoint dont le contenu varie
+  visiteur/connecté (utile dès la Phase 3 pour la liste).
+- **`GET /items/:id` ajouté**, bien que la liste complète (`GET /items` avec
+  pagination/tri/filtres) reste explicitement Phase 3. Nécessaire pour
+  vérifier qu'un Monstre complet est bien persisté (critère de test du §17)
+  et pour la sérialisation ci-dessus ; ne construit pas la liste/pagination
+  en avance.
+- **Pas de scoring à la création.** Le §6.8 (`USER_CREATED_ITEM`,
+  `scoring_events`) est explicitement Phase 6 (« Système communautaire »).
+  Créer un Monstre en Phase 2 n'attribue donc encore aucun point — à
+  brancher en Phase 6 sans revenir sur ce module.
+- **ImageService** : `sharp` (pas de dépendance native problématique comme
+  `better-sqlite3` en Phase 0 — binaires précompilés OK sur cette machine).
+  Toutes les photos sont converties en **WebP**, redimensionnées (max
+  1920 px, `fit: inside`, jamais agrandies), une miniature 400 px est générée
+  en plus. `.rotate()` corrige l'orientation EXIF *avant* que sharp ne
+  supprime les métadonnées par défaut (aucun appel à `.withMetadata()`) —
+  ça satisfait à la fois « suppression des métadonnées EXIF sensibles » et
+  le bon rendu visuel malgré la suppression.
+- **Stockage local file-based**, pas de service cloud. `STORAGE_PATH`
+  (`./storage` en dev, `/app/storage` en Docker — le volume `storage_data`
+  existe déjà depuis la Phase 0) + `IMG_BASE_URL` pour construire les URLs
+  complètes des photos dans les réponses API. En dev, le backend sert
+  lui-même les fichiers via `app.useStaticAssets()` sur `/uploads/` (NestJS
+  `NestExpressApplication`) ; en prod, c'est le conteneur `storage` (nginx)
+  qui sert `img.monstres.fbc.fr` depuis le même volume — le backend n'a pas
+  besoin de servir de statique en prod mais ça ne coûte rien de le garder actif.
+- **`itemId` généré côté service** (`randomUUID()`) *avant* la création en
+  base, pas laissé à Prisma (`@default(cuid())` reste le défaut du schéma
+  mais on le surcharge à la création). Ça permet d'avoir un seul identifiant
+  cohérent entre le dossier de stockage des photos (`storage/items/<id>/`)
+  et la ligne `Item`, sans étape de renommage après coup. Risque résiduel
+  accepté : si le traitement d'image échoue *après* l'écriture disque mais
+  *avant* la création en base, des fichiers orphelins peuvent rester sur
+  disque (pas de ligne DB correspondante) — impact nul en pratique, à
+  nettoyer via un futur job si ça devient un problème réel.
+- **Limite de photos à deux niveaux** : plafond technique en dur dans
+  l'intercepteur multer (10 fichiers, 10 Mo/fichier — protection anti-abus,
+  pas une règle métier), et limite métier réelle (`max_photos_per_item`,
+  défaut 3) lue via `SettingsService` dans `ItemsService` — conforme à la
+  règle d'or « aucune règle métier en dur ».
+- **Catégories initiales seedées** (§6.7 : Meuble, Électroménager, Jardin,
+  Bricolage, Métal, Bois, Vélo, Décoration, Autre) dans
+  `backend/scripts/seed.js`, en plus des `settings` déjà seedés en Phase 1.
+- **Bug trouvé et corrigé pendant les tests navigateur** : la carte Leaflet
+  ne s'initialisait pas (aucune tuile, aucun conteneur `.leaflet-container`
+  dans le DOM) parce que `requestAnimationFrame` se déclenchait avant que
+  Vue ait effectivement monté le `<div ref="mapContainer">` de l'étape 2
+  (le `v-else-if` venait de basculer). Remplacé par
+  `await nextTick()` (Vue) avant `initMap()` dans
+  `frontend/src/views/AddItemView.vue`. **Leçon pour la suite : toujours
+  utiliser `nextTick()` de Vue, jamais `requestAnimationFrame` seul, pour
+  attendre qu'un élément conditionnel (`v-if`/`v-else-if`) soit monté avant
+  d'y brancher une lib DOM tierce (Leaflet, Chart.js, etc.).**
+- **Note opérationnelle (tests de session)** : passer des caractères
+  accentués (`é`, `ç`) dans des arguments `curl` inline sur cette machine
+  Windows/Git Bash les corrompt silencieusement (encodage de la console),
+  alors que les mêmes caractères passés via un fichier
+  (`curl --data-binary @fichier.json`, ou `-F "champ=<fichier.txt"`)
+  arrivent intacts. Le comportement de l'application était correct dans les
+  deux cas — c'était uniquement un artefact de test. **Pour toute IA qui
+  teste au clavier via curl sur cette machine : préférer un fichier UTF-8
+  aux arguments inline dès qu'il y a des caractères accentués.**
+
+### Fait
+- [x] `src/categories/` : `CategoriesService`/`CategoriesController`
+      (`GET /categories`, actives triées par `order`). Seed des 9 catégories
+      initiales.
+- [x] `src/images/` : `ImageService` (`sharp` — compression WebP,
+      redimensionnement, miniature, suppression EXIF, validation format
+      JPEG/PNG/WebP).
+- [x] `src/items/` : `ItemsService`/`ItemsController`. `POST /items`
+      (multipart, `JwtAuthGuard`, DTO `CreateItemDto` avec coercition
+      `class-transformer` pour lat/lng). `GET /items/:id`
+      (`OptionalJwtAuthGuard`, règle vie privée §9).
+- [x] `main.ts` : `useStaticAssets` pour servir `/uploads/` en dev
+      (`NestExpressApplication`).
+- [x] Frontend : `src/services/categories.ts`, `src/services/items.ts`
+      (`createItem` en `FormData`/multipart), `AddItemView.vue` (formulaire 4
+      étapes complet : photos avec aperçus/suppression, carte Leaflet +
+      géolocalisation + recherche d'adresse Nominatim, infos, récapitulatif +
+      publication), route `/ajouter` protégée (`meta: { requiresAuth }`,
+      redirection vers `/connexion?redirect=...` puis retour automatique
+      après connexion).
+- [x] Testé de bout en bout : backend via curl (création multipart avec
+      vraie photo JPEG → conversion WebP + miniature confirmées sur disque,
+      champs UTF-8 avec accents vérifiés, règle vie privée §9 vérifiée avec
+      et sans cookie) ; **navigateur réel** (Chrome via Claude Browser) :
+      connexion → upload photo (injectée en JS via `DataTransfer` faute de
+      pouvoir piloter le sélecteur de fichier natif depuis l'outil de
+      browser automation) → carte + géolocalisation + recherche d'adresse
+      Nominatim (résultats réels, sélection fonctionnelle) → infos +
+      catégorie → récapitulatif → publication → confirmation affichée. Zéro
+      erreur console/réseau après correction du bug Leaflet.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Tests automatisés (Jest) pour `items`/`images`/`categories` — validation
+      manuelle uniquement cette session.
+- [ ] Vraies icônes de catégories (actuellement des noms de clé texte comme
+      `sofa`, `hammer` — à mapper vers un jeu d'icônes réel côté frontend).
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 2 — Création des Monstres.** Formulaire 4 étapes (photo →
-      position → infos → publication). Module `items` (`ImageService` pour
-      upload/compression/miniature/EXIF). Tables `items`/`item_photos`/
-      `categories` déjà présentes dans le schéma.
 - [ ] **Phase 3 — Consultation.** Liste triée (distance → popularité →
       date), carte Leaflet optionnelle. Algorithme de classement calculé à
       la volée (§8).
@@ -304,9 +431,13 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0 et 1 sont terminées. Continuer sur la première case non
-   cochée de **Phase 2 — Création des Monstres** (section « Phases
-   suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser
-   plusieurs phases à la fois (§0). Pour toute nouvelle migration Prisma en
-   session non interactive, voir le workaround documenté dans
-   `backend/README.md` (section Base de données).
+4. Les Phases 0, 1 et 2 sont terminées. Continuer sur la première case non
+   cochée de **Phase 3 — Consultation** (section « Phases suivantes »
+   ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
+   phases à la fois (§0). Pour toute nouvelle migration Prisma en session
+   non interactive, voir le workaround documenté dans `backend/README.md`
+   (section Base de données).
+5. Pour tester une création de Monstre en local sans repasser par
+   l'inscription : se connecter avec `marc@fbc.fr` ou `admin@monstres.local`
+   (voir mot de passe demandé à l'utilisateur si besoin, ou en promouvoir un
+   nouveau via `npm run prisma:studio`).

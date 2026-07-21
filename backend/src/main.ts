@@ -1,14 +1,23 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import { resolve } from 'node:path';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  // Sert les photos en dev local uniquement. En prod (Docker), le
+  // sous-domaine img.monstres.fbc.fr est servi par le conteneur `storage`
+  // qui lit le même volume — voir docker-compose.yml.
+  app.useStaticAssets(resolve(config.get<string>('STORAGE_PATH', './storage')), {
+    prefix: '/uploads/',
+  });
 
   app.setGlobalPrefix('api/v1');
   app.use(cookieParser());
