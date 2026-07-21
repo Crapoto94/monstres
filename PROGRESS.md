@@ -839,6 +839,29 @@ proxy externe (non gérée dans ce dépôt).
 
 ---
 
+## Correctif : badges Réservé/Récupéré dans la liste
+
+Demande utilisateur : badge « Réservé » (déjà fait, correctif précédent) et
+badge « Récupéré » sur les Monstres `COLLECTED` dans la liste d'accueil.
+
+**`COLLECTED` ajouté au filtre de visibilité** de `ItemsService.findMany`
+(en plus de `AVAILABLE`/`RESERVED`) — sans ça, impossible d'afficher un
+badge sur des Monstres qui n'apparaissaient jamais dans la liste. Décision
+produit assumée : un Monstre récupéré reste visible (avec son badge) plutôt
+que de disparaître instantanément — cohérent avec la philosophie
+communautaire du §2 (voir aussi l'historique/traçabilité). Seuls
+`PENDING_REVIEW`/`HIDDEN`/`ARCHIVED` restent exclus (modération/historique).
+
+Badge vert « Récupéré » ajouté dans `HomeView.vue`, même emplacement que le
+badge ambre « Réservé », couleur reprise du style déjà utilisé pour l'état
+`COLLECTED` sur `ItemDetailView.vue` (cohérence visuelle).
+
+Testé : Monstre `COLLECTED` existant (« Chaise en bois », créé pendant les
+tests Phase 5) → apparaît bien dans `GET /items` → badge « Récupéré »
+confirmé visuellement dans le navigateur. Zéro erreur console.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre

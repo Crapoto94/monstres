@@ -124,6 +124,12 @@ function coverPhoto(item: Item) {
               >
                 Réservé
               </span>
+              <span
+                v-else-if="item.status === 'COLLECTED'"
+                class="flex-shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950 dark:text-green-300"
+              >
+                Récupéré
+              </span>
             </p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               <span v-if="item.distance !== null">{{ item.distance }} km · </span>

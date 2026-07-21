@@ -107,12 +107,12 @@ export class ItemsService {
 
     const items = await this.prisma.item.findMany({
       where: {
-        // §6.1 : AVAILABLE et RESERVED sont tous deux marqués "Visible"
-        // dans le cycle de vie du statut — un Monstre réservé reste visible
-        // de tous (avec la mention "Réservé par ... — Expire dans X min").
-        // COLLECTED/PENDING_REVIEW/HIDDEN/ARCHIVED restent exclus de la
-        // recherche active.
-        status: { in: ['AVAILABLE', 'RESERVED'] },
+        // §6.1 : AVAILABLE et RESERVED sont marqués "Visible" dans le cycle
+        // de vie du statut. COLLECTED ajouté sur demande utilisateur (badge
+        // "Récupéré" dans la liste, plutôt que de faire disparaître le
+        // Monstre du jour au lendemain). PENDING_REVIEW/HIDDEN/ARCHIVED
+        // restent exclus (modération / historique, §6.1).
+        status: { in: ['AVAILABLE', 'RESERVED', 'COLLECTED'] },
         ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       },
       include: this.includeRelations(),
