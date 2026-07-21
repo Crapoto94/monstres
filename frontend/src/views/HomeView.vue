@@ -4,6 +4,8 @@ import { fetchCategories, type Category } from '@/services/categories'
 import { fetchItems, type Item } from '@/services/items'
 import { formatRelativeTime } from '@/utils/time'
 
+const appVersion = __APP_VERSION__
+
 const items = ref<Item[]>([])
 const categories = ref<Category[]>([])
 const categoryId = ref('')
@@ -145,5 +147,7 @@ function coverPhoto(item: Item) {
         Suivant
       </button>
     </div>
+
+    <p class="mt-8 text-center text-xs text-gray-300 dark:text-gray-700">Les Monstres v{{ appVersion }}</p>
   </section>
 </template>

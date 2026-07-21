@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchItem, collectItem, type Item } from '@/services/items'
+import { fetchItem, collectItem, toggleVote, type Item } from '@/services/items'
 import { reserveItem, cancelReservation } from '@/services/reservations'
+import { fetchComments, createComment, deleteComment, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
 
@@ -19,12 +20,20 @@ const collectError = ref<string | null>(null)
 const collectPreview = ref<string | null>(null)
 const collectFile = ref<File | null>(null)
 const now = ref(Date.now())
+const voting = ref(false)
+const voted = ref(false)
+const comments = ref<Comment[]>([])
+const commentContent = ref('')
+const postingComment = ref(false)
+const commentError = ref<string | null>(null)
 
 let timer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   try {
     item.value = await fetchItem(String(route.params.id))
+    voted.value = item.value.hasVoted
+    comments.value = await fetchComments(String(route.params.id))
   } catch {
     error.value = 'Ce Monstre est introuvable.'
   } finally {
@@ -120,6 +129,50 @@ async function handleCollect() {
     collecting.value = false
   }
 }
+
+async function handleVote() {
+  if (!item.value) return
+  voting.value = true
+  try {
+    const result = await toggleVote(item.value.id)
+    voted.value = result.voted
+    item.value = { ...item.value, votesScore: result.votesScore }
+  } catch {
+    // silencieux : le bouton reste dans son état précédent
+  } finally {
+    voting.value = false
+  }
+}
+
+async function handlePostComment() {
+  if (!item.value || !commentContent.value.trim()) return
+  postingComment.value = true
+  commentError.value = null
+  try {
+    const comment = await createComment(item.value.id, commentContent.value.trim())
+    comments.value.push(comment)
+    commentContent.value = ''
+  } catch (e: any) {
+    commentError.value = e.response?.data?.error?.message ?? "Impossible d'envoyer le commentaire."
+  } finally {
+    postingComment.value = false
+  }
+}
+
+function canDeleteComment(comment: Comment): boolean {
+  if (!auth.isAuthenticated) return false
+  return comment.user.id === auth.user?.id || auth.user?.role === 'ADMIN' || auth.user?.role === 'SUPER_ADMIN'
+}
+
+async function handleDeleteComment(comment: Comment) {
+  if (!item.value) return
+  try {
+    await deleteComment(item.value.id, comment.id)
+    comments.value = comments.value.filter((c) => c.id !== comment.id)
+  } catch {
+    // silencieux
+  }
+}
 </script>
 
 <template>
@@ -140,11 +193,26 @@ async function handleCollect() {
 
       <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ item.title }}</h1>
 
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
         <span v-if="item.distance !== null">{{ item.distance }} km · </span>
-        <span>{{ item.votesScore }} vote{{ item.votesScore > 1 ? 's' : '' }} · </span>
         <span>{{ formatRelativeTime(item.createdAt) }}</span>
-      </p>
+
+        <button
+          v-if="auth.isAuthenticated && !isMyItem"
+          type="button"
+          :disabled="voting"
+          class="ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
+          :class="
+            voted
+              ? 'border-violet-400 bg-violet-50 text-violet-700 dark:border-violet-600 dark:bg-violet-950 dark:text-violet-300'
+              : 'border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'
+          "
+          @click="handleVote"
+        >
+          ★ {{ item.votesScore }} intéressant{{ item.votesScore > 1 ? 's' : '' }}
+        </button>
+        <span v-else class="ml-auto">★ {{ item.votesScore }} vote{{ item.votesScore > 1 ? 's' : '' }}</span>
+      </div>
 
       <p v-if="item.category" class="text-sm text-gray-500 dark:text-gray-400">{{ item.category.name }}</p>
 
@@ -235,6 +303,57 @@ async function handleCollect() {
 
       <p v-if="reserveError" class="text-sm text-red-600 dark:text-red-400">{{ reserveError }}</p>
       <p v-if="collectError" class="text-sm text-red-600 dark:text-red-400">{{ collectError }}</p>
+
+      <!-- Commentaires -->
+      <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Commentaires ({{ comments.length }})
+        </h2>
+
+        <ul class="mt-3 flex flex-col gap-2">
+          <li v-for="comment in comments" :key="comment.id" class="flex items-start justify-between gap-2 text-sm">
+            <p>
+              <span class="font-medium text-gray-900 dark:text-gray-100">{{ comment.user.name }}</span>
+              <span class="text-gray-400 dark:text-gray-500"> · {{ formatRelativeTime(comment.createdAt) }}</span>
+              <br />
+              <span class="text-gray-700 dark:text-gray-300">{{ comment.content }}</span>
+            </p>
+            <button
+              v-if="canDeleteComment(comment)"
+              type="button"
+              class="flex-shrink-0 text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+              @click="handleDeleteComment(comment)"
+            >
+              Supprimer
+            </button>
+          </li>
+          <li v-if="comments.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
+            Aucun commentaire pour l'instant.
+          </li>
+        </ul>
+
+        <form v-if="auth.isAuthenticated" class="mt-3 flex gap-2" @submit.prevent="handlePostComment">
+          <input
+            v-model="commentContent"
+            type="text"
+            maxlength="500"
+            placeholder="Je passe ce soir…"
+            class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+          />
+          <button
+            type="submit"
+            :disabled="postingComment || !commentContent.trim()"
+            class="rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Envoyer
+          </button>
+        </form>
+        <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+          <RouterLink to="/connexion" class="text-violet-600 underline dark:text-violet-400">Connecte-toi</RouterLink>
+          pour commenter.
+        </p>
+        <p v-if="commentError" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ commentError }}</p>
+      </div>
     </div>
   </section>
 </template>

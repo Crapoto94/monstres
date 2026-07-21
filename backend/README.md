@@ -63,13 +63,25 @@ GET  /api/v1/users/:id              (profil public)
 Google/Facebook Login (§10) : pas encore implémentés, en attente des
 identifiants OAuth — voir `PROGRESS.md`.
 
-### Devenir admin (dev local)
-Aucune UI d'administration pour l'instant (Phase 9). Pour te promouvoir
-`ADMIN`/`SUPER_ADMIN` après inscription : `npm run prisma:studio`, ouvrir la
-table `users`, changer la colonne `role`. Les endpoints admin
-(`PATCH /api/v1/admin/users/:id/verify-email` pour valider manuellement
-l'email d'un compte, par exemple) exigent ensuite une reconnexion (le rôle
-est embarqué dans le JWT à la connexion).
+### Devenir admin
+Aucune UI d'administration pour l'instant (Phase 9). Le compte doit déjà
+exister (inscription via `/inscription`) — ces méthodes changent seulement
+le rôle.
+
+**En dev local** : `npm run prisma:studio`, ouvrir la table `users`,
+changer la colonne `role`.
+
+**En production (Docker)** :
+```bash
+docker compose exec backend node scripts/promote-admin.js ton-email@example.com
+```
+(deuxième argument optionnel : `SUPER_ADMIN` au lieu du défaut `ADMIN`.)
+
+Dans les deux cas, **reconnecte-toi** ensuite dans l'app — le rôle est
+embarqué dans le cookie JWT à la connexion, une modification en base seule
+ne suffit pas. Les endpoints admin (ex.
+`PATCH /api/v1/admin/users/:id/verify-email` pour valider manuellement
+l'email d'un compte) ne fonctionneront qu'après.
 
 ## Emails (Brevo)
 `EmailService` envoie via l'API Brevo (validation d'email, mot de passe

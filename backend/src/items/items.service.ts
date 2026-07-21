@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { ScoringService, ScoringEventType } from '../scoring/scoring.service';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
-import { ReservationStatus } from '../generated/prisma/enums';
+import { ReservationStatus, VoteType } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
 import { FindItemsQueryDto } from './dto/find-items-query.dto';
 
@@ -81,7 +81,14 @@ export class ItemsService {
   async findById(id: string, viewer: AuthenticatedUser | null) {
     const item = await this.findRaw(id);
     if (!item) throw new NotFoundException('Monstre introuvable.');
-    return this.serialize(item, viewer);
+
+    const hasVoted = viewer
+      ? (await this.prisma.vote.findUnique({
+          where: { itemId_userId_type: { itemId: id, userId: viewer.id, type: VoteType.INTERESTING } },
+        })) !== null
+      : false;
+
+    return this.serialize(item, viewer, null, hasVoted);
   }
 
   /**
@@ -170,14 +177,28 @@ export class ItemsService {
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const pageEntries = scored.slice((page - 1) * pageSize, page * pageSize);
 
+    const votedItemIds = viewer
+      ? new Set(
+          (
+            await this.prisma.vote.findMany({
+              where: {
+                userId: viewer.id,
+                type: VoteType.INTERESTING,
+                itemId: { in: pageEntries.map((entry) => entry.item.id) },
+              },
+              select: { itemId: true },
+            })
+          ).map((vote) => vote.itemId),
+        )
+      : new Set<string>();
+
     return {
       items: pageEntries.map((entry) =>
         this.serialize(
           entry.item,
           viewer,
-          entry.distanceKm !== null
-            ? Math.round(entry.distanceKm * 10) / 10
-            : null,
+          entry.distanceKm !== null ? Math.round(entry.distanceKm * 10) / 10 : null,
+          votedItemIds.has(entry.item.id),
         ),
       ),
       page,
@@ -283,6 +304,7 @@ export class ItemsService {
     item: ItemWithRelations,
     viewer: AuthenticatedUser | null,
     distanceKm: number | null = null,
+    hasVoted = false,
   ) {
     const isAuthenticated = viewer !== null;
     const imgBaseUrl = this.config.get<string>(
@@ -299,6 +321,7 @@ export class ItemsService {
       longitude: isAuthenticated ? item.longitude : roundApprox(item.longitude),
       address: isAuthenticated ? item.address : null,
       distance: distanceKm,
+      hasVoted,
       user: userWithoutTrust,
       activeReservation,
       photos: item.photos.map((photo) => ({

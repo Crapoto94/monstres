@@ -18,6 +18,7 @@ export interface Item {
   status: string
   votesScore: number
   distance: number | null
+  hasVoted: boolean
   createdAt: string
   collectedAt: string | null
   photos: ItemPhoto[]
@@ -80,6 +81,11 @@ export async function fetchItem(id: string) {
 
 export async function fetchItems(params: FindItemsParams) {
   const { data } = await api.get<ApiSuccess<ItemsPage>>('/items', { params })
+  return data.data
+}
+
+export async function toggleVote(itemId: string) {
+  const { data } = await api.post<ApiSuccess<{ voted: boolean; votesScore: number }>>(`/items/${itemId}/vote`)
   return data.data
 }
 

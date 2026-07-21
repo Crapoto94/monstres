@@ -7,14 +7,13 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-21** (Phase 6 backend fait, frontend en cours ;
-premier déploiement Proxmox corrigé — domaine unique, voir plus bas)
+Dernière mise à jour : **2026-07-21** (Phase 6 terminée ; premier déploiement
+Proxmox en ligne sur `https://monstres.fbc.fr`, v0.1.1)
 
-**Statut : Phases 0 à 5 terminées et validées. Phase 6 (communautaire) :
-backend fait et testé, UI frontend (votes/commentaires) restant à faire.**
-Le projet a été déployé une première fois en production
-(`https://monstres.fbc.fr`) — un correctif de routage (domaine unique) a été
-nécessaire, voir la section dédiée plus bas.
+**Statut : Phases 0 à 6 terminées et validées.** Prochaine étape :
+**Phase 7 — Notifications** (voir détail plus bas). Le projet est déployé en
+production sur `https://monstres.fbc.fr` (domaine unique, voir la section
+dédiée plus bas pour l'historique des correctifs de déploiement).
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -650,7 +649,7 @@ reporter ces nouvelles valeurs à la main dans leur `.env` avant de relancer
 
 ---
 
-## Phase 6 — Système communautaire : backend terminé et testé, frontend en cours
+## Phase 6 — Système communautaire : terminée et validée
 
 Objectif (§17) : `votes` (type unique `interesting`), `comments`,
 `ScoringService` + `scoring_events`.
@@ -704,21 +703,84 @@ Objectif (§17) : `votes` (type unique `interesting`), `comments`,
 - [x] `src/comments/` : `CommentsService`/`CommentsController`
       (`GET/POST /items/:id/comments`, `DELETE /items/:id/comments/:commentId`).
       DTO `CreateCommentDto` (1-500 caractères).
-- [x] Testé de bout en bout en curl : vote → score propriétaire +1 → un-vote
+- [x] `hasVoted` ajouté à la sérialisation `Item` (`GET /items`,
+      `GET /items/:id`) : sans ça, le bouton voter se désynchronisait après
+      un rechargement de page (le front pensait toujours « non voté »).
+      Calculé via une requête `Vote.findUnique` (item seul) ou une requête
+      groupée `Vote.findMany` (liste, pour éviter N+1).
+- [x] Frontend : `src/services/comments.ts` (nouveau), `toggleVote()` ajouté
+      à `src/services/items.ts`. `ItemDetailView.vue` : bouton voter (étoile,
+      compteur, état visuel actif/inactif), section commentaires (liste,
+      formulaire, suppression conditionnelle auteur/admin).
+- [x] Testé de bout en bout : curl (vote → score propriétaire +1 → un-vote
       → auto-vote refusé (400) → commentaire créé → liste publique sans
-      cookie → suppression par un admin non-auteur (autorisée).
-- [x] Build + typecheck backend sans erreur.
+      cookie → suppression par un admin non-auteur autorisée) **et**
+      navigateur réel (connexion, vote qui persiste après rechargement grâce
+      à `hasVoted`, commentaire posté puis supprimé par son auteur). Zéro
+      erreur console.
+- [x] Build + typecheck backend et frontend sans erreur.
 
 ### Restant / reporté (hors scope de cette session)
-- [ ] **UI frontend** (bouton voter avec compteur, liste + formulaire de
-      commentaires sur `ItemDetailView.vue`) — backend prêt, pas encore
-      branché côté Vue. Prochaine étape immédiate.
 - [ ] Affichage du score/des badges sur le profil (`ProfileView.vue`
       affiche déjà `score` brut depuis la Phase 1, pas de mise en forme
       dédiée « scoring » pour l'instant).
-- [ ] Tests automatisés (Jest) — validation manuelle (curl) uniquement.
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement.
 - [ ] Clarification du barème Récupération/Validation avec le porteur
       produit (voir décision ci-dessus).
+
+---
+
+## Numéro de version affiché (0.1.1)
+
+Demande utilisateur : afficher un numéro de version sur l'accueil et le
+suivre dans git. `package.json` (`version`) est la source de vérité pour le
+frontend **et** le backend — les deux sont montés en parallèle à chaque
+bump (pas de versioning indépendant par app pour l'instant, un seul numéro
+pour « l'appli » dans son ensemble).
+
+- **Frontend** : `vite.config.ts` lit `version` depuis `package.json` au
+  build et l'injecte via `define: { __APP_VERSION__: ... }` (constante
+  globale remplacée au build, pas un call runtime). Déclarée dans
+  `vite-env.d.ts`. Affichée en bas de `HomeView.vue` (« Les Monstres
+  v0.1.1 ») — **il faut l'assigner à une const dans `<script setup>`
+  d'abord** (`const appVersion = __APP_VERSION__`) et utiliser cette const
+  dans le template : référencer le global directement dans le template fait
+  échouer `vue-tsc -b` (le vérificateur de template ne résout pas les
+  globals `declare const`, seulement les bindings exposés par le composant).
+- **Backend** : `GET /api/v1/health` inclut maintenant `version` (lu depuis
+  `package.json` via `fs.readFileSync(join(process.cwd(), 'package.json'))`
+  — fonctionne aussi bien en dev (`backend/`) qu'en prod Docker (`/app/`)
+  puisque `package.json` est copié à la racine dans les deux cas). Pratique
+  pour vérifier ce qui est réellement déployé sans ouvrir le site.
+- **Pour bumper la version** : changer `"version"` dans `backend/package.json`
+  **et** `frontend/package.json` (les deux, synchronisés à la main pour
+  l'instant), rebuild.
+
+---
+
+## Correctif : clés dupliquées dans `.env` (post domaine unique)
+
+Après le correctif « domaine unique », l'inscription échouait encore en
+prod malgré un `docker compose up -d --build`. Cause trouvée en lisant le
+`.env` collé par l'utilisateur : **il avait ajouté les nouvelles valeurs
+(`VITE_API_URL`, `JWT_COOKIE_DOMAIN`) en haut du fichier sans supprimer les
+anciennes lignes plus bas.** Dans un `.env`, la **dernière occurrence d'une
+clé gagne** — donc l'ancienne valeur (`api.monstres.fbc.fr`, injoignable)
+était celle réellement utilisée au build, malgré la bonne valeur présente
+ailleurs dans le fichier.
+
+**Leçon pour toute session future** : quand on demande à l'utilisateur de
+mettre à jour des valeurs dans un `.env` existant, préciser explicitement
+qu'il faut **remplacer** les lignes concernées, pas en ajouter de
+nouvelles — ou mieux, lui donner le fichier complet à coller en écrasant
+tout, comme fait ici en solution. Un `.env` avec clé dupliquée ne produit
+aucune erreur de parsing visible : le bug est silencieux.
+
+Au passage : `backend/scripts/promote-admin.js` ajouté (nouveau script,
+même famille que `seed.js`) pour promouvoir un compte `ADMIN`/`SUPER_ADMIN`
+en production sans accès direct à Prisma Studio :
+`docker compose exec backend node scripts/promote-admin.js <email> [ADMIN|SUPER_ADMIN]`.
+Documenté dans `backend/README.md`.
 
 ---
 
@@ -757,13 +819,22 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0, 1, 2, 3, 4 et 5 sont terminées. Continuer sur la première
-   case non cochée de **Phase 6 — Système communautaire** (section « Phases
-   suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser
-   plusieurs phases à la fois (§0). Pour toute nouvelle migration Prisma en
-   session non interactive, voir le workaround documenté dans `backend/README.md`
+4. Les Phases 0 à 6 sont terminées. Continuer sur la première case non
+   cochée de **Phase 7 — Notifications** (section « Phases suivantes »
+   ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
+   phases à la fois (§0). Pour toute nouvelle migration Prisma en session
+   non interactive, voir le workaround documenté dans `backend/README.md`
    (section Base de données).
-5. Pour tester une création de Monstre en local sans repasser par
-   l'inscription : se connecter avec `marc@fbc.fr` ou `admin@monstres.local`
-   (voir mot de passe demandé à l'utilisateur si besoin, ou en promouvoir un
-   nouveau via `npm run prisma:studio`).
+5. Pour tester en local sans repasser par l'inscription : se connecter avec
+   `marc@fbc.fr` ou `admin@monstres.local` (mot de passe demandé à
+   l'utilisateur si besoin), ou promouvoir un nouveau compte via
+   `npm run prisma:studio` (dev) ou
+   `docker compose exec backend node scripts/promote-admin.js <email>` (prod).
+6. **Le projet est en production** (`https://monstres.fbc.fr`, Proxmox de
+   l'utilisateur). Toute modification affectant le déploiement (nginx,
+   `.env.example`, Dockerfiles) doit rester cohérente avec la config réelle
+   documentée dans les sections « Correctif » ci-dessus — domaine unique,
+   pas de sous-domaines api./img. pour l'instant. `.env` n'est pas
+   versionné : rappeler à l'utilisateur de reporter les nouvelles valeurs à
+   la main (en remplaçant, pas en dupliquant les clés — voir le bug de
+   clés dupliquées ci-dessus) avant chaque `docker compose up -d --build`.
