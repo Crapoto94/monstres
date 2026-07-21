@@ -21,6 +21,7 @@ const loading = ref(true)
 const page = ref(1)
 const totalPages = ref(1)
 const busyId = ref<string | null>(null)
+const actionError = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -40,9 +41,12 @@ function changePage(delta: number) {
 async function onResolve(item: AdminReportQueueItem, decision: ReportDecision) {
   if (decision === 'DELETE' && !confirm(`Supprimer définitivement « ${item.title} » ?`)) return
   busyId.value = item.id
+  actionError.value = null
   try {
     await resolveReport(item.id, decision)
     await load()
+  } catch (e: any) {
+    actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     busyId.value = null
   }
@@ -51,8 +55,11 @@ async function onResolve(item: AdminReportQueueItem, decision: ReportDecision) {
 async function onSanction(item: AdminReportQueueItem) {
   if (!confirm(`Suspendre temporairement ${item.user.name} ?`)) return
   busyId.value = item.id
+  actionError.value = null
   try {
     await suspendUser(item.user.id)
+  } catch (e: any) {
+    actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     busyId.value = null
   }
@@ -64,6 +71,8 @@ async function onSanction(item: AdminReportQueueItem) {
     <p class="text-xs text-gray-400 dark:text-gray-500">
       Monstres ayant atteint le seuil de signalements — à traiter en priorité.
     </p>
+
+    <p v-if="actionError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ actionError }}</p>
 
     <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
     <p v-else-if="items.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">

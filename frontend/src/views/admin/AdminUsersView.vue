@@ -20,6 +20,7 @@ const search = ref('')
 const page = ref(1)
 const totalPages = ref(1)
 const busyId = ref<string | null>(null)
+const actionError = ref<string | null>(null)
 
 const ROLES = ['USER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN']
 
@@ -45,9 +46,12 @@ function changePage(delta: number) {
 
 async function withBusy(id: string, action: () => Promise<unknown>) {
   busyId.value = id
+  actionError.value = null
   try {
     await action()
     await load()
+  } catch (e: any) {
+    actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     busyId.value = null
   }
@@ -75,6 +79,10 @@ function onDelete(user: AdminUserSummary) {
 function onVerifyEmail(user: AdminUserSummary) {
   withBusy(user.id, () => verifyUserEmail(user.id))
 }
+
+function isSelf(user: AdminUserSummary): boolean {
+  return user.id === auth.user?.id
+}
 </script>
 
 <template>
@@ -96,6 +104,8 @@ function onVerifyEmail(user: AdminUserSummary) {
       </button>
     </div>
 
+    <p v-if="actionError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ actionError }}</p>
+
     <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
     <ul v-else class="mt-4 flex flex-col gap-2">
@@ -106,7 +116,10 @@ function onVerifyEmail(user: AdminUserSummary) {
       >
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
-            <p class="truncate font-medium text-gray-900 dark:text-gray-100">{{ user.name }}</p>
+            <p class="truncate font-medium text-gray-900 dark:text-gray-100">
+              {{ user.name }}
+              <span v-if="isSelf(user)" class="font-normal text-gray-400 dark:text-gray-500">(vous)</span>
+            </p>
             <p class="truncate text-xs text-gray-400 dark:text-gray-500">{{ user.email }}</p>
           </div>
           <div class="flex flex-shrink-0 flex-col items-end gap-1 text-xs">
@@ -129,7 +142,8 @@ function onVerifyEmail(user: AdminUserSummary) {
         <div class="mt-2 flex flex-wrap items-center gap-2">
           <select
             :value="user.role"
-            :disabled="busyId === user.id || !auth.isAdmin"
+            :disabled="busyId === user.id || !auth.isAdmin || isSelf(user)"
+            :title="isSelf(user) ? 'Tu ne peux pas modifier ton propre rôle.' : ''"
             class="rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
             @change="onRoleChange(user, $event)"
           >
@@ -148,7 +162,8 @@ function onVerifyEmail(user: AdminUserSummary) {
 
           <button
             type="button"
-            :disabled="busyId === user.id"
+            :disabled="busyId === user.id || isSelf(user)"
+            :title="isSelf(user) ? 'Tu ne peux pas te suspendre toi-même.' : ''"
             class="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-gray-700"
             @click="onToggleSuspend(user)"
           >
@@ -157,7 +172,8 @@ function onVerifyEmail(user: AdminUserSummary) {
 
           <button
             type="button"
-            :disabled="busyId === user.id"
+            :disabled="busyId === user.id || isSelf(user)"
+            :title="isSelf(user) ? 'Tu ne peux pas te bannir toi-même.' : ''"
             class="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-gray-700"
             @click="onToggleBan(user)"
           >
@@ -166,7 +182,8 @@ function onVerifyEmail(user: AdminUserSummary) {
 
           <button
             type="button"
-            :disabled="busyId === user.id"
+            :disabled="busyId === user.id || isSelf(user)"
+            :title="isSelf(user) ? 'Tu ne peux pas supprimer ton propre compte.' : ''"
             class="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-40 dark:border-red-800 dark:text-red-400"
             @click="onDelete(user)"
           >

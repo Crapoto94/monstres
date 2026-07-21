@@ -25,7 +25,9 @@ COPY scripts ./scripts
 
 EXPOSE 3000
 
-# Applique les migrations puis démarre l'API. Le fichier SQLite (V1) et le
-# dossier de stockage des photos vivent dans des volumes montés (voir
+# Applique les migrations, (re)seed les paramètres/catégories par défaut
+# (idempotent — scripts/seed.js ne touche jamais une valeur déjà modifiée
+# depuis l'admin), puis démarre l'API. Le fichier SQLite (V1) et le dossier
+# de stockage des photos vivent dans des volumes montés (voir
 # docker-compose.yml : /app/data et /app/storage).
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node scripts/seed.js && node dist/main.js"]

@@ -45,9 +45,12 @@ async function onCreate() {
 
 async function onToggleActive(category: AdminCategory) {
   busyId.value = category.id
+  error.value = null
   try {
     await updateCategory(category.id, { active: !category.active })
     await load()
+  } catch (e: any) {
+    error.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     busyId.value = null
   }
@@ -60,9 +63,12 @@ async function onDelete(category: AdminCategory) {
   }
   if (!confirm(`Supprimer la catégorie « ${category.name} » ?`)) return
   busyId.value = category.id
+  error.value = null
   try {
     await deleteCategory(category.id)
     await load()
+  } catch (e: any) {
+    error.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     busyId.value = null
   }
@@ -100,6 +106,8 @@ async function onDelete(category: AdminCategory) {
         {{ creating ? 'Création…' : 'Créer' }}
       </button>
     </form>
+
+    <p v-if="error && !showForm" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
 
     <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 

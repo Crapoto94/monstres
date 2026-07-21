@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (Phase 10 — Modération terminée,
-v0.1.8)
+Dernière mise à jour : **2026-07-22** (correctif erreurs admin silencieuses
++ seed auto au démarrage Docker, v0.1.9)
 
 **Statut : Phases 0 à 10 terminées et validées.** Prochaine étape :
 **Phase 11 — Facebook** (voir détail plus bas ; à ne construire qu'après
@@ -1417,6 +1417,96 @@ phase construit à la fois le côté « signaler » (utilisateur) et le côté
 - [ ] Ajustement automatique de `trustScore` suite aux décisions de
       modération.
 - [ ] Tests automatisés (Jest) — validation manuelle uniquement.
+
+---
+
+## Correctif : erreurs admin silencieuses + paramètres vides en production
+
+Signalé par l'utilisateur : « je ne peux pas accéder aux paramètres (vides).
+Peut-être que je ne suis QUE admin ? Mais si je change mon compte en super
+admin, ça n'est pas persistant. » — deux symptômes, deux causes distinctes,
+aucun bug de logique métier (le comportement backend était correct dans les
+deux cas, mais rien ne l'expliquait à l'écran).
+
+### Diagnostic
+1. **« Paramètres vides »** : n'est **pas** un problème de permission — un
+   `ADMIN` (pas seulement `SUPER_ADMIN`) a bien accès à
+   `GET /admin/settings` depuis la Phase 9. La vraie cause : le `Dockerfile`
+   ne lance `npx prisma migrate deploy` qu'au démarrage du conteneur, jamais
+   `scripts/seed.js` — la table `settings` (et `categories`) reste donc
+   vide sur un déploiement Proxmox tant que `docker compose exec backend
+   node scripts/seed.js` n'a pas été lancé manuellement au moins une fois.
+   C'était déjà documenté dans `README.md` (§ »Après un déploiement«) mais
+   facile à manquer, et rien dans l'UI ne distinguait « vide car pas encore
+   seedé » de « vide car pas le droit ».
+2. **« Rôle SUPER_ADMIN pas persistant »** : le changement de rôle
+   fonctionnait bien côté backend, mais échouait **silencieusement** côté
+   frontend. `AdminUsersService.assertCanModerate` interdit à un compte de
+   modifier son propre rôle (auto-protection anti-verrouillage, voir Phase
+   9) — attendu et correct. Le bug : `AdminUsersView.vue` (comme
+   `AdminItemsView`, `AdminCategoriesView`, `AdminReportsView`,
+   `AdminSettingsView`) n'avait **aucun `catch`** sur les actions
+   (`withBusy`/handlers de statut/suppression) : une requête rejetée levait
+   une exception non affichée, la liste n'était pas rechargée, et le
+   `<select>` du rôle revenait visuellement à sa valeur d'origine au
+   prochain re-rendu — donnant l'impression trompeuse d'un changement « qui
+   ne prend pas », alors que le backend avait correctement renvoyé un
+   message d'erreur explicite ignoré par l'UI.
+
+### Décisions
+- **`scripts/seed.js` ajouté à la commande de démarrage du conteneur**
+  (`backend/Dockerfile`) : `npx prisma migrate deploy && node scripts/seed.js
+  && node dist/main.js`. Sûr à exécuter à chaque redémarrage — le script est
+  déjà idempotent (`if (!existing) create`, ne touche jamais une valeur
+  déjà modifiée depuis l'admin, vérifié en relisant `scripts/seed.js` avant
+  ce changement). Élimine la classe de bug entière pour tous les futurs
+  déploiements/mises à jour, pas seulement un correctif ponctuel.
+- **Affichage d'erreur ajouté sur les 5 vues admin** (`AdminUsersView`,
+  `AdminItemsView`, `AdminCategoriesView`, `AdminReportsView`,
+  `AdminSettingsView`) : chaque action mutante capture désormais l'échec et
+  affiche `error.response.data.error.message` (même convention que le reste
+  du frontend), au lieu de le laisser silencieusement disparaître.
+- **`AdminUsersView.vue` : ligne de l'utilisateur connecté marquée « (vous) »**,
+  avec le rôle, la suspension, le bannissement et la suppression désactivés
+  sur sa propre ligne (plutôt que de laisser l'action échouer après coup) —
+  chaque contrôle désactivé porte un `title` expliquant pourquoi (« Tu ne
+  peux pas modifier ton propre rôle. », etc.), visible au survol. La
+  validation d'email reste active sur soi-même (le backend ne la bloque pas).
+- **Rappel pour l'utilisateur (pas un correctif de code)** : pour devenir
+  `SUPER_ADMIN` depuis un compte déjà `ADMIN`, seule une autre session
+  `SUPER_ADMIN` ou un accès serveur direct le permettent — via
+  `docker compose exec backend node scripts/promote-admin.js <email>
+  SUPER_ADMIN` puis se déconnecter/reconnecter (le rôle est embarqué dans
+  le cookie JWT à la connexion). C'est intentionnel (§5 : seul un Super
+  Administrateur gère les rôles admin) et non un bug.
+
+### Fait
+- [x] `backend/Dockerfile` : seed automatique et idempotent au démarrage.
+- [x] `frontend/src/views/admin/{AdminUsersView,AdminItemsView,
+      AdminCategoriesView,AdminReportsView,AdminSettingsView}.vue` :
+      capture et affichage des erreurs sur toutes les actions mutantes.
+- [x] `AdminUsersView.vue` : détection `isSelf()`, libellé « (vous) »,
+      contrôles d'auto-modération désactivés avec `title` explicatif.
+- [x] Testé de bout en bout : compte de test promu `ADMIN` (pas
+      `SUPER_ADMIN`) via `promote-admin.js`, vérifié dans le navigateur que
+      (1) sa propre ligne affiche « (vous) » avec rôle/suspendre/bannir/
+      supprimer désactivés et un tooltip au survol, (2) tenter de nommer un
+      **autre** compte `SUPER_ADMIN` affiche bien « Seul un Super
+      Administrateur peut gérer les rôles administrateurs. » au lieu
+      d'échouer en silence, (3) `/admin/parametres` se charge normalement
+      pour un simple `ADMIN` en local (seedé) — confirmant que le
+      problème initial de l'utilisateur était bien l'absence de seed en
+      production, pas un problème de rôle.
+- [x] Build frontend sans erreur (aucun changement backend compilé —
+      seul le `Dockerfile`, non concerné par `nest build`).
+
+### Restant / reporté
+- [ ] Rappeler à l'utilisateur de lancer manuellement
+      `docker compose exec backend node scripts/seed.js` **une fois** sur
+      le déploiement Proxmox existant (le correctif Dockerfile ne s'applique
+      qu'aux futurs rebuilds — un conteneur déjà construit doit être
+      reconstruit, ou le seed lancé à la main pour combler l'absence
+      actuelle sans attendre un rebuild).
 
 ---
 

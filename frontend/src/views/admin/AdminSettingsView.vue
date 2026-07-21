@@ -6,6 +6,7 @@ const settings = ref<AdminSetting[]>([])
 const loading = ref(true)
 const drafts = ref<Record<string, string>>({})
 const busyKey = ref<string | null>(null)
+const actionError = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -20,10 +21,13 @@ async function onSave(setting: AdminSetting) {
   const value = drafts.value[setting.key]
   if (value === setting.value) return
   busyKey.value = setting.key
+  actionError.value = null
   try {
     const updated = await updateSetting(setting.key, value)
     const index = settings.value.findIndex((s) => s.key === setting.key)
     if (index !== -1) settings.value[index] = updated
+  } catch (e: any) {
+    actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     busyKey.value = null
   }
@@ -35,6 +39,8 @@ async function onSave(setting: AdminSetting) {
     <p class="text-xs text-gray-400 dark:text-gray-500">
       Durées, seuils, points, poids de classement… modifiables sans redéploiement.
     </p>
+
+    <p v-if="actionError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ actionError }}</p>
 
     <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
