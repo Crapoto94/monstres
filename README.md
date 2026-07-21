@@ -78,6 +78,25 @@ configuration DNS/Brevo. **TLS n'est pas géré par `nginx/nginx.conf`** — à
 terminer en amont (certbot ou reverse proxy déjà présent sur le Proxmox)
 avant toute mise en production.
 
+### Mettre à jour un déploiement existant
+```bash
+git pull
+docker compose up -d --build
+```
+Rebuild les images modifiées et redémarre les conteneurs ; les migrations
+Prisma s'appliquent automatiquement au démarrage du backend (voir
+`backend/Dockerfile`). Si le build semble utiliser un vieux cache après un
+correctif (fichier modifié mais erreur qui persiste), forcer avec
+`docker compose build --no-cache` puis `docker compose up -d`.
+
+**Premier déploiement uniquement** — les catégories et paramètres par
+défaut (§6.7, §12.10) ne sont pas seedés automatiquement au démarrage :
+```bash
+docker compose exec backend node scripts/seed.js
+```
+Sans ça, `GET /categories` renverra une liste vide (rien de cassé, juste
+vide) tant que ce n'est pas lancé une fois.
+
 ## Méthode de développement
 
 Le projet avance **par phases incrémentales** (§17 du cahier des charges) :

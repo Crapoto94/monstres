@@ -21,6 +21,7 @@ COPY --from=build /app/dist ./dist
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+COPY scripts ./scripts
 
 EXPOSE 3000
 
