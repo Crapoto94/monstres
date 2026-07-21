@@ -7,13 +7,20 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (photo + lien dans les notifications
-« Monstre près de chez toi », v0.1.6)
+Dernière mise à jour : **2026-07-22** (Phase 9 — Administration terminée,
+v0.1.7)
 
-**Statut : Phases 0 à 8 terminées et validées.** Prochaine étape :
-**Phase 9 — Administration** (voir détail plus bas). Le projet est déployé
+**Statut : Phases 0 à 9 terminées et validées.** Prochaine étape :
+**Phase 10 — Modération** (voir détail plus bas). Le projet est déployé
 en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
+
+⚠️ **`backend/.env` local contient une vraie clé `BREVO_API_KEY`** (pas
+juste un exemple) : toute action qui déclenche une notification email
+(réservation, récupération, `NEW_ITEM_NEARBY`…) envoie un **vrai email**
+via Brevo, y compris à des adresses de test bidon. Si tu dois tester ces
+flux en masse, retire temporairement `BREVO_API_KEY` de `.env` (les emails
+seront alors juste loggés, voir `backend/README.md`) puis remets-la.
 
 Note : l'utilisateur a commencé à renseigner `GOOGLE_CLIENT_ID` dans
 `.env.example` (racine) — signal qu'il prépare le login Google (§10,
@@ -1151,13 +1158,149 @@ titre en texte était affiché, sans moyen d'accéder directement au Monstre).
 
 ---
 
+## Phase 9 — Administration : terminée et validée
+
+Objectif (§14, §17) : dashboard + gestion utilisateurs/Monstres/catégories/
+paramètres. Le module `admin/` existait déjà en germe depuis la Phase 1
+(`AdminUsersController.verifyEmail`, préfixe `/admin/*` réservé
+ADMIN/SUPER_ADMIN) — cette phase l'étend en admin complet.
+
+### Décisions prises pendant cette session
+- **Scope volontairement réduit par rapport à §14** : la file de
+  **signalements** (« Signalements ») et la création de **badges** ne sont
+  **pas** construites ici, malgré leur mention dans §14/§17-Phase 9. Raison :
+  aucun flux utilisateur ne permet encore de créer un `Report` (bouton
+  « signaler » absent, compteur/seuil non câblés) — c'est exactement l'objet
+  de la **Phase 10 (Modération)**, qui vient juste après. Construire une
+  file d'admin pour une table structurellement vide aurait été du travail
+  jeté. Idem pour les badges : la table `badges`/`user_badges` existe
+  depuis la Phase 0 mais rien ne déclenche encore de déblocage
+  (`NotificationType.BADGE_UNLOCKED` n'est émis nulle part) — à construire
+  quand la logique de déblocage existera.
+- **Modération de compte (suspendre/bannir) : nouveaux champs `User.suspendedAt`
+  / `User.bannedAt`** (migration `20260722010000_add_user_moderation`,
+  `ALTER TABLE` simple, pas de `RedefineTables`). `AuthService.validateUser`
+  rejette la connexion (`ForbiddenException`) si l'un des deux est renseigné,
+  **après** la vérification du mot de passe (pas d'énumération de comptes
+  bannis via ce chemin). Le cookie JWT existant d'une session déjà ouverte
+  n'est pas invalidé rétroactivement (pas de liste de révocation en V1) —
+  limite connue, acceptable vu la durée de vie du cookie (7 jours) et le cas
+  d'usage (modération, pas sécurité critique).
+- **Garde-fous de rang dans `AdminUsersService`** (`assertCanModerate`) :
+  un admin ne peut pas s'auto-modérer (suspendre/bannir/supprimer/changer
+  son propre rôle), et seul un `SUPER_ADMIN` peut modérer un compte
+  `ADMIN`/`SUPER_ADMIN` ou accorder/retirer ces rôles — cohérent avec §5
+  du cahier des charges (Modérateur/Administrateur/Super Administrateur).
+  La **suppression définitive d'un compte est réservée SUPER_ADMIN**
+  (irréversible, cascade DB via les `onDelete: Cascade` du schéma +
+  nettoyage des photos disque de ses Monstres).
+- **Suppression d'un Monstre par un admin** : nettoyage disque via
+  `ImageService.deleteItemPhotos(itemId)` (nouvelle méthode, `rm -rf` du
+  dossier `storage/items/<id>`), pour éviter d'accumuler des photos
+  orphelines — cohérent avec le suivi « espace disque » du dashboard (§14).
+- **Catégories** : la suppression est refusée si des Monstres y sont encore
+  rattachés (`BadRequestException` avec le compte exact), jamais de
+  suppression en cascade des Monstres — cohérent avec §14 ("suppression si
+  aucun Item lié").
+- **Paramètres (`settings`)** : `PATCH /admin/settings/:key` accepte
+  uniquement `value` (le `type` existant est préservé si non fourni
+  explicitement, pour ne pas corrompre le typage `INTEGER`/`FLOAT` d'un
+  réglage existant en le réécrivant sans préciser son type).
+- **Recherche utilisateurs/Monstres** : `contains` simple (pas de
+  `mode: 'insensitive'`, non supporté par le provider SQLite de Prisma) —
+  suffisant en V1, la casse ASCII est déjà insensible via SQLite `LIKE`.
+- **Frontend** : routes imbriquées `/admin/*` avec `meta: { requiresAdmin: true }`,
+  gardées dans `router.beforeEach` (redirection silencieuse vers `/` si
+  non-admin, pas de message d'erreur — cohérent avec le traitement existant
+  de `requiresAuth`). Nouveau getter `auth.isAdmin` dans le store. Lien
+  « Administration » ajouté dans `ProfileView.vue`, visible seulement si
+  `auth.isAdmin` (même pattern que le lien « Nous »). L'admin n'est **pas**
+  dans la bottom nav (5 items fixes, inchangés) — accessible uniquement
+  depuis le Profil, comme la Communauté.
+- **Double garde intentionnelle** : le guard frontend (`router.beforeEach`)
+  évite un flash de contenu admin pour un non-admin, mais la vraie
+  protection est côté backend (`RolesGuard` sur chaque contrôleur
+  `admin/*`) — vérifié explicitement en testant l'accès direct à l'API
+  avec le cookie d'un utilisateur normal (rejeté).
+
+### Fait
+- [x] Backend : migration `suspendedAt`/`bannedAt` sur `User` +
+      `AuthService.validateUser` mis à jour.
+- [x] Backend : `CategoriesService` étendu (`findAllForAdmin`, `create`,
+      `update`, `remove` avec garde de suppression) + DTOs.
+- [x] Backend : `SettingsService.findAll()`/`findByKey()` +
+      `AdminSettingsController` (`GET`/`PATCH /admin/settings/:key`).
+- [x] Backend : `ImageService.deleteItemPhotos()` + `AdminItemsService`
+      (recherche multi-critères paginée, détail, changement de statut,
+      suppression définitive) + `AdminItemsController`.
+- [x] Backend : `AdminUsersService` étendu (liste paginée avec recherche,
+      détail avec stats, changement de rôle avec garde-fous de rang,
+      suspendre/lever, bannir/débannir, suppression définitive réservée
+      SUPER_ADMIN) + endpoints `AdminUsersController` correspondants.
+- [x] Backend : `AdminDashboardService`/`Controller` (compteurs
+      utilisateurs/Monstres par statut, taux de récupération, nouveaux
+      7j/30j, signalements en attente).
+- [x] Frontend : `services/admin.ts` (wrappers typés pour tous les
+      endpoints ci-dessus), `auth.isAdmin` (store).
+- [x] Frontend : routes `/admin`, `/admin/utilisateurs`, `/admin/monstres`,
+      `/admin/categories`, `/admin/parametres` (gardées), lien Profil.
+- [x] Frontend : `AdminLayout.vue` (onglets) + `AdminDashboardView`,
+      `AdminUsersView` (recherche, rôle, suspendre/bannir/supprimer,
+      valider email), `AdminItemsView` (recherche/filtres, changer statut,
+      supprimer), `AdminCategoriesView` (CRUD), `AdminSettingsView`
+      (édition inline par clé).
+- [x] Testé de bout en bout avec un compte SUPER_ADMIN de test (créé via
+      inscription + `scripts/promote-admin.js`, supprimé après coup) :
+      dashboard (vraies stats), recherche + suspendre/lever + bannir +
+      auto-modération refusée (`BadRequestException`) + connexion bloquée
+      pour un compte suspendu puis banni (vérifié via `/auth/login` direct)
+      + suppression définitive (réservée SUPER_ADMIN, vérifiée), Monstres
+      (recherche/filtres, changement de statut persistant vérifié en base,
+      suppression), catégories (création, activation/désactivation,
+      suppression bloquée si Monstres liés puis acceptée si vide),
+      paramètres (édition d'une valeur `INTEGER`, `type` préservé après
+      coup), garde de rôle (utilisateur normal redirigé hors de `/admin`
+      côté frontend **et** rejeté par le backend en accès direct).
+- [x] Build + typecheck backend et frontend sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] File de modération / signalements (Phase 10 — nécessite d'abord le
+      flux de création de `Report` côté utilisateur).
+- [ ] Création de badges configurables (nécessite d'abord une logique de
+      déblocage réelle — aucune pour l'instant).
+- [ ] Statistiques avancées (carte de chaleur géographique, villes actives) —
+      hors scope, non demandées explicitement.
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement.
+
+---
+
+## Correctif : photo + lien dans l'email de notification `NEW_ITEM_NEARBY`
+
+Demande utilisateur : le mail envoyé pour une alerte de zone surveillée
+devait, comme la page Alertes, inclure la photo du Monstre et un lien
+cliquable vers sa page.
+
+### Fait
+- [x] `NotificationsService` : injection de `ConfigService`, email
+      `NEW_ITEM_NEARBY` reconstruit avec une miniature (`<img>` liée) et un
+      lien `FRONTEND_URL/monstres/:id` (même convention que les autres
+      emails du service : vérification email, réinitialisation mot de
+      passe).
+- [x] Vérifié via déclenchement réel (création d'un Monstre à proximité
+      d'une zone surveillée) — **attention** : `BREVO_API_KEY` est
+      renseignée en local avec une vraie clé, donc ce test a réellement
+      envoyé un email via Brevo à une adresse de test bidon (voir
+      l'avertissement en tête de ce fichier). Contenu confirmé correct par
+      relecture du code (même convention que les emails existants), pas de
+      seconde vérification en direct pour éviter un nouvel envoi réel.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 9 — Administration.** Dashboard, gestion utilisateurs/Monstres/
-      catégories/paramètres.
 - [ ] **Phase 10 — Modération.** Table `reports`, seuils `settings`,
       workflow `PENDING_REVIEW` → décision modérateur.
 - [ ] **Phase 11 — Facebook.** Après validation du cœur applicatif
@@ -1182,8 +1325,8 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0 à 8 sont terminées. Continuer sur la première case non
-   cochée de **Phase 9 — Administration** (section « Phases suivantes »
+4. Les Phases 0 à 9 sont terminées. Continuer sur la première case non
+   cochée de **Phase 10 — Modération** (section « Phases suivantes »
    ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
    phases à la fois (§0). Pour toute nouvelle migration Prisma en session
    non interactive, voir le workaround documenté dans `backend/README.md`
@@ -1193,6 +1336,8 @@ phases à la fois.
    l'utilisateur si besoin), ou promouvoir un nouveau compte via
    `npm run prisma:studio` (dev) ou
    `docker compose exec backend node scripts/promote-admin.js <email>` (prod).
+   L'espace admin est accessible sur `/admin` (lien « Administration »
+   visible dans `/profil` pour un compte ADMIN/SUPER_ADMIN).
 6. **Le projet est en production** (`https://monstres.fbc.fr`, Proxmox de
    l'utilisateur). Toute modification affectant le déploiement (nginx,
    `.env.example`, Dockerfiles) doit rester cohérente avec la config réelle

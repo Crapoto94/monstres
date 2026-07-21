@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
 
@@ -66,5 +66,10 @@ export class ImageService {
       path: `items/${itemId}/${filename}`,
       thumbnailPath: `items/${itemId}/${thumbnailFilename}`,
     };
+  }
+
+  /** §14 : nettoyage disque quand un admin supprime définitivement un Monstre. */
+  async deleteItemPhotos(itemId: string): Promise<void> {
+    await rm(join(this.storagePath, 'items', itemId), { recursive: true, force: true });
   }
 }

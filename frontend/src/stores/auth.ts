@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => state.user !== null,
+    isAdmin: (state) => state.user?.role === 'ADMIN' || state.user?.role === 'SUPER_ADMIN',
   },
   actions: {
     /** À appeler une fois au démarrage de l'app pour restaurer la session via le cookie. */

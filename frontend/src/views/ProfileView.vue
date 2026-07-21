@@ -22,6 +22,14 @@ async function onLogout() {
       Nous → voir les membres de la communauté
     </RouterLink>
 
+    <RouterLink
+      v-if="auth.isAdmin"
+      to="/admin"
+      class="mt-2 flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400"
+    >
+      Administration
+    </RouterLink>
+
     <div v-if="auth.isAuthenticated && auth.user" class="mt-4 flex flex-col gap-3">
       <p class="text-gray-900 dark:text-gray-100">{{ auth.user.name }}</p>
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ auth.user.email }}</p>

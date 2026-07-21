@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '../generated/prisma/enums';
@@ -22,6 +23,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   /**
@@ -87,9 +89,17 @@ export class NotificationsService {
       }
       case NotificationType.NEW_ITEM_NEARBY: {
         const d = data as NotificationData['NEW_ITEM_NEARBY'];
+        const itemUrl = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/monstres/${d.itemId}`;
+        const photoHtml = d.itemPhotoUrl
+          ? `<p><a href="${itemUrl}"><img src="${d.itemPhotoUrl}" alt="${escapeHtml(d.itemTitle)}" style="max-width:300px;border-radius:8px;" /></a></p>`
+          : '';
         return {
           subject: `Nouveau Monstre près de chez toi — Les Monstres`,
-          htmlContent: `<p>Un nouveau Monstre « ${escapeHtml(d.itemTitle)} » est apparu près d'une de tes zones surveillées.</p>`,
+          htmlContent: `
+            <p>Un nouveau Monstre « ${escapeHtml(d.itemTitle)} » est apparu près d'une de tes zones surveillées.</p>
+            ${photoHtml}
+            <p><a href="${itemUrl}">Voir ce Monstre</a></p>
+          `,
         };
       }
       case NotificationType.BADGE_UNLOCKED: {

@@ -34,6 +34,26 @@ export const router = createRouter({
       name: 'verify-email',
       component: () => import('@/views/VerifyEmailView.vue'),
     },
+    {
+      path: '/admin',
+      component: () => import('@/views/admin/AdminLayout.vue'),
+      meta: { requiresAdmin: true },
+      children: [
+        { path: '', name: 'admin-dashboard', component: () => import('@/views/admin/AdminDashboardView.vue') },
+        { path: 'utilisateurs', name: 'admin-users', component: () => import('@/views/admin/AdminUsersView.vue') },
+        { path: 'monstres', name: 'admin-items', component: () => import('@/views/admin/AdminItemsView.vue') },
+        {
+          path: 'categories',
+          name: 'admin-categories',
+          component: () => import('@/views/admin/AdminCategoriesView.vue'),
+        },
+        {
+          path: 'parametres',
+          name: 'admin-settings',
+          component: () => import('@/views/admin/AdminSettingsView.vue'),
+        },
+      ],
+    },
   ],
 })
 
@@ -44,6 +64,9 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { path: '/connexion', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { path: '/' }
   }
   return true
 })

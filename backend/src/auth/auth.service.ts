@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -62,6 +62,13 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Email ou mot de passe incorrect.');
+    }
+    // §14 : un compte banni/suspendu par un admin ne peut plus se connecter.
+    if (user.bannedAt) {
+      throw new ForbiddenException('Ce compte a été banni.');
+    }
+    if (user.suspendedAt) {
+      throw new ForbiddenException('Ce compte est temporairement suspendu.');
     }
     return user;
   }

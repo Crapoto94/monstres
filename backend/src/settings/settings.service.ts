@@ -30,4 +30,13 @@ export class SettingsService {
       update: { value, type },
     });
   }
+
+  /** §14 : liste complète pour l'écran admin des paramètres. */
+  findAll() {
+    return this.prisma.setting.findMany({ orderBy: { key: 'asc' } });
+  }
+
+  findByKey(key: string) {
+    return this.prisma.setting.findUnique({ where: { key } });
+  }
 }
