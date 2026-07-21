@@ -13,7 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { haversineKm } from '../common/geo.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
-import { ReservationStatus, VoteType, NotificationType } from '../generated/prisma/enums';
+import { ReservationStatus, VoteType, NotificationType, UserRole } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
 import { FindItemsQueryDto } from './dto/find-items-query.dto';
 
@@ -113,14 +113,27 @@ export class ItemsService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
 
+    const isAdmin =
+      viewer?.role === UserRole.ADMIN || viewer?.role === UserRole.SUPER_ADMIN;
+    const collectedCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     const items = await this.prisma.item.findMany({
       where: {
         // §6.1 : AVAILABLE et RESERVED sont marqués "Visible" dans le cycle
         // de vie du statut. COLLECTED ajouté sur demande utilisateur (badge
         // "Récupéré" dans la liste, plutôt que de faire disparaître le
-        // Monstre du jour au lendemain). PENDING_REVIEW/HIDDEN/ARCHIVED
-        // restent exclus (modération / historique, §6.1).
-        status: { in: ['AVAILABLE', 'RESERVED', 'COLLECTED'] },
+        // Monstre du jour au lendemain) mais masqué 24h après récupération
+        // pour les non-admins, pour ne pas polluer la liste indéfiniment.
+        // PENDING_REVIEW/HIDDEN/ARCHIVED restent exclus (modération /
+        // historique, §6.1).
+        ...(isAdmin
+          ? { status: { in: ['AVAILABLE', 'RESERVED', 'COLLECTED'] } }
+          : {
+              OR: [
+                { status: { in: ['AVAILABLE', 'RESERVED'] } },
+                { status: 'COLLECTED', collectedAt: { gte: collectedCutoff } },
+              ],
+            }),
         ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       },
       include: this.includeRelations(),

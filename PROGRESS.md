@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (Phase 8 terminée ; premier déploiement
-Proxmox en ligne sur `https://monstres.fbc.fr`, v0.1.2)
+Dernière mise à jour : **2026-07-22** (correctif carte + masquage Monstres
+récupérés >24h, v0.1.4)
 
 **Statut : Phases 0 à 8 terminées et validées.** Prochaine étape :
 **Phase 9 — Administration** (voir détail plus bas). Le projet est déployé
@@ -1028,6 +1028,48 @@ Limites : `max_subscriptions = 5`, `max_radius = 5000 m`.
 
 ### Restant / reporté (hors scope de cette session)
 - [ ] Tests automatisés (Jest) — validation manuelle uniquement.
+
+---
+
+## Correctif : couleurs de statut sur la carte + masquage des Monstres récupérés >24h
+
+Demande utilisateur : les marqueurs Leaflet doivent refléter le statut du
+Monstre (réservé/récupéré), et les Monstres récupérés ne doivent plus
+apparaître (liste + carte) 24h après leur récupération — sauf pour les
+admins, qui gardent une vue complète à des fins de suivi/modération.
+
+### Décisions
+- **Couleurs des marqueurs alignées sur les badges de `HomeView.vue`** :
+  ambre `#f59e0b` (RESERVED), vert `#22c55e` (COLLECTED), violet `#7c3aed`
+  (AVAILABLE, couleur primaire de l'appli). Implémenté via `L.divIcon`
+  (`statusIcon()` dans `MapView.vue`) plutôt que des icônes PNG colorées.
+- **Masquage 24h calculé dans `ItemsService.findMany`, pas au niveau DB** :
+  `viewer.role` (`ADMIN`/`SUPER_ADMIN`) donne accès à tous les statuts
+  visibles (`AVAILABLE`/`RESERVED`/`COLLECTED` sans filtre de date) ; les
+  autres viewers (utilisateur normal ou anonyme) reçoivent en plus un
+  filtre `collectedAt >= now - 24h` sur les Monstres `COLLECTED`. Un seul
+  point de filtrage, réutilisé par la liste (`HomeView`) et la carte
+  (`MapView`), qui appellent tous deux `GET /items`.
+- **`findById` (page de détail) n'est pas concerné** : un Monstre récupéré
+  reste consultable via lien direct au-delà de 24h, seule sa présence dans
+  les listes/carte est masquée. Décision de simplicité V1, pas de demande
+  contraire du cahier des charges.
+
+### Fait
+- [x] Backend : `ItemsService.findMany` — filtre conditionnel sur le rôle
+      du viewer, cutoff `Date.now() - 24h`.
+- [x] Frontend : `MapView.vue` — `statusIcon()` par statut, marqueurs
+      recolorés en fonction de `item.status`.
+- [x] Testé de bout en bout : bascule manuelle du statut/`collectedAt` d'un
+      Monstre de test en base (`dev.db`) pour vérifier (1) qu'un Monstre
+      `COLLECTED` avec `collectedAt` > 24h est absent de `GET /items` pour
+      un viewer anonyme mais présent pour un viewer `ADMIN` (JWT signé
+      manuellement avec `JWT_SECRET` pour le test, aucune modification de
+      compte réelle), et (2) que les couleurs de marqueurs sur `/carte`
+      correspondent bien au statut de chaque Monstre (vérifié via
+      inspection du DOM, `style.background` de chaque marqueur). État de
+      test restauré dans `dev.db` après vérification.
+- [x] Build + typecheck backend et frontend sans erreur.
 
 ---
 

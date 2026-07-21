@@ -17,6 +17,24 @@ L.Icon.Default.mergeOptions({
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522]
 
+// Couleurs alignées sur les badges de statut de HomeView.vue.
+const STATUS_COLORS: Record<string, string> = {
+  RESERVED: '#f59e0b', // amber-500
+  COLLECTED: '#22c55e', // green-500
+}
+const DEFAULT_COLOR = '#7c3aed' // violet-600 (AVAILABLE)
+
+function statusIcon(status: string): L.DivIcon {
+  const color = STATUS_COLORS[status] ?? DEFAULT_COLOR
+  return L.divIcon({
+    className: '',
+    html: `<span style="background:${color}" class="block h-4 w-4 rounded-full border-2 border-white shadow-md"></span>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    popupAnchor: [0, -8],
+  })
+}
+
 const router = useRouter()
 const mapContainer = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
@@ -40,7 +58,7 @@ onMounted(async () => {
   try {
     const result = await fetchItems({ pageSize: 50 })
     for (const item of result.items) {
-      const marker = L.marker([item.latitude, item.longitude]).addTo(map!)
+      const marker = L.marker([item.latitude, item.longitude], { icon: statusIcon(item.status) }).addTo(map!)
       marker.bindPopup(`<strong>${escapeHtml(item.title)}</strong>`)
       marker.on('click', () => router.push(`/monstres/${item.id}`))
     }
