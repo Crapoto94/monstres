@@ -15,6 +15,12 @@ export class UsersController {
     return this.usersService.updatePreferences(user.id, dto.emailNotifications);
   }
 
+  /** Annuaire de la communauté ("Nous") — public. */
+  @Get()
+  getCommunity() {
+    return this.usersService.findCommunity();
+  }
+
   @Get(':id')
   getPublicProfile(@Param('id') id: string) {
     return this.usersService.findPublicProfile(id);

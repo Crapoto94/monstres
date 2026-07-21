@@ -926,6 +926,54 @@ table `notifications`. Types `NEW_ITEM_NEARBY`, `RESERVATION_CREATED`,
 
 ---
 
+## Fonctionnalité : page « Nous » (annuaire de la communauté)
+
+Demande utilisateur, hors plan de phases du §17 : lister les membres de la
+communauté (date d'inscription, Monstres déclarés/réservés/récupérés, votes
+reçus sur leurs Monstres en badge). Rattaché à l'esprit du profil public
+(§10) et des statistiques « meilleurs contributeurs » prévues côté admin
+(§14), mais pas une phase nommée — traité comme un ajout ponctuel plutôt
+que comme une nouvelle phase.
+
+### Décisions prises pendant cette session
+- **Pas de 6ᵉ onglet dans la barre de navigation basse.** Le §4 du cahier
+  des charges fixe explicitement la barre à 5 éléments (Accueil, Carte,
+  Ajouter, Alertes, Profil) — non négociable. La page « Nous »
+  (`/communaute`) est accessible via un lien depuis `ProfileView.vue`,
+  visible que l'on soit connecté ou non (info publique).
+- **Interprétation des 4 stats demandées** :
+  - « déclarés » = nombre d'`Item` créés par le membre.
+  - « réservés » = nombre de `Reservation` faites par le membre, tous
+    statuts confondus (reflète son activité de « chasseur », pas seulement
+    les réservations abouties).
+  - « récupérés » = nombre de `Reservation` avec `status: COMPLETED` faites
+    par le membre (récupération effectivement validée avec photo — Phase 5).
+  - « votes reçus » = nombre de `Vote` sur les Items **appartenant** au
+    membre (popularité de ses propres Monstres, pas les votes qu'il a
+    donnés aux autres).
+- **Endpoint public** (`GET /users`, sans guard) : cohérent avec l'esprit
+  communautaire/transparent de la plateforme et avec le fait que ce sont
+  des agrégats de données déjà publiques (profil public §10). Trié par
+  score décroissant (mini-classement, cohérent avec les stats « meilleurs
+  contributeurs » prévues en Phase 9).
+- **Comptages via requêtes séparées** (`itemsReserved`, `votesReceived`)
+  plutôt qu'un unique `_count` Prisma : `votesReceived` traverse une
+  relation à deux sauts (`User` → `Item` → `Vote`), non exprimable en un
+  `_count` simple sur `User`. Acceptable en volume V1 (nombre d'utilisateurs
+  faible) ; à revoir avec des agrégations SQL si la base grandit beaucoup.
+
+### Fait
+- [x] `UsersService.findCommunity()` + `GET /users` (public).
+- [x] `CommunityView.vue` (route `/communaute`) : liste des membres, avatar
+      ou initiale, date d'inscription formatée, score, 4 badges de stats.
+      Lien ajouté dans `ProfileView.vue`.
+- [x] Testé de bout en bout : données réelles de test (créations,
+      réservations, récupérations, votes accumulés pendant les sessions
+      précédentes) correctement agrégées et affichées. Zéro erreur console.
+- [x] Build + typecheck backend et frontend sans erreur.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre

@@ -23,6 +23,18 @@ export interface PublicProfile {
   createdAt: Date;
 }
 
+export interface CommunityMember {
+  id: string;
+  name: string;
+  avatar: string | null;
+  score: number;
+  createdAt: Date;
+  itemsCreated: number;
+  itemsReserved: number;
+  itemsCollected: number;
+  votesReceived: number;
+}
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -68,5 +80,51 @@ export class UsersService {
       score: user.score,
       createdAt: user.createdAt,
     };
+  }
+
+  /**
+   * Annuaire de la communauté ("Nous") : chaque membre avec ses stats
+   * publiques. Demande utilisateur — pas dans une phase précise du cahier
+   * des charges, mais dans l'esprit du profil public (§10) et des
+   * statistiques "meilleurs contributeurs" prévues côté admin (§14).
+   */
+  async findCommunity(): Promise<CommunityMember[]> {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        score: true,
+        createdAt: true,
+        _count: {
+          select: {
+            items: true,
+            reservations: { where: { status: 'COMPLETED' } },
+          },
+        },
+      },
+      orderBy: { score: 'desc' },
+    });
+
+    return Promise.all(
+      users.map(async (user) => {
+        const [itemsReserved, votesReceived] = await Promise.all([
+          this.prisma.reservation.count({ where: { userId: user.id } }),
+          this.prisma.vote.count({ where: { item: { userId: user.id } } }),
+        ]);
+
+        return {
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar,
+          score: user.score,
+          createdAt: user.createdAt,
+          itemsCreated: user._count.items,
+          itemsReserved,
+          itemsCollected: user._count.reservations,
+          votesReceived,
+        };
+      }),
+    );
   }
 }

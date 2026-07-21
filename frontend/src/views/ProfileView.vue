@@ -15,6 +15,13 @@ async function onLogout() {
   <section class="flex-1 p-4">
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Profil</h1>
 
+    <RouterLink
+      to="/communaute"
+      class="mt-3 inline-flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400"
+    >
+      Nous → voir les membres de la communauté
+    </RouterLink>
+
     <div v-if="auth.isAuthenticated && auth.user" class="mt-4 flex flex-col gap-3">
       <p class="text-gray-900 dark:text-gray-100">{{ auth.user.name }}</p>
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ auth.user.email }}</p>

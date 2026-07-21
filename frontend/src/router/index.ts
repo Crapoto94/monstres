@@ -16,6 +16,7 @@ export const router = createRouter({
     },
     { path: '/alertes', name: 'alerts', component: () => import('@/views/AlertsView.vue') },
     { path: '/profil', name: 'profile', component: () => import('@/views/ProfileView.vue') },
+    { path: '/communaute', name: 'community', component: () => import('@/views/CommunityView.vue') },
     { path: '/connexion', name: 'login', component: () => import('@/views/LoginView.vue') },
     { path: '/inscription', name: 'register', component: () => import('@/views/RegisterView.vue') },
     {
