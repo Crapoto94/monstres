@@ -9,6 +9,9 @@
 
 Dernière mise à jour : **2026-07-21**
 
+**Statut : Phase 0 (Initialisation) terminée et validée.** Prochaine étape :
+**Phase 1 — Authentification** (voir détail plus bas).
+
 ---
 
 ## Décisions prises pendant cette session (à connaître avant de continuer)
@@ -176,8 +179,12 @@ phases à la fois.
 1. Lire `CLAUDE.md` puis ce fichier en entier.
 2. `git log --oneline` et `git status` pour voir l'état réel du dépôt (ce
    fichier peut avoir dérivé si des sessions n'ont pas mis à jour les cases).
-3. Vérifier que le backend démarre toujours : dans `backend/`,
-   `npm install` puis `npm run start:dev`, tester
-   `GET http://localhost:3000/api/v1/health`.
-4. Continuer sur la première case non cochée de la section « Restant à faire
-   — Phase 0 », puis enchaîner les phases dans l'ordre.
+3. Vérifier que tout démarre toujours :
+   - `backend/` : `npm install` puis `npm run start:dev`, tester
+     `GET http://localhost:3000/api/v1/health`.
+   - `frontend/` : `npm install` puis `npm run dev`, ouvrir
+     `http://localhost:5173`.
+4. La Phase 0 est terminée. Continuer sur la première case non cochée de
+   **Phase 1 — Authentification** (section « Phases suivantes » ci-dessus),
+   puis enchaîner les phases dans l'ordre. Ne pas paralléliser plusieurs
+   phases à la fois (§0).
