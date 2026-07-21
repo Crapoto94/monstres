@@ -19,6 +19,7 @@ import { ScoringModule } from './scoring/scoring.module';
 import { VotesModule } from './votes/votes.module';
 import { CommentsModule } from './comments/comments.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     AuthModule,
     AdminModule,
     CategoriesModule,
+    SubscriptionsModule,
     ItemsModule,
     ReservationsModule,
     VotesModule,

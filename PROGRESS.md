@@ -7,14 +7,18 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (Phase 7 terminée ; premier déploiement
-Proxmox en ligne sur `https://monstres.fbc.fr`, v0.1.1)
+Dernière mise à jour : **2026-07-22** (Phase 8 terminée ; premier déploiement
+Proxmox en ligne sur `https://monstres.fbc.fr`, v0.1.2)
 
-**Statut : Phases 0 à 7 terminées et validées.** Prochaine étape :
-**Phase 8 — Abonnements géographiques** (voir détail plus bas). Le projet
-est déployé en production sur `https://monstres.fbc.fr` (domaine unique,
-voir la section dédiée plus bas pour l'historique des correctifs de
-déploiement).
+**Statut : Phases 0 à 8 terminées et validées.** Prochaine étape :
+**Phase 9 — Administration** (voir détail plus bas). Le projet est déployé
+en production sur `https://monstres.fbc.fr` (domaine unique, voir la
+section dédiée plus bas pour l'historique des correctifs de déploiement).
+
+Note : l'utilisateur a commencé à renseigner `GOOGLE_CLIENT_ID` dans
+`.env.example` (racine) — signal qu'il prépare le login Google (§10,
+reporté depuis la Phase 1 faute d'identifiants). Ne pas construire le
+login Google tant qu'il n'a pas explicitement demandé de le faire.
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -974,13 +978,64 @@ que comme une nouvelle phase.
 
 ---
 
+## Phase 8 — Abonnements géographiques : terminée et validée
+
+Objectif (§17, §6.10) : table `subscriptions` (nom, position, rayon).
+Limites : `max_subscriptions = 5`, `max_radius = 5000 m`.
+
+### Décisions prises pendant cette session
+- **`haversineKm` extrait dans `src/common/geo.util.ts`** (était dupliqué/
+  privé dans `items.service.ts`) pour être réutilisé par
+  `SubscriptionsService` sans dupliquer le calcul de distance.
+- **Bug trouvé et corrigé pendant les tests** : un utilisateur avec
+  plusieurs zones qui matchent toutes le même nouveau Monstre recevait
+  **une notification par zone** (5 notifications identiques observées en
+  test). Corrigé : dédoublonnage par `userId` (`Set`) avant d'appeler
+  `notify()`, un seul envoi par utilisateur quel que soit le nombre de
+  zones qui matchent.
+- **Le créateur n'est jamais notifié de son propre Monstre**, même s'il a
+  une zone surveillée qui le couvre géographiquement (garde explicite dans
+  `notifyNearbySubscribers`).
+- **Pas de toggle actif/inactif** sur les zones (le champ `active` du
+  schéma Phase 0 reste toujours `true`) — seule la suppression permet
+  d'arrêter la surveillance. Simplicité V1 assumée ; le champ reste prêt
+  si un besoin de pause temporaire apparaît plus tard.
+- **`SubscriptionsModule` non global**, contrairement à
+  Settings/Email/Scoring/Notifications : importé explicitement dans
+  `ItemsModule` (seul consommateur), cohérent avec les autres modules
+  « métier » (Reservations, Votes, Comments) qui ne sont pas globaux.
+
+### Fait
+- [x] `src/subscriptions/` : `SubscriptionsService` (create avec limites
+      `max_user_subscriptions`/`max_subscription_radius` via
+      `SettingsService`, `findMine`, `remove`, `notifyNearbySubscribers`).
+      `SubscriptionsController` : `GET/POST /subscriptions`,
+      `DELETE /subscriptions/:id`.
+- [x] Câblé dans `ItemsService.create()` : chaque nouveau Monstre déclenche
+      `notifyNearbySubscribers()`.
+- [x] Frontend : `src/services/subscriptions.ts`, section « Zones
+      surveillées » ajoutée dans `AlertsView.vue` (liste avec rayon en km,
+      suppression, formulaire d'ajout avec géolocalisation, curseur de
+      rayon 0,5–5 km, compteur X/5).
+- [x] Testé de bout en bout : création (limite rayon 5000m rejetée à
+      6000m, limite 5 zones rejetée à la 6e), notification `NEW_ITEM_NEARBY`
+      déclenchée à la création d'un Monstre dans le rayon (bug de doublon
+      trouvé et corrigé pendant ce test), affichage/suppression dans le
+      navigateur. Géolocalisation non testable dans l'environnement de test
+      (permission refusée par le navigateur headless) — zone créée via API
+      pour valider l'affichage/suppression UI à la place.
+- [x] Build + typecheck backend et frontend sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 8 — Abonnements géographiques.** Table `subscriptions`
-      (max 5 lieux, rayon max 5 km — valeurs dans `settings`, pas en dur).
 - [ ] **Phase 9 — Administration.** Dashboard, gestion utilisateurs/Monstres/
       catégories/paramètres.
 - [ ] **Phase 10 — Modération.** Table `reports`, seuils `settings`,
@@ -1007,9 +1062,9 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0 à 7 sont terminées. Continuer sur la première case non
-   cochée de **Phase 8 — Abonnements géographiques** (section « Phases
-   suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
+4. Les Phases 0 à 8 sont terminées. Continuer sur la première case non
+   cochée de **Phase 9 — Administration** (section « Phases suivantes »
+   ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
    phases à la fois (§0). Pour toute nouvelle migration Prisma en session
    non interactive, voir le workaround documenté dans `backend/README.md`
    (section Base de données).

@@ -10,6 +10,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { ScoringService, ScoringEventType } from '../scoring/scoring.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { haversineKm } from '../common/geo.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ReservationStatus, VoteType, NotificationType } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -30,6 +32,7 @@ export class ItemsService {
     private readonly config: ConfigService,
     private readonly scoring: ScoringService,
     private readonly notifications: NotificationsService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async create(
@@ -76,6 +79,9 @@ export class ItemsService {
 
     const pointsCreation = await this.settings.getNumber('points_creation', 5);
     await this.scoring.award(userId, item.id, ScoringEventType.USER_CREATED_ITEM, pointsCreation);
+
+    // §6.10/§6.11 : notifie les abonnés dont une zone surveillée couvre ce nouveau Monstre.
+    await this.subscriptions.notifyNearbySubscribers(item);
 
     return this.serialize(item, { id: userId } as AuthenticatedUser);
   }
@@ -353,24 +359,4 @@ export class ItemsService {
 /** ~1.1 km de précision à l'équateur — "zone approximative" du §9. */
 function roundApprox(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-/** Distance à vol d'oiseau en km (calcul serveur V1 — PostGIS prévu ensuite, §12.5). */
-function haversineKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function toRad(deg: number): number {
-  return (deg * Math.PI) / 180;
 }
