@@ -44,6 +44,13 @@ objets encombrants abandonnés dans la rue. Un objet abandonné = un **Monstre**
 - API : réponses JSON standardisées `{ success, data, message }` /
   `{ success, error: { code, message } }`.
 - Chaque module : README + doc API + commentaires utiles.
+- **Versioning** : à **chaque `git push` sur `master`**, incrémenter la
+  version (patch, ex. `0.1.1` → `0.1.2`) dans **les deux**
+  `backend/package.json` et `frontend/package.json` (synchronisés, un seul
+  numéro pour l'appli). La version est affichée sur l'accueil
+  (`HomeView.vue`, via `__APP_VERSION__` injecté par Vite au build) et dans
+  `GET /api/v1/health` côté backend — c'est ce qui permet de vérifier ce qui
+  est réellement déployé en prod. Ne pas oublier ce bump avant de committer.
 
 ## Domaine & sous-domaines (racine `fbc.fr`)
 | Sous-domaine | Rôle |
