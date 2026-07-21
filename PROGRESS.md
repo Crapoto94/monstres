@@ -7,12 +7,13 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (Phase 9 — Administration terminée,
-v0.1.7)
+Dernière mise à jour : **2026-07-22** (Phase 10 — Modération terminée,
+v0.1.8)
 
-**Statut : Phases 0 à 9 terminées et validées.** Prochaine étape :
-**Phase 10 — Modération** (voir détail plus bas). Le projet est déployé
-en production sur `https://monstres.fbc.fr` (domaine unique, voir la
+**Statut : Phases 0 à 10 terminées et validées.** Prochaine étape :
+**Phase 11 — Facebook** (voir détail plus bas ; à ne construire qu'après
+validation explicite, cf. décision Google/Facebook reportés). Le projet est
+déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
 ⚠️ **`backend/.env` local contient une vraie clé `BREVO_API_KEY`** (pas
@@ -1296,13 +1297,134 @@ cliquable vers sa page.
 
 ---
 
+## Phase 10 — Modération : terminée et validée
+
+Objectif (§6.5, §14, §17) : workflow signalement → compteur → seuil atteint
+→ `PENDING_REVIEW` → décision modérateur. La table `reports` existait
+depuis la Phase 0 mais n'était alimentée par aucun flux utilisateur — cette
+phase construit à la fois le côté « signaler » (utilisateur) et le côté
+« modérer » (Modérateur/Admin).
+
+### Décisions prises pendant cette session
+- **Un signalement par utilisateur et par Monstre, tous types confondus**
+  (`@@unique([itemId, userId])` sur `Report`, migration
+  `20260722020000_add_report_unique_constraint`). Interprétation retenue de
+  « 3 signalements distincts » (§6.5) : distincts par **utilisateur**, pas
+  par type — un même utilisateur ne fait donc pas monter le compteur deux
+  fois. Une tentative de second signalement renvoie une erreur claire
+  (« Tu as déjà signalé ce Monstre. ») plutôt qu'un échec silencieux.
+- **Deux compteurs indépendants, comme spécifié** : signalements « qualité »
+  (`FAKE`/`WRONG_LOCATION`/`INAPPROPRIATE`/`DUPLICATE`) déclenchent
+  `AVAILABLE → PENDING_REVIEW` au seuil `report_threshold` (défaut 3) ;
+  `ALREADY_COLLECTED` déclenche `→ ARCHIVED` (pas `COLLECTED`, réservé à une
+  vraie récupération validée) au seuil `already_collected_threshold`
+  (défaut 3). Les deux transitions ne s'appliquent que si l'Item est encore
+  `AVAILABLE` ou `RESERVED` — un Item déjà en révision/masqué/archivé/récupéré
+  n'est pas retouché par un nouveau signalement.
+- **Auto-signalement bloqué**, même logique que l'auto-vote (§6.4).
+- **Rôle MODERATOR enfin mis en usage** (existait dans l'enum depuis la
+  Phase 0, jamais exploité) : `AdminReportsController` (`/admin/reports`)
+  est le premier contrôleur accessible à MODERATOR **et** ADMIN/SUPER_ADMIN,
+  conformément à §5 (« Modérateur : traite les signalements, masque du
+  contenu, sanctionne »). Décision **KEEP** (conserver) remet l'Item
+  `AVAILABLE` et repasse les signalements `PENDING` en `REJECTED` ;
+  **HIDE** (masquer) passe l'Item `HIDDEN` et les signalements en
+  `ACCEPTED` ; **DELETE** supprime l'Item définitivement (cascade DB +
+  nettoyage des photos disque via `ImageService.deleteItemPhotos`, déjà
+  construit en Phase 9).
+- **`AdminUsersController` : accès MODERATOR élargi méthode par méthode**
+  (`@Roles()` au niveau handler, qui prend le pas sur le `@Roles()` de
+  classe dans `RolesGuard`) — lecture (`findAll`/`findOne`) et suspension
+  temporaire (`suspend`/`unsuspend`) ouvertes à MODERATOR pour lui permettre
+  d'agir depuis la file de modération ; bannissement définitif, changement
+  de rôle et suppression de compte restent réservés ADMIN/SUPER_ADMIN — le
+  Modérateur "sanctionne" (§5) mais ne bannit pas définitivement ni ne
+  gère les comptes admin.
+- **Sanction = raccourci vers `suspend` existant**, pas de système de
+  sanctions à paliers (avertissement → limitation → bannissement 24h →
+  définitif) décrit en §6.5 — **explicitement hors scope de cette session**
+  : construire l'escalade demanderait de suivre un historique de sanctions
+  par utilisateur (nouvelle table ou compteur), non demandé explicitement.
+  Documenté ici pour qu'une session future sache que c'est une
+  simplification volontaire, pas un oubli.
+- **Pas d'ajustement automatique de `trustScore`** suite à une décision de
+  modération (§6.8 : "diminue avec faux signalements, abus, suppressions").
+  Complexe à attribuer correctement (faute du créateur ? des signaleurs
+  abusifs ?) et non demandé explicitement — **explicitement hors scope**,
+  comme les badges et les statistiques avancées notés en Phase 9.
+- **Frontend : garde de route à deux niveaux.** Le layout parent `/admin`
+  n'exige plus que `requiresModerator` (MODERATOR/ADMIN/SUPER_ADMIN) ; les
+  sous-routes réservées à l'administration complète (dashboard,
+  utilisateurs, Monstres, catégories, paramètres) ajoutent `requiresAdmin`
+  en plus. Vue Router fusionne le `meta` de toute la hiérarchie de routes
+  matchées, donc `to.meta` porte les deux indicateurs simultanément sans
+  duplication. Un Modérateur qui atterrit sur une page admin-only est
+  redirigé vers `/admin/signalements` (pas vers `/`, pour rester dans un
+  espace qu'il peut utiliser) ; un non-modérateur est redirigé vers `/`.
+  `AdminLayout.vue` masque les onglets admin-only si `!auth.isAdmin`,
+  ne laissant que l'onglet « Signalements » à un pur Modérateur.
+- **Lien Profil adaptatif** : libellé et cible changent selon le rôle
+  (« Administration » → `/admin` pour un admin, « Modération » →
+  `/admin/signalements` pour un modérateur seul), visible dès que
+  `auth.isModerator`.
+- **`item.hasReported`** ajouté à la sérialisation de `GET /items/:id`
+  (même pattern que `hasVoted`), pour que le bouton « Signaler » disparaisse
+  après rechargement de page sans dépendre uniquement de la gestion
+  d'erreur 409 côté frontend.
+
+### Fait
+- [x] Backend : migration `reports_itemId_userId_key` (contrainte unique).
+- [x] Backend : `src/reports/` — `ReportsService.create()` (garde
+      auto-signalement, unicité, calcul des deux seuils via `settings`),
+      `ReportsController` (`POST /items/:id/report`), module enregistré.
+- [x] Backend : `ItemsService` — `hasReported` calculé dans `findById` et
+      transmis à `serialize()`.
+- [x] Backend : `src/admin/` — `AdminReportsService`/`Controller`
+      (`GET /admin/reports` file paginée avec signalements PENDING inclus,
+      `POST /admin/reports/:itemId/resolve` avec KEEP/HIDE/DELETE),
+      `AdminUsersController` étendu avec des `@Roles()` par méthode pour
+      MODERATOR sur lecture/suspension.
+- [x] Frontend : `ItemDetailView.vue` — bouton « Signaler ce Monstre »
+      (masqué pour le propriétaire et après signalement), formulaire
+      inline (type + raison optionnelle), gestion de l'erreur 409.
+- [x] Frontend : `services/items.ts` (`reportItem`, `hasReported`),
+      `services/admin.ts` (file + résolution), `stores/auth.ts`
+      (`isModerator`), `router/index.ts` (garde à deux niveaux),
+      `AdminLayout.vue` (onglets conditionnels), `AdminReportsView.vue`
+      (file, décisions, sanction), `ProfileView.vue` (lien adaptatif).
+- [x] Testé de bout en bout avec 4 comptes signaleurs + 1 propriétaire +
+      1 compte MODERATOR (promu directement en base, `promote-admin.js`
+      refusant volontairement les rôles autres qu'ADMIN/SUPER_ADMIN) :
+      auto-signalement refusé, double signalement refusé (409), seuil
+      qualité → `PENDING_REVIEW` vérifié avec 2 signalements insuffisants
+      puis le 3e déclenchant la transition, seuil `already_collected` →
+      `ARCHIVED` vérifié pareillement, décisions KEEP/HIDE/DELETE vérifiées
+      (DELETE confirmé avec nettoyage des photos sur disque), Modérateur
+      confirmé bloqué sur dashboard/catégories/settings/ban/delete/role
+      mais autorisé sur signalements + lecture/suspension utilisateurs,
+      navigateur réel : bouton Signaler → formulaire → confirmation →
+      persistance après rechargement, file de modération affichée et
+      résolue depuis l'UI (Masquer testé, statut vérifié en base). Toutes
+      les données de test supprimées après vérification (y compris les
+      photos orphelines sur disque laissées par une suppression
+      d'utilisateur faite directement en base pour le nettoyage).
+- [x] Build + typecheck backend et frontend sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Système de sanctions à paliers (avertissement → limitation →
+      bannissement temporaire → définitif) — actuellement un simple
+      raccourci vers `suspend`.
+- [ ] Ajustement automatique de `trustScore` suite aux décisions de
+      modération.
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 10 — Modération.** Table `reports`, seuils `settings`,
-      workflow `PENDING_REVIEW` → décision modérateur.
 - [ ] **Phase 11 — Facebook.** Après validation du cœur applicatif
       uniquement. Ne jamais bloquer la création d'un Monstre si Facebook
       échoue.
@@ -1325,19 +1447,25 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0 à 9 sont terminées. Continuer sur la première case non
-   cochée de **Phase 10 — Modération** (section « Phases suivantes »
-   ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
-   phases à la fois (§0). Pour toute nouvelle migration Prisma en session
-   non interactive, voir le workaround documenté dans `backend/README.md`
-   (section Base de données).
+4. Les Phases 0 à 10 sont terminées. Continuer sur la première case non
+   cochée de **Phase 11 — Facebook** (section « Phases suivantes »
+   ci-dessus) **seulement après confirmation explicite de l'utilisateur**
+   (connexion + publication automatique, sujet sensible qui touche à des
+   identifiants externes). Ne pas paralléliser plusieurs phases à la fois
+   (§0). Pour toute nouvelle migration Prisma en session non interactive,
+   voir le workaround documenté dans `backend/README.md` (section Base de
+   données).
 5. Pour tester en local sans repasser par l'inscription : se connecter avec
    `marc@fbc.fr` ou `admin@monstres.local` (mot de passe demandé à
    l'utilisateur si besoin), ou promouvoir un nouveau compte via
    `npm run prisma:studio` (dev) ou
    `docker compose exec backend node scripts/promote-admin.js <email>` (prod).
    L'espace admin est accessible sur `/admin` (lien « Administration »
-   visible dans `/profil` pour un compte ADMIN/SUPER_ADMIN).
+   visible dans `/profil` pour un compte ADMIN/SUPER_ADMIN). `promote-admin.js`
+   refuse volontairement `MODERATOR` (script pensé pour l'admin complet
+   uniquement) — pour tester un compte MODERATOR, passer par
+   `npm run prisma:studio` (dev) ou une requête SQL directe ; l'espace
+   modération est alors sur `/admin/signalements` (lien « Modération »).
 6. **Le projet est en production** (`https://monstres.fbc.fr`, Proxmox de
    l'utilisateur). Toute modification affectant le déploiement (nginx,
    `.env.example`, Dockerfiles) doit rester cohérente avec la config réelle

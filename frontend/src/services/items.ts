@@ -19,6 +19,7 @@ export interface Item {
   votesScore: number
   distance: number | null
   hasVoted: boolean
+  hasReported: boolean
   createdAt: string
   collectedAt: string | null
   photos: ItemPhoto[]
@@ -86,6 +87,13 @@ export async function fetchItems(params: FindItemsParams) {
 
 export async function toggleVote(itemId: string) {
   const { data } = await api.post<ApiSuccess<{ voted: boolean; votesScore: number }>>(`/items/${itemId}/vote`)
+  return data.data
+}
+
+export type ReportType = 'FAKE' | 'WRONG_LOCATION' | 'INAPPROPRIATE' | 'DUPLICATE' | 'ALREADY_COLLECTED'
+
+export async function reportItem(itemId: string, payload: { type: ReportType; reason?: string }) {
+  const { data } = await api.post<ApiSuccess<{ reported: boolean }>>(`/items/${itemId}/report`, payload)
   return data.data
 }
 

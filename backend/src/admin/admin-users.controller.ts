@@ -9,9 +9,14 @@ import { AdminListUsersQueryDto } from './dto/admin-list-users-query.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 
 /**
- * Espace admin (préfixe séparé du reste). Réservé ADMIN/SUPER_ADMIN — voir
- * §5 du cahier des charges pour les rôles. Certaines actions (rôles
- * admin, suppression) sont resserrées à SUPER_ADMIN dans le service.
+ * Espace admin (préfixe séparé du reste). Réservé ADMIN/SUPER_ADMIN par
+ * défaut — voir §5 du cahier des charges pour les rôles. Certaines actions
+ * (rôles admin, suppression) sont resserrées à SUPER_ADMIN dans le service.
+ * La lecture et la suspension temporaire sont en revanche ouvertes au
+ * MODERATOR (§5 : « traite les signalements... sanctionne »), pour lui
+ * permettre d'agir depuis la file de modération (`AdminReportsController`)
+ * sans lui donner accès au bannissement définitif, aux rôles ou à la
+ * suppression de compte.
  */
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,11 +25,13 @@ export class AdminUsersController {
   constructor(private readonly adminUsersService: AdminUsersService) {}
 
   @Get()
+  @Roles('MODERATOR', 'ADMIN', 'SUPER_ADMIN')
   findAll(@Query() query: AdminListUsersQueryDto) {
     return this.adminUsersService.findMany(query);
   }
 
   @Get(':id')
+  @Roles('MODERATOR', 'ADMIN', 'SUPER_ADMIN')
   findOne(@Param('id') id: string) {
     return this.adminUsersService.findOne(id);
   }
@@ -45,11 +52,13 @@ export class AdminUsersController {
   }
 
   @Patch(':id/suspend')
+  @Roles('MODERATOR', 'ADMIN', 'SUPER_ADMIN')
   suspend(@Param('id') id: string, @CurrentUser() actingUser: AuthenticatedUser) {
     return this.adminUsersService.suspend(id, actingUser);
   }
 
   @Patch(':id/unsuspend')
+  @Roles('MODERATOR', 'ADMIN', 'SUPER_ADMIN')
   unsuspend(@Param('id') id: string) {
     return this.adminUsersService.unsuspend(id);
   }

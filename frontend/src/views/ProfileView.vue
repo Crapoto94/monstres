@@ -23,11 +23,11 @@ async function onLogout() {
     </RouterLink>
 
     <RouterLink
-      v-if="auth.isAdmin"
-      to="/admin"
+      v-if="auth.isModerator"
+      :to="auth.isAdmin ? '/admin' : '/admin/signalements'"
       class="mt-2 flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400"
     >
-      Administration
+      {{ auth.isAdmin ? 'Administration' : 'Modération' }}
     </RouterLink>
 
     <div v-if="auth.isAuthenticated && auth.user" class="mt-4 flex flex-col gap-3">

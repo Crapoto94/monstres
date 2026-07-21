@@ -82,6 +82,40 @@ export interface DashboardStats {
   pendingReports: number
 }
 
+export interface AdminReportEntry {
+  id: string
+  type: string
+  reason: string | null
+  createdAt: string
+  user: { id: string; name: string }
+}
+
+export interface AdminReportQueueItem {
+  id: string
+  title: string
+  status: string
+  updatedAt: string
+  user: { id: string; name: string; email: string; trustScore: number }
+  photos: { thumbnailPath: string | null; path: string }[]
+  reports: AdminReportEntry[]
+}
+
+export type ReportDecision = 'KEEP' | 'HIDE' | 'DELETE'
+
+export async function fetchReportsQueue(params: { page?: number; pageSize?: number }) {
+  const { data } = await api.get<ApiSuccess<{ items: AdminReportQueueItem[] } & Paginated>>('/admin/reports', {
+    params,
+  })
+  return data.data
+}
+
+export async function resolveReport(itemId: string, decision: ReportDecision) {
+  const { data } = await api.post<ApiSuccess<{ decision: ReportDecision }>>(`/admin/reports/${itemId}/resolve`, {
+    decision,
+  })
+  return data.data
+}
+
 export async function fetchDashboardStats() {
   const { data } = await api.get<ApiSuccess<DashboardStats>>('/admin/dashboard')
   return data.data

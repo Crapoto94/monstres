@@ -317,6 +317,9 @@ model Report {
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // §6.5 : un même utilisateur ne peut signaler un Monstre qu'une fois
+  // (peu importe le type) — "signalements distincts" = utilisateurs distincts.
+  @@unique([itemId, userId])
   @@map("reports")
 }
 

@@ -1,11 +1,21 @@
 <script setup lang="ts">
-const tabs = [
-  { to: '/admin', label: 'Dashboard', exact: true },
-  { to: '/admin/utilisateurs', label: 'Utilisateurs' },
-  { to: '/admin/monstres', label: 'Monstres' },
-  { to: '/admin/categories', label: 'Catégories' },
-  { to: '/admin/parametres', label: 'Paramètres' },
-]
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+
+const tabs = computed(() => [
+  ...(auth.isAdmin
+    ? [
+        { to: '/admin', label: 'Dashboard', exact: true },
+        { to: '/admin/utilisateurs', label: 'Utilisateurs' },
+        { to: '/admin/monstres', label: 'Monstres' },
+        { to: '/admin/categories', label: 'Catégories' },
+        { to: '/admin/parametres', label: 'Paramètres' },
+      ]
+    : []),
+  { to: '/admin/signalements', label: 'Signalements' },
+])
 </script>
 
 <template>

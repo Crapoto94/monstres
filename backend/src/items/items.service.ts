@@ -99,7 +99,13 @@ export class ItemsService {
         })) !== null
       : false;
 
-    return this.serialize(item, viewer, null, hasVoted);
+    const hasReported = viewer
+      ? (await this.prisma.report.findUnique({
+          where: { itemId_userId: { itemId: id, userId: viewer.id } },
+        })) !== null
+      : false;
+
+    return this.serialize(item, viewer, null, hasVoted, hasReported);
   }
 
   /**
@@ -352,6 +358,7 @@ export class ItemsService {
     viewer: AuthenticatedUser | null,
     distanceKm: number | null = null,
     hasVoted = false,
+    hasReported = false,
   ) {
     const isAuthenticated = viewer !== null;
     const imgBaseUrl = this.config.get<string>(
@@ -369,6 +376,7 @@ export class ItemsService {
       address: isAuthenticated ? item.address : null,
       distance: distanceKm,
       hasVoted,
+      hasReported,
       user: userWithoutTrust,
       activeReservation,
       photos: item.photos.map((photo) => ({

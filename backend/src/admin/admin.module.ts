@@ -9,6 +9,8 @@ import { AdminCategoriesController } from './admin-categories.controller';
 import { AdminSettingsController } from './admin-settings.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';
+import { AdminReportsController } from './admin-reports.controller';
+import { AdminReportsService } from './admin-reports.service';
 
 @Module({
   imports: [UsersModule, CategoriesModule],
@@ -18,7 +20,8 @@ import { AdminDashboardService } from './admin-dashboard.service';
     AdminCategoriesController,
     AdminSettingsController,
     AdminDashboardController,
+    AdminReportsController,
   ],
-  providers: [AdminUsersService, AdminItemsService, AdminDashboardService],
+  providers: [AdminUsersService, AdminItemsService, AdminDashboardService, AdminReportsService],
 })
 export class AdminModule {}

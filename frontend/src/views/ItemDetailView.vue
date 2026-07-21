@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchItem, collectItem, toggleVote, type Item } from '@/services/items'
+import { fetchItem, collectItem, toggleVote, reportItem, type Item, type ReportType } from '@/services/items'
 import { reserveItem, cancelReservation } from '@/services/reservations'
 import { fetchComments, createComment, deleteComment, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
@@ -27,12 +27,27 @@ const commentContent = ref('')
 const postingComment = ref(false)
 const commentError = ref<string | null>(null)
 
+const REPORT_TYPES: { value: ReportType; label: string }[] = [
+  { value: 'ALREADY_COLLECTED', label: 'Déjà récupéré / plus disponible' },
+  { value: 'FAKE', label: 'Faux Monstre (photo trompeuse / objet absent)' },
+  { value: 'WRONG_LOCATION', label: 'Mauvaise localisation' },
+  { value: 'DUPLICATE', label: 'Doublon (déjà publié)' },
+  { value: 'INAPPROPRIATE', label: 'Contenu inapproprié' },
+]
+const showReportForm = ref(false)
+const reportType = ref<ReportType>('ALREADY_COLLECTED')
+const reportReason = ref('')
+const reporting = ref(false)
+const reportError = ref<string | null>(null)
+const reported = ref(false)
+
 let timer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   try {
     item.value = await fetchItem(String(route.params.id))
     voted.value = item.value.hasVoted
+    reported.value = item.value.hasReported
     comments.value = await fetchComments(String(route.params.id))
   } catch {
     error.value = 'Ce Monstre est introuvable.'
@@ -144,6 +159,26 @@ async function handleVote() {
   }
 }
 
+async function handleReport() {
+  if (!item.value) return
+  reporting.value = true
+  reportError.value = null
+  try {
+    await reportItem(item.value.id, { type: reportType.value, reason: reportReason.value.trim() || undefined })
+    reported.value = true
+    showReportForm.value = false
+  } catch (e: any) {
+    if (e.response?.status === 409) {
+      reported.value = true
+      showReportForm.value = false
+    } else {
+      reportError.value = e.response?.data?.error?.message ?? 'Impossible d\'envoyer ce signalement.'
+    }
+  } finally {
+    reporting.value = false
+  }
+}
+
 async function handlePostComment() {
   if (!item.value || !commentContent.value.trim()) return
   postingComment.value = true
@@ -226,6 +261,48 @@ async function handleDeleteComment(comment: Comment) {
       </p>
 
       <p class="text-sm text-gray-500 dark:text-gray-400">Publié par {{ item.user.name }}</p>
+
+      <!-- Signalement -->
+      <div v-if="auth.isAuthenticated && !isMyItem" class="text-sm">
+        <p v-if="reported" class="text-gray-400 dark:text-gray-500">Signalement envoyé, merci.</p>
+        <button
+          v-else-if="!showReportForm"
+          type="button"
+          class="text-gray-400 underline hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+          @click="showReportForm = true"
+        >
+          Signaler ce Monstre
+        </button>
+
+        <form v-else class="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-800" @submit.prevent="handleReport">
+          <select
+            v-model="reportType"
+            class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+          >
+            <option v-for="option in REPORT_TYPES" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+          <textarea
+            v-model="reportReason"
+            maxlength="500"
+            rows="2"
+            placeholder="Précision (optionnel)"
+            class="rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900"
+          ></textarea>
+          <p v-if="reportError" class="text-xs text-red-600 dark:text-red-400">{{ reportError }}</p>
+          <div class="flex gap-2">
+            <button
+              type="submit"
+              :disabled="reporting"
+              class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+            >
+              {{ reporting ? 'Envoi…' : 'Envoyer le signalement' }}
+            </button>
+            <button type="button" class="text-xs text-gray-500 dark:text-gray-400" @click="showReportForm = false">
+              Annuler
+            </button>
+          </div>
+        </form>
+      </div>
 
       <!-- Réservation -->
       <div v-if="item.status === 'RESERVED' && item.activeReservation" class="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">

@@ -20,6 +20,7 @@ import { VotesModule } from './votes/votes.module';
 import { CommentsModule } from './comments/comments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     ReservationsModule,
     VotesModule,
     CommentsModule,
+    ReportsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

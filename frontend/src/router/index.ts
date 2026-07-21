@@ -37,20 +37,46 @@ export const router = createRouter({
     {
       path: '/admin',
       component: () => import('@/views/admin/AdminLayout.vue'),
-      meta: { requiresAdmin: true },
+      // Porte d'entrée large (MODERATOR/ADMIN/SUPER_ADMIN) : les sous-routes
+      // réservées ADMIN/SUPER_ADMIN ajoutent `requiresAdmin` en plus (§5 —
+      // le Modérateur ne gère que les signalements, pas utilisateurs/
+      // Monstres/catégories/paramètres).
+      meta: { requiresModerator: true },
       children: [
-        { path: '', name: 'admin-dashboard', component: () => import('@/views/admin/AdminDashboardView.vue') },
-        { path: 'utilisateurs', name: 'admin-users', component: () => import('@/views/admin/AdminUsersView.vue') },
-        { path: 'monstres', name: 'admin-items', component: () => import('@/views/admin/AdminItemsView.vue') },
+        {
+          path: '',
+          name: 'admin-dashboard',
+          component: () => import('@/views/admin/AdminDashboardView.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
+          path: 'utilisateurs',
+          name: 'admin-users',
+          component: () => import('@/views/admin/AdminUsersView.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
+          path: 'monstres',
+          name: 'admin-items',
+          component: () => import('@/views/admin/AdminItemsView.vue'),
+          meta: { requiresAdmin: true },
+        },
         {
           path: 'categories',
           name: 'admin-categories',
           component: () => import('@/views/admin/AdminCategoriesView.vue'),
+          meta: { requiresAdmin: true },
         },
         {
           path: 'parametres',
           name: 'admin-settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
+          path: 'signalements',
+          name: 'admin-reports',
+          component: () => import('@/views/admin/AdminReportsView.vue'),
         },
       ],
     },
@@ -65,8 +91,11 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { path: '/connexion', query: { redirect: to.fullPath } }
   }
-  if (to.meta.requiresAdmin && !auth.isAdmin) {
+  if (to.meta.requiresModerator && !auth.isModerator) {
     return { path: '/' }
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { path: '/admin/signalements' }
   }
   return true
 })
