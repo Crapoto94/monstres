@@ -15,10 +15,29 @@ export interface Item {
   longitude: number
   address: string | null
   status: string
+  votesScore: number
+  distance: number | null
   createdAt: string
   photos: ItemPhoto[]
   category: { id: string; name: string; icon: string | null } | null
   user: { id: string; name: string; avatar: string | null }
+}
+
+export interface ItemsPage {
+  items: Item[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export interface FindItemsParams {
+  lat?: number
+  lng?: number
+  radius?: number
+  categoryId?: string
+  page?: number
+  pageSize?: number
 }
 
 export interface CreateItemPayload {
@@ -49,5 +68,10 @@ export async function createItem(payload: CreateItemPayload) {
 
 export async function fetchItem(id: string) {
   const { data } = await api.get<ApiSuccess<Item>>(`/items/${id}`)
+  return data.data
+}
+
+export async function fetchItems(params: FindItemsParams) {
+  const { data } = await api.get<ApiSuccess<ItemsPage>>('/items', { params })
   return data.data
 }

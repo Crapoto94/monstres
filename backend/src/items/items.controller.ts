@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { CreateItemDto } from './dto/create-item.dto';
+import { FindItemsQueryDto } from './dto/find-items-query.dto';
 import { ItemsService } from './items.service';
 
 // Plafond technique du transport (multer) ; la limite métier réelle
@@ -26,6 +27,12 @@ export class ItemsController {
     @UploadedFiles() files: Express.Multer.File[],
   ) {
     return this.itemsService.create(user.id, dto, files);
+  }
+
+  @Get()
+  @UseGuards(OptionalJwtAuthGuard)
+  findAll(@Query() query: FindItemsQueryDto, @CurrentUser() user: AuthenticatedUser | null) {
+    return this.itemsService.findMany(query, user);
   }
 
   @Get(':id')

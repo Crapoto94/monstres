@@ -9,9 +9,9 @@
 
 Dernière mise à jour : **2026-07-21**
 
-**Statut : Phases 0 (Initialisation), 1 (Authentification) et 2 (Création
-des Monstres) terminées et validées.** Prochaine étape :
-**Phase 3 — Consultation** (voir détail plus bas).
+**Statut : Phases 0 (Initialisation), 1 (Authentification), 2 (Création des
+Monstres) et 3 (Consultation) terminées et validées.** Prochaine étape :
+**Phase 4 — Réservation** (voir détail plus bas).
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -386,14 +386,93 @@ complet (photos, coordonnées, propriétaire).
 
 ---
 
+## Phase 3 — Consultation : terminée et validée
+
+Objectif (§17) : liste des Monstres proches (obligatoire), carte
+(optionnelle). Tri : distance → popularité → date. Tests : classement,
+pagination, filtres.
+
+### Décisions prises pendant cette session
+- **Score de classement composite, pondérable via `settings`.** Le §8 ne
+  donne aucun chiffre — juste « score interne combinant popularité +
+  distance + date + fiabilité du créateur » et un exemple montrant qu'un
+  Monstre populaire à 3 km peut passer devant un Monstre banal à 100 m (donc
+  *pas* un simple tri multi-colonnes strict distance→popularité→date, qui ne
+  permettrait jamais ça). Formule retenue :
+  `score = wDistance·(1/(1+distanceKm)) + wPopularity·(votesScore/(votesScore+5)) + wRecency·(1/(1+ageJours)) + wTrust·(trustScore/100)`,
+  poids par défaut `0.5 / 0.25 / 0.15 / 0.1` (somme 1, distance dominante),
+  stockés dans `settings` (`ranking_weight_*`) — modifiables sans
+  redéploiement, conforme à la règle d'or. Départage à score égal : distance
+  croissante → votes décroissants → date décroissante (repropose la
+  « priorité de tri par défaut » du §8 comme tie-break).
+  **Popularité et fiabilité sont actuellement neutres** (`votesScore` et
+  `trustScore` valent toujours 0/100 pour tout le monde tant que les Phases
+  6/10 ne sont pas construites) — le classement se comporte donc pour
+  l'instant comme distance → date, ce qui est cohérent et s'activera de
+  lui-même plus tard sans retouche.
+- **Calculé à la volée, en mémoire, pas en SQL.** Conforme à la décision
+  v1.1 du cahier des charges (§8 : « pas de colonne de ranking
+  matérialisée »). Comme SQLite n'a pas PostGIS, la distance (Haversine) et
+  le score sont calculés en JS après avoir chargé tous les Monstres
+  `AVAILABLE` (+ filtre catégorie éventuel), puis triés et paginés en
+  mémoire. Volume attendu du V1 largement compatible ; à revisiter (requête
+  SQL + PostGIS) si le nombre de Monstres actifs devient important.
+- **Distance calculée sur les coordonnées déjà arrondies pour un visiteur
+  non connecté**, pas sur les coordonnées réelles, pour rester cohérente
+  avec la position que ce visiteur voit par ailleurs (règle §9, déjà
+  implémentée en Phase 2 via `OptionalJwtAuthGuard`).
+- **Filtres implémentés : catégorie, position+rayon (km).** Le §8 liste
+  aussi « date » et « popularité » comme filtres — ce sont ici des facteurs
+  du score de classement plutôt que des filtres explicites (ex. « items des
+  7 derniers jours », « minimum N votes »). Reporté : pas nécessaire pour
+  prouver la valeur de la Phase 3, ajoutable plus tard sans revoir
+  l'architecture (mêmes query params, juste plus de conditions `where`).
+  Le statut est fixé à `AVAILABLE` (pas un paramètre) : c'est la définition
+  même de « recherche active » selon le §6.1, pas une règle métier réglable.
+- **`GET /items/:id` existant (Phase 2) réutilisé pour une vraie page de
+  détail** (`/monstres/:id`, `ItemDetailView.vue`) — nécessaire pour que la
+  liste et la carte mènent quelque part. Pas dans le plan initial de
+  Phase 2, mais fait partie de « Consultation » par nature.
+- **Carte optionnelle construite quand même** (§8 le permet explicitement
+  en V1) : simple, réutilise le pattern Leaflet + correctif d'icônes déjà
+  fait en Phase 2. Marqueurs cliquables → page de détail.
+
+### Fait
+- [x] `backend/scripts/seed.js` : 4 nouveaux settings `ranking_weight_*`.
+- [x] `ItemsService.findMany` : filtre `categoryId`/`radius`, calcul
+      distance Haversine, score composite, tri, pagination
+      (`page`/`pageSize`, max 50). `GET /items` (`OptionalJwtAuthGuard`).
+      DTO `FindItemsQueryDto` (lat/lng/radius/categoryId/page/pageSize,
+      coercition `class-transformer`).
+- [x] Frontend : `HomeView.vue` reconstruite en vraie liste (géolocalisation
+      optionnelle, filtre catégorie, cartes avec miniature/titre/distance/
+      votes/ancienneté, pagination précédent/suivant). `ItemDetailView.vue`
+      (nouvelle page, route `/monstres/:id`). `MapView.vue` reconstruite
+      (carte Leaflet, marqueurs cliquables vers le détail).
+      `src/utils/time.ts` (formatage relatif « il y a X min/h/j »).
+- [x] Testé de bout en bout : curl (tri par distance vérifié en plaçant un
+      point près de la Tour Eiffel — l'item le plus proche remonte bien en
+      premier ; pagination `page`/`pageSize` vérifiée ; filtre catégorie
+      vérifié, y compris catégorie inexistante → liste vide) ; navigateur
+      réel (liste, filtre catégorie, navigation vers le détail, règle vie
+      privée §9 reconfirmée sans cookie via `fetch` direct, carte avec les 3
+      marqueurs de test). Zéro erreur console.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Filtres explicites « date » et « popularité minimum » (actuellement
+      seulement des facteurs de classement, voir décisions ci-dessus).
+- [ ] Tests automatisés (Jest) pour le classement/la pagination — validation
+      manuelle uniquement cette session.
+- [ ] Passage à une requête SQL/PostGIS si le volume de données le justifie
+      (actuellement : chargement complet en mémoire puis tri JS).
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 3 — Consultation.** Liste triée (distance → popularité →
-      date), carte Leaflet optionnelle. Algorithme de classement calculé à
-      la volée (§8).
 - [ ] **Phase 4 — Réservation.** `ReservationService`, job planifié
       (`@nestjs/schedule`, toutes les minutes) pour expirer les réservations
       `RESERVED → AVAILABLE`.
@@ -431,8 +510,8 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0, 1 et 2 sont terminées. Continuer sur la première case non
-   cochée de **Phase 3 — Consultation** (section « Phases suivantes »
+4. Les Phases 0, 1, 2 et 3 sont terminées. Continuer sur la première case
+   non cochée de **Phase 4 — Réservation** (section « Phases suivantes »
    ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
    phases à la fois (§0). Pour toute nouvelle migration Prisma en session
    non interactive, voir le workaround documenté dans `backend/README.md`

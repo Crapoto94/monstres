@@ -6,6 +6,7 @@ export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomeView },
+    { path: '/monstres/:id', name: 'item-detail', component: () => import('@/views/ItemDetailView.vue') },
     { path: '/carte', name: 'map', component: () => import('@/views/MapView.vue') },
     {
       path: '/ajouter',

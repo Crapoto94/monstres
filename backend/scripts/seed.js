@@ -22,6 +22,15 @@ const DEFAULT_SETTINGS = [
   { key: 'points_vote_utile', value: '1', type: 'INTEGER' },
   { key: 'email_verification_token_ttl_hours', value: '24', type: 'INTEGER' },
   { key: 'password_reset_token_ttl_minutes', value: '60', type: 'INTEGER' },
+  // Poids du score de classement (§8) — decision de session, non chiffrés
+  // dans le cahier des charges. Somme = 1. Distance dominante par défaut
+  // ("priorité de tri par défaut : distance → popularité → date"), les
+  // autres facteurs peuvent la faire remonter (ex. Monstre populaire à 3km
+  // devant un Monstre banal à 100m).
+  { key: 'ranking_weight_distance', value: '0.5', type: 'FLOAT' },
+  { key: 'ranking_weight_popularity', value: '0.25', type: 'FLOAT' },
+  { key: 'ranking_weight_recency', value: '0.15', type: 'FLOAT' },
+  { key: 'ranking_weight_trust', value: '0.1', type: 'FLOAT' },
 ];
 
 const DEFAULT_CATEGORIES = [
