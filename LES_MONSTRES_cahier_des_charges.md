@@ -400,6 +400,15 @@ partager un parent commun pour que le **cookie JWT httpOnly** fonctionne
 > Développement : en local (`localhost`), pas de sous-domaine, pas de Docker —
 > backend et frontend tournent en processus Node natifs sur des ports distincts.
 
+> **Décision V1 (2026-07-21) : domaine unique en attendant les sous-domaines.**
+> Seul `monstres.fbc.fr` est configuré en DNS/reverse-proxy externe pour
+> l'instant. API et photos sont donc exposées sur `monstres.fbc.fr/api/` et
+> `monstres.fbc.fr/uploads/` (voir `nginx/nginx.conf`) plutôt que sur
+> `api.` / `img.` — simplification temporaire, pas un changement du modèle
+> cible ci-dessus. Repasser aux sous-domaines dès qu'ils sont ajoutés en DNS
+> ne demande qu'un changement de `nginx/nginx.conf` et des variables d'env
+> (`VITE_API_URL`, `IMG_BASE_URL`), rien côté backend/frontend.
+
 **Configuration auth associée** (prod) :
 ```
 APP_URL=https://api.monstres.fbc.fr

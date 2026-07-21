@@ -72,11 +72,15 @@ cp .env.example .env   # renseigner les secrets et l'URL de production
 docker compose up -d --build
 ```
 
-Voir §12.2 du cahier des charges pour le détail des sous-domaines
-(`monstres.fbc.fr`, `api.monstres.fbc.fr`, `img.monstres.fbc.fr`) et la
-configuration DNS/Brevo. **TLS n'est pas géré par `nginx/nginx.conf`** — à
-terminer en amont (certbot ou reverse proxy déjà présent sur le Proxmox)
-avant toute mise en production.
+**Domaine unique en V1** : seul `monstres.fbc.fr` doit être configuré en DNS
+et dans le reverse-proxy externe qui gère le HTTPS (celui qui termine déjà
+le TLS pour `monstres.fbc.fr`, pas `nginx/nginx.conf` qui ne fait que du
+HTTP interne). L'API est exposée sur `/api/` et les photos sur `/uploads/`
+du même domaine — pas besoin de `api.monstres.fbc.fr` ni
+`img.monstres.fbc.fr` pour l'instant (voir PROGRESS.md pour le détail et
+comment revenir aux sous-domaines plus tard si besoin). Voir §12.2 du
+cahier des charges pour l'architecture complète à sous-domaines et la
+configuration DNS/Brevo.
 
 ### Mettre à jour un déploiement existant
 ```bash
@@ -88,6 +92,12 @@ Prisma s'appliquent automatiquement au démarrage du backend (voir
 `backend/Dockerfile`). Si le build semble utiliser un vieux cache après un
 correctif (fichier modifié mais erreur qui persiste), forcer avec
 `docker compose build --no-cache` puis `docker compose up -d`.
+
+⚠️ **`.env` n'est pas versionné** : un `git pull` ne met jamais à jour tes
+valeurs existantes. Si `.env.example` change (ex. passage aux URLs sur
+domaine unique), reporte les nouvelles valeurs à la main dans ton `.env`
+avant de relancer `docker compose up -d --build` — sinon l'ancienne
+configuration (baked au build pour `VITE_API_URL`) continue d'être utilisée.
 
 **Premier déploiement uniquement** — les catégories et paramètres par
 défaut (§6.7, §12.10) ne sont pas seedés automatiquement au démarrage :

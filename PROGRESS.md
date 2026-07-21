@@ -7,12 +7,14 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-21** (Phase 5 terminée)
+Dernière mise à jour : **2026-07-21** (Phase 6 backend fait, frontend en cours ;
+premier déploiement Proxmox corrigé — domaine unique, voir plus bas)
 
-**Statut : Phases 0 (Initialisation), 1 (Authentification), 2 (Création des
-Monstres), 3 (Consultation), 4 (Réservation) et 5 (Validation de récupération)
-terminées et validées.** Prochaine étape :
-**Phase 6 — Système communautaire** (voir détail plus bas).
+**Statut : Phases 0 à 5 terminées et validées. Phase 6 (communautaire) :
+backend fait et testé, UI frontend (votes/commentaires) restant à faire.**
+Le projet a été déployé une première fois en production
+(`https://monstres.fbc.fr`) — un correctif de routage (domaine unique) a été
+nécessaire, voir la section dédiée plus bas.
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -615,13 +617,116 @@ que le `Dockerfile` exécute. À confirmer par l'utilisateur au prochain
 
 ---
 
+## Correctif : domaine unique en production (post-Phase 5)
+
+Premier déploiement réel sur le Proxmox de l'utilisateur : l'inscription
+échouait (`AxiosError: Network Error` sur `api.monstres.fbc.fr` et
+`img.monstres.fbc.fr` — échec de connexion pur, pas un 404/500/CORS).
+Diagnostic fait en testant directement `https://monstres.fbc.fr/` avec le
+navigateur (site réel de l'utilisateur, testé avec son accord).
+
+**Cause** : seul `monstres.fbc.fr` est configuré en DNS + reverse-proxy
+externe (celui qui termine le HTTPS, en amont de `nginx/nginx.conf`).
+`api.` et `img.` n'existent nulle part en dehors du cahier des charges —
+donc `Failed to fetch` inconditionnel depuis le navigateur, quelle que soit
+la config Docker interne (vérifiée correcte : `VITE_API_URL` était bien
+baked à `https://api.monstres.fbc.fr/api/v1` dans le bundle).
+
+**Décision : domaine unique en V1**, plutôt que de demander à l'utilisateur
+d'ajouter deux sous-domaines DNS + entrées de reverse-proxy externe dans
+l'immédiat. `nginx/nginx.conf` route maintenant tout sur `monstres.fbc.fr` :
+`/api/` → backend, `/uploads/` → storage (préfixe retiré), le reste →
+frontend. Variables changées dans `.env.example` (racine) :
+`VITE_API_URL`, `IMG_BASE_URL`, `APP_URL`, `JWT_COOKIE_DOMAIN` pointent
+toutes vers `monstres.fbc.fr` au lieu des sous-domaines. Annoté dans le
+cahier des charges §12.2 comme simplification temporaire, réversible sans
+toucher au backend/frontend (juste `nginx.conf` + variables d'env) si
+`api.`/`img.` sont ajoutés en DNS plus tard.
+
+⚠️ **`.env` n'est pas versionné** : les déploiements existants doivent
+reporter ces nouvelles valeurs à la main dans leur `.env` avant de relancer
+`docker compose up -d --build` — un `git pull` seul ne suffit pas puisque
+`VITE_API_URL` est figé au build de l'image frontend.
+
+---
+
+## Phase 6 — Système communautaire : backend terminé et testé, frontend en cours
+
+Objectif (§17) : `votes` (type unique `interesting`), `comments`,
+`ScoringService` + `scoring_events`.
+
+### Décisions prises pendant cette session
+- **Ambiguïté « Récupération » vs « Validation » (§6.8) non résolue,
+  assumée.** Le barème liste 2 lignes distinctes (`points_recuperation`=10,
+  `points_validation`=5) mais un seul événement nommé
+  (`USER_COLLECTED_ITEM`) et une seule action dans mon implémentation de la
+  Phase 5 (le `collect()` d'un item = récupération ET validation en un seul
+  geste, conforme au §6.3 qui ne décrit qu'une seule étape). **Décision** :
+  seul `points_recuperation` (10 pts) est attribué au collecteur lors du
+  `collect()`. `points_validation` reste défini dans `settings` mais
+  n'est câblé sur aucune action pour l'instant — pas d'action distincte
+  identifiable dans le cahier des charges à laquelle le rattacher. À
+  clarifier avec le porteur produit si une vraie distinction existe.
+- **Vote = bascule (toggle), pas un like permanent.**
+  `POST /items/:id/vote` crée le vote s'il n'existe pas, le supprime s'il
+  existe déjà (contrainte unique `itemId+userId+type` du schéma Phase 0).
+  Auto-vote interdit (`BadRequestException` si `item.userId === user.id`).
+- **Points de vote non repris au retrait.** Le propriétaire reçoit
+  `points_vote_utile` (1 pt) à la création du vote ; si le votant retire son
+  vote, on ne déduit pas les points déjà accordés — un `scoring_event` est
+  un fait acquis (historique), pas un compteur live. `item.votesScore`
+  (dénormalisé, sert au classement §8), lui, suit bien le vote en temps réel
+  (incrémenté/décrémenté à chaque toggle).
+  **Limite connue acceptée pour le V1** : un utilisateur peut voter/retirer
+  en boucle sur le même item pour faire gagner des points répétés au
+  propriétaire (chaque nouveau vote recrée un `scoring_event`). Pas de
+  garde-fou anti-abus construit ici — relève de la modération/`trust_score`
+  (Phase 10), pas de la Phase 6.
+- **`ScoringService` générique et transactionnel** (`src/scoring/`) :
+  `award(userId, itemId, type, points)` crée le `scoring_event` ET
+  incrémente `User.score` dans la même transaction Prisma. Câblé sur :
+  création d'Item (`USER_CREATED_ITEM`, Phase 2, déférée jusqu'ici comme
+  documenté) et récupération (`USER_COLLECTED_ITEM`, Phase 5, idem). Les
+  deux étaient déjà prévues pour ce branchement sans toucher au reste du code.
+- **Commentaires : suppression par l'auteur ou un admin/super admin**
+  (`RolesGuard` pas nécessaire ici, simple check de rôle dans le service —
+  suffisant pour un seul usage, pas besoin du guard générique). Lecture
+  publique (`GET /items/:id/comments`, pas de guard), écriture connectée
+  uniquement (§6.6 : « Ne peut pas... commenter » pour le visiteur).
+  Pas de scoring lié aux commentaires (absent du barème §6.8).
+
+### Fait
+- [x] `src/scoring/` : `ScoringService` (`ScoringModule` global). Câblé dans
+      `ItemsService.create()` et `ItemsService.collect()`.
+- [x] `src/votes/` : `VotesService.toggle()`, `VotesController`
+      (`POST /items/:id/vote`, `JwtAuthGuard`). Anti-auto-vote,
+      `item.votesScore` synchronisé, points au propriétaire.
+- [x] `src/comments/` : `CommentsService`/`CommentsController`
+      (`GET/POST /items/:id/comments`, `DELETE /items/:id/comments/:commentId`).
+      DTO `CreateCommentDto` (1-500 caractères).
+- [x] Testé de bout en bout en curl : vote → score propriétaire +1 → un-vote
+      → auto-vote refusé (400) → commentaire créé → liste publique sans
+      cookie → suppression par un admin non-auteur (autorisée).
+- [x] Build + typecheck backend sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] **UI frontend** (bouton voter avec compteur, liste + formulaire de
+      commentaires sur `ItemDetailView.vue`) — backend prêt, pas encore
+      branché côté Vue. Prochaine étape immédiate.
+- [ ] Affichage du score/des badges sur le profil (`ProfileView.vue`
+      affiche déjà `score` brut depuis la Phase 1, pas de mise en forme
+      dédiée « scoring » pour l'instant).
+- [ ] Tests automatisés (Jest) — validation manuelle (curl) uniquement.
+- [ ] Clarification du barème Récupération/Validation avec le porteur
+      produit (voir décision ci-dessus).
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 6 — Communautaire.** `votes` (type unique `interesting`),
-      `comments`, `ScoringService` + `scoring_events`.
 - [ ] **Phase 7 — Notifications.** Email uniquement via Brevo,
       `NotificationService`, table `notifications`.
 - [ ] **Phase 8 — Abonnements géographiques.** Table `subscriptions`
