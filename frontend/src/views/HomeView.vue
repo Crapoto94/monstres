@@ -116,7 +116,15 @@ function coverPhoto(item: Item) {
             alt=""
           />
           <div class="min-w-0 flex-1">
-            <p class="truncate font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
+            <p class="flex items-center gap-2">
+              <span class="truncate font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</span>
+              <span
+                v-if="item.status === 'RESERVED'"
+                class="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+              >
+                Réservé
+              </span>
+            </p>
             <p class="text-xs text-gray-500 dark:text-gray-400">
               <span v-if="item.distance !== null">{{ item.distance }} km · </span>
               <span>{{ item.votesScore }} vote{{ item.votesScore > 1 ? 's' : '' }} · </span>

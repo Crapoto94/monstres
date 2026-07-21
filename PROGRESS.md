@@ -784,6 +784,29 @@ Documenté dans `backend/README.md`.
 
 ---
 
+## Correctif : Monstres réservés invisibles dans la liste (post-Phase 6)
+
+Signalé par l'utilisateur en testant la prod : `GET /items` filtrait
+`status: 'AVAILABLE'` uniquement, donc un Monstre réservé disparaissait
+complètement de l'accueil et de la carte pendant sa réservation. **Bug
+réel, pas juste une préférence** — le §6.1 du cahier des charges marque
+explicitement `RESERVED` comme « Visible » au même titre que `AVAILABLE`
+(« Réservé par pseudo — Expire dans X minutes » doit être vu de tous).
+
+**Correctif** : `ItemsService.findMany` filtre maintenant
+`status: { in: ['AVAILABLE', 'RESERVED'] } }`. `COLLECTED`,
+`PENDING_REVIEW`, `HIDDEN`, `ARCHIVED` restent exclus (non couverts par
+« Visible » dans le tableau du §6.1). Badge "Réservé" ajouté dans les
+cartes de la liste (`HomeView.vue`) pour que le statut soit visible sans
+cliquer sur le Monstre — le détail complet (« Réservé par X — expire dans
+Y ») reste sur `ItemDetailView.vue` (déjà fait en Phase 4).
+
+Testé : réservation créée via l'API → apparaît bien dans `GET /items` avec
+`status: "RESERVED"` → annulée après test pour ne pas polluer les données
+de démo.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
