@@ -7,11 +7,11 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-21**
+Dernière mise à jour : **2026-07-21** (Phase 4 terminée)
 
 **Statut : Phases 0 (Initialisation), 1 (Authentification), 2 (Création des
-Monstres) et 3 (Consultation) terminées et validées.** Prochaine étape :
-**Phase 4 — Réservation** (voir détail plus bas).
+Monstres), 3 (Consultation) et 4 (Réservation) terminées et validées.**
+Prochaine étape : **Phase 5 — Validation de récupération** (voir détail plus bas).
 
 Comptes de test locaux existants dans `backend/dev.db` (non versionné) :
 `marc@fbc.fr` (ADMIN, créé par l'utilisateur) et `admin@monstres.local`
@@ -468,14 +468,67 @@ pagination, filtres.
 
 ---
 
+## Phase 4 — Réservation : terminée et validée
+
+Objectif (§17) : réserver, afficher, expiration automatique. Table
+`reservations`. Job chaque minute : expirations `RESERVED → AVAILABLE`.
+Tests : réservation, expiration, nouvelle disponibilité.
+
+### Décisions prises pendant cette session
+- **Un seul endpoint de réservation** (`POST /reservations` avec `itemId` dans
+  le body) au lieu de `POST /items/:id/reserve` : plus cohérent avec les
+  conventions REST (la ressource racine est `reservations`, pas une action
+  imbriquée dans `items`).
+- **Annulation volontaire** ajoutée (`POST /reservations/:id/cancel`) :
+  le réservateur peut annuler sa réservation. L'Item repasse `AVAILABLE`.
+  Le cahier des charges §6.2 ne le prévoyait pas explicitement mais c'est
+  un comportement UX attendu (évite d'attendre l'expiration).
+- **`activeReservation` ajouté aux réponses `GET /items/:id` et `GET /items`** :
+  le frontend a besoin de savoir si l'Item est réservé, par qui, et quand
+  ça expire — pas besoin d'un endpoint séparé. Le `findMany` (liste) inclut
+  aussi cette donnée pour pouvoir afficher l'état de réservation dans les
+  cartes de la homepage.
+- **Job d'expiration** : `@nestjs/schedule` avec `@Cron(EVERY_MINUTE)`,
+  conforme au §6.2. Parcourt les réservations `ACTIVE` dont `expiresAt ≤ now`,
+  les passe en `EXPIRED` et repasse l'Item en `AVAILABLE`. Pas de notification
+  d'expiration (à ajouter en Phase 7).
+- **Pas de scoring à la réservation** : conforme à la décision de Phase 2
+  (scoring = Phase 6).
+
+### Fait
+- [x] `backend/src/reservations/` : `ReservationsService` (reserve, cancel,
+      findActiveForItem, handleReservationExpirations), `ReservationsController`
+      (`POST /reservations`, `POST /reservations/:id/cancel`), DTO
+      `CreateReservationDto`, `ReservationsModule`.
+- [x] `backend/src/app.module.ts` : ajout de `ReservationsModule`.
+- [x] `backend/src/items/items.service.ts` : `includeRelations()` inclut
+      la réservation active (`ReservationStatus.ACTIVE`) ; `serialize()` expose
+      `activeReservation` dans les réponses.
+- [x] Frontend : `src/services/reservations.ts` (`reserveItem`, `cancelReservation`).
+      `ItemDetailView.vue` : bouton « Réserver ce Monstre » (utilisateur
+      connecté, Item AVAILABLE, pas son propre Monstre), affichage du statut
+      « Réservé par X — Expire dans Y min Z s » avec compte à rebours live,
+      bouton « Annuler ma réservation » (uniquement pour le réservateur).
+      Interface `Item` étendue avec `activeReservation`.
+- [x] Testé de bout en bout (script Node.js) : inscription 2 utilisateurs,
+      création Monstre par Bob → AVAILABLE, réservation par Alice → RESERVED
+      avec `activeReservation` dans le détail, double réservation refusée,
+      réservation de son propre Monstre refusée, réservation anonyme → 401,
+      annulation par Alice → AVAILABLE.
+- [x] Build backend (`npm run build`) et lint (`eslint`) sans erreur.
+      Typecheck frontend (`vue-tsc --noEmit`) sans erreur.
+
+### Restant / reporté (hors scope de cette session)
+- [ ] Notification d'expiration au réservateur (Phase 7 — Brevo).
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement cette session.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
 et contenu résumé :
 
-- [ ] **Phase 4 — Réservation.** `ReservationService`, job planifié
-      (`@nestjs/schedule`, toutes les minutes) pour expirer les réservations
-      `RESERVED → AVAILABLE`.
 - [ ] **Phase 5 — Validation de récupération.** Photo « lieu vide »,
       `RESERVED → COLLECTED`.
 - [ ] **Phase 6 — Communautaire.** `votes` (type unique `interesting`),
@@ -510,11 +563,11 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0, 1, 2 et 3 sont terminées. Continuer sur la première case
-   non cochée de **Phase 4 — Réservation** (section « Phases suivantes »
-   ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser plusieurs
-   phases à la fois (§0). Pour toute nouvelle migration Prisma en session
-   non interactive, voir le workaround documenté dans `backend/README.md`
+4. Les Phases 0, 1, 2, 3 et 4 sont terminées. Continuer sur la première case
+   non cochée de **Phase 5 — Validation de récupération** (section « Phases
+   suivantes » ci-dessus), puis enchaîner dans l'ordre. Ne pas paralléliser
+   plusieurs phases à la fois (§0). Pour toute nouvelle migration Prisma en
+   session non interactive, voir le workaround documenté dans `backend/README.md`
    (section Base de données).
 5. Pour tester une création de Monstre en local sans repasser par
    l'inscription : se connecter avec `marc@fbc.fr` ou `admin@monstres.local`
