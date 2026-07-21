@@ -572,6 +572,49 @@ changement de statut `RESERVED → COLLECTED`.
 
 ---
 
+## Correctif : build Docker du frontend cassé (post-Phase 5)
+
+L'utilisateur a tenté un premier déploiement Docker réel sur son Proxmox
+après la Phase 5 (faite par une autre IA — opencode — en parallèle de cette
+conversation). Le build échouait :
+```
+tsconfig.app.json(7,5): error TS5101: Option 'baseUrl' is deprecated and
+will stop functioning in TypeScript 7.0.
+```
+
+**Cause** : `frontend/tsconfig.app.json` avait `"baseUrl": "."` (ajouté en
+Phase 0 pour l'alias `@`), option dépréciée que `vue-tsc` (v6) traite comme
+une erreur bloquante. **Ni moi ni opencode ne l'avions détecté avant** parce
+que les deux sessions ont validé le frontend avec `vue-tsc --noEmit`, alors
+que le script `npm run build` réel (celui que Docker exécute) lance
+`vue-tsc -b` (mode build/projet composite) — **`-b` applique des
+vérifications plus strictes que `--noEmit` et ne donne pas les mêmes
+erreurs.** Reproduit en local avec `npx vue-tsc -b`.
+
+**Correctif** : suppression de `baseUrl` dans `tsconfig.app.json`. Le
+`moduleResolution: "bundler"` (hérité de `@vue/tsconfig`) résout `paths`
+sans avoir besoin de `baseUrl` — l'alias `@/*` continue de fonctionner
+(vérifié : `npm run build` complet réussit, `dist/` généré correctement).
+
+En corrigeant, deux petits écarts de types ont aussi été trouvés côté
+frontend (masqués par le même problème `--noEmit` vs `-b`) : `ItemPhoto`
+n'avait pas de champ `type`, `Item` n'avait pas de champ `collectedAt` —
+alors que le backend les renvoie bien depuis les Phases 4/5. Corrigés dans
+`frontend/src/services/items.ts`.
+
+**Leçon pour toute session future (IA ou humaine) : valider le frontend
+avec la vraie commande `npm run build`, jamais seulement
+`vue-tsc --noEmit`** — les deux peuvent diverger, et c'est justement
+`npm run build` que Docker exécute.
+
+⚠️ **Ce correctif n'a pas pu être testé avec un vrai moteur Docker** (absent
+de cette machine de dev, voir décisions Phase 0) — seule la commande
+`npm run build` a été reproduite et validée en local, à l'identique de ce
+que le `Dockerfile` exécute. À confirmer par l'utilisateur au prochain
+`docker compose up --build`.
+
+---
+
 ## Phases suivantes (non commencées)
 
 Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre

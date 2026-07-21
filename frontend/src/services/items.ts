@@ -2,6 +2,7 @@ import { api, type ApiSuccess } from './api'
 
 export interface ItemPhoto {
   id: string
+  type: 'LISTING' | 'COLLECTION'
   path: string
   thumbnailPath: string | null
   order: number
@@ -18,6 +19,7 @@ export interface Item {
   votesScore: number
   distance: number | null
   createdAt: string
+  collectedAt: string | null
   photos: ItemPhoto[]
   category: { id: string; name: string; icon: string | null } | null
   user: { id: string; name: string; avatar: string | null }
