@@ -17,6 +17,15 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // Sans ceci, le service worker intercepte TOUTES les navigations
+        // (mode "navigate") de l'origine, y compris les redirections OAuth
+        // du backend (ex. /api/v1/auth/facebook/callback) — il leur sert le
+        // shell SPA en cache au lieu de les laisser atteindre le vrai
+        // endpoint backend, qui ne pose alors jamais le cookie de session
+        // ni ne redirige : page blanche après connexion Facebook/Google.
+        navigateFallbackDenylist: [/^\/api\//],
+      },
       manifest: {
         name: 'Les Monstres',
         short_name: 'Monstres',

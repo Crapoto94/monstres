@@ -7,9 +7,9 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.7 — avatar emoji cassé sur
-`/communaute`, et PWA qui restait bloquée sur un ancien build en
-production après déploiement)
+Dernière mise à jour : **2026-07-22** (v0.3.8 — page blanche après
+connexion Facebook/Google : le service worker interceptait la redirection
+OAuth du backend)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -2133,6 +2133,58 @@ actuellement en production doit encore être mise à jour une première fois
 enfin ce nouveau service worker auto-actualisant. Une fois ce déploiement
 fait, les suivants ne devraient plus jamais laisser un visiteur bloqué sur
 une ancienne version.
+
+---
+
+## Page blanche après connexion Facebook/Google (v0.3.8)
+
+L'utilisateur a remonté qu'après une connexion Facebook, l'app restait en
+page blanche sur
+`https://monstres.fbc.fr/api/v1/auth/facebook/callback?code=...&state=%2Fprofil#_=_`
+(le `#_=_` final est un artefact connu du flux Facebook, sans rapport avec
+le bug) — mais qu'un rechargement manuel de cette même page fonctionnait.
+
+### Cause
+Le service worker généré par `vite-plugin-pwa` enregistre par défaut une
+`NavigationRoute` **sans exclusion**, qui intercepte *toute* navigation
+(mode `navigate`) sur l'origine et lui sert le shell SPA précaché
+(`index.html`) — y compris la redirection que Facebook renvoie vers
+`/api/v1/auth/facebook/callback`, qui est une route **backend**, pas une
+route Vue Router. Résultat : le navigateur ne fait jamais vraiment la
+requête réseau vers ce endpoint (le SW répond directement depuis le
+cache), donc `AuthController` ne pose jamais le cookie de session ni ne
+redirige vers `/profil` — Vue Router, qui ne connaît pas cette route,
+affiche une page vide. Vérifié dans `dist/sw.js` avant correctif :
+`registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html")))`
+sans liste d'exclusion.
+
+### Correctif
+`frontend/vite.config.ts` : ajout de
+`workbox: { navigateFallbackDenylist: [/^\/api\//] }` dans la config
+`VitePWA()`. Toute navigation vers `/api/...` est maintenant exclue du
+fallback SPA et atteint réellement le réseau (donc le vrai backend), pour
+Facebook comme pour Google (même mécanisme, même route de callback).
+
+### Testé
+Build de production servi en local (`vite preview`), confirmé via
+`dist/sw.js` généré : `NavigationRoute(createHandlerBoundToURL("index.html"),
+{denylist:[/^\/api\//]})`. Navigation réelle du navigateur vers
+`/api/v1/auth/facebook/callback?...` confirmée comme un vrai aller-retour
+réseau via `performance.getEntriesByType('navigation')`
+(`nextHopProtocol: "http/1.1"`, `transferSize` non nul — une réponse
+servie par le service worker aurait `transferSize: 0`). Avant le
+correctif, le même test aurait été intercepté par le SW sans toucher le
+réseau.
+- [x] Build backend + frontend sans erreur.
+
+### Pourquoi le rechargement manuel semblait "réparer" le problème
+Probablement parce qu'entre-temps l'utilisateur naviguait ailleurs sur le
+site (donc quittait cette URL sans route), se retrouvait malgré tout
+connecté au rechargement suivant d'une page normale (le cookie avait pu
+être posé par un essai antérieur, ou l'utilisateur atterrissait sur une
+page qui, elle, a une route Vue valide). Dans tous les cas, ce n'était pas
+fiable — certains codes d'autorisation Facebook/Google sont à usage
+unique et peuvent expirer après un premier échange raté côté réseau.
 
 ---
 
