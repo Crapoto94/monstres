@@ -258,12 +258,8 @@ async function main() {
   }
 
   // Contenu "Pourquoi les Monstres" (modifiable depuis /admin/parametres)
-  const missionExists = await prisma.setting.findUnique({ where: { key: 'mission_content' } });
-  if (!missionExists) {
-    await prisma.setting.create({
-      data: {
-        key: 'mission_content',
-        value: `<p>Chaque jour, des objets encombrants sont abandonnés dans la rue — meubles, électroménager, livres, jouets… La plupart finissent à la déchetterie, voire en dépôt sauvage, faute d'avoir trouvé un second propriétaire.</p>
+  // Toujours upsert pour injecter la section "Gratuit" manquante
+  const MISSION_HTML = `<p>Chaque jour, des objets encombrants sont abandonnés dans la rue — meubles, électroménager, livres, jouets… La plupart finissent à la déchetterie, voire en dépôt sauvage, faute d'avoir trouvé un second propriétaire.</p>
 <p><strong>Les Monstres</strong> existe pour changer ça. Notre mission : <em>redonner vie aux objets abandonnés</em> en créant un lien direct entre ceux qui les laissent et ceux qui peuvent les récupérer.</p>
 <h2>🌍 Un engagement environnemental</h2>
 <p>Recycler, c'est bien. Réutiliser, c'est mieux. Chaque Monstre récupéré, c'est un objet de moins qui pollue et de moins qu'il faut fabriquer neuf. En participant, tu contribues directement à réduire les déchets et l'empreinte carbone de ta communauté.</p>
@@ -273,11 +269,16 @@ async function main() {
 <p>Plus on est nombreux à signaler et récupérer les Monstres, plus on crée un cercle vertueux. Chaque récupération est un petit pas pour la planète, et un grand pas pour ta communauté. Rejoins-nous — ensemble, on transforme les déchets en opportunités.</p>
 <h2>💰 Gratuit, et ça le restera</h2>
 <p>Les Monstres est entièrement <strong>gratuit</strong> — sans publicité, sans abonnement, sans frais cachés. Pourquoi ? Parce que le projet est <strong>auto-hébergé</strong> : le serveur tourne sur un petit ordinateur chez l'association, pas sur les serveurs d'une grande entreprise tech. Tant que le coût d'exploitation reste faible (électricité + connexion internet), il n'y a aucune raison de mettre un prix.</p>
-<p>Pas de pub, pas de collecte de données pour revendre. L'objectif n'est pas de faire du profit, mais de <strong>créer un service utile</strong> pour les quartiers et la planète. Si un jour les coûts augmentent, on préviendra la communauté en transparence — mais l'idée de base restera toujours la même : un service libre, ouvert et gratuit.</p>`,
-        type: 'JSON',
-      },
+<p>Pas de pub, pas de collecte de données pour revendre. L'objectif n'est pas de faire du profit, mais de <strong>créer un service utile</strong> pour les quartiers et la planète. Si un jour les coûts augmentent, on préviendra la communauté en transparence — mais l'idée de base restera toujours la même : un service libre, ouvert et gratuit.</p>`;
+
+  const missionExists = await prisma.setting.findUnique({ where: { key: 'mission_content' } });
+  if (!missionExists || !missionExists.value.includes('Gratuit')) {
+    await prisma.setting.upsert({
+      where: { key: 'mission_content' },
+      update: { value: MISSION_HTML },
+      create: { key: 'mission_content', value: MISSION_HTML, type: 'JSON' },
     });
-    console.log('+ setting mission_content');
+    console.log('+ setting mission_content (updated)');
   }
 
   await prisma.$disconnect();
