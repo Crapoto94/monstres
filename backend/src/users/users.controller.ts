@@ -17,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { getCookieName, getCookieOptions } from '../auth/cookie.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { UpdateAvatarDto } from './dto/update-avatar.dto';
@@ -77,7 +78,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async deleteSelf(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) res: Response) {
     await this.usersService.deleteSelf(user.id);
-    res.clearCookie(this.config.get<string>('JWT_COOKIE_NAME', 'access_token'), { path: '/' });
+    res.clearCookie(getCookieName(this.config), getCookieOptions(this.config));
     return { deleted: true };
   }
 

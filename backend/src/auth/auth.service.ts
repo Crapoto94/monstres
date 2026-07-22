@@ -11,6 +11,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { JwtPayload } from './jwt.strategy';
 import type { OAuthProfile } from './google.strategy';
+import { getCookieName, getCookieOptions } from './cookie.util';
 import type { Request } from 'express';
 
 const PASSWORD_SALT_ROUNDS = 10;
@@ -246,19 +247,10 @@ export class AuthService {
   }
 
   getCookieOptions() {
-    const secure = this.config.get<string>('JWT_COOKIE_SECURE', 'false') === 'true';
-    const domain = this.config.get<string>('JWT_COOKIE_DOMAIN');
-    return {
-      httpOnly: true,
-      secure,
-      sameSite: this.config.get<string>('JWT_COOKIE_SAME_SITE', 'lax') as 'lax' | 'strict' | 'none',
-      domain: domain === 'localhost' ? undefined : domain,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
-    };
+    return getCookieOptions(this.config);
   }
 
   getCookieName(): string {
-    return this.config.get<string>('JWT_COOKIE_NAME', 'access_token');
+    return getCookieName(this.config);
   }
 }

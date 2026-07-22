@@ -40,7 +40,11 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(this.authService.getCookieName(), { path: '/' });
+    // Le navigateur n'efface un cookie que si les attributs (domain,
+    // path, secure, sameSite) correspondent exactement à ceux utilisés
+    // pour le poser — sinon `clearCookie` échoue silencieusement et le
+    // cookie de session original survit (déconnexion non persistante).
+    res.clearCookie(this.authService.getCookieName(), this.authService.getCookieOptions());
     return { loggedOut: true };
   }
 

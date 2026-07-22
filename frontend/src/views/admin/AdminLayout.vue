@@ -78,8 +78,8 @@ function isActive(tab: { to: string; exact?: boolean }) {
     </aside>
 
     <!-- Main content -->
-    <div class="flex flex-1 flex-col lg:overflow-hidden">
-      <section class="flex-1 overflow-y-auto p-2 lg:p-3">
+    <div class="flex min-w-0 flex-1 flex-col overflow-hidden lg:h-full">
+      <section class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 lg:p-3">
         <!-- Header mobile -->
         <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 lg:hidden">Administration</h1>
 
