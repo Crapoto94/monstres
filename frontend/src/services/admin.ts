@@ -241,3 +241,66 @@ export async function deleteAllItems() {
   const { data } = await api.delete<ApiSuccess<{ deleted: number }>>('/admin/items')
   return data.data
 }
+
+export interface AdminTutorialPage {
+  id: string
+  order: number
+  title: string
+  content: string
+  icon: string | null
+  active: boolean
+  createdAt: string
+}
+
+export async function fetchAdminTutorialPages() {
+  const { data } = await api.get<ApiSuccess<AdminTutorialPage[]>>('/admin/tutorial')
+  return data.data
+}
+
+export async function createTutorialPage(payload: { order: number; title: string; content: string; icon?: string; active: boolean }) {
+  const { data } = await api.post<ApiSuccess<AdminTutorialPage>>('/admin/tutorial', payload)
+  return data.data
+}
+
+export async function updateTutorialPage(id: string, payload: Partial<AdminTutorialPage>) {
+  const { data } = await api.patch<ApiSuccess<AdminTutorialPage>>(`/admin/tutorial/${id}`, payload)
+  return data.data
+}
+
+export async function deleteTutorialPage(id: string) {
+  await api.delete(`/admin/tutorial/${id}`)
+}
+
+export interface AdminEmailTemplate {
+  id: string
+  key: string
+  name: string
+  subject: string
+  htmlContent: string
+  isSystem: boolean
+  createdAt: string
+}
+
+export async function fetchAdminEmailTemplates() {
+  const { data } = await api.get<ApiSuccess<AdminEmailTemplate[]>>('/admin/email-templates')
+  return data.data
+}
+
+export async function createEmailTemplate(payload: { key: string; name: string; subject: string; htmlContent: string }) {
+  const { data } = await api.post<ApiSuccess<AdminEmailTemplate>>('/admin/email-templates', payload)
+  return data.data
+}
+
+export async function updateEmailTemplate(id: string, payload: Partial<AdminEmailTemplate>) {
+  const { data } = await api.patch<ApiSuccess<AdminEmailTemplate>>(`/admin/email-templates/${id}`, payload)
+  return data.data
+}
+
+export async function deleteEmailTemplate(id: string) {
+  await api.delete(`/admin/email-templates/${id}`)
+}
+
+export async function previewEmailTemplate(id: string) {
+  const { data } = await api.post<ApiSuccess<{ subject: string; htmlContent: string }>>(`/admin/email-templates/${id}/preview`)
+  return data.data
+}

@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.0 — refonte graphique de marque
+Dernière mise à jour : **2026-07-22** (v0.3.1 — tutoriel onboarding + éditeur templates emails
 + connexion Google/Facebook, Phase 11 terminée)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
@@ -1812,6 +1812,58 @@ d'une confirmation explicite — donnée dans ce message).
 - [ ] Icône maskable : un très léger liseré plus clair reste visible au zoom
       sur les bords arrondis (artefact JPEG résiduel) — acceptable en usage
       normal, pourrait être retouché avec une source vectorielle si besoin.
+
+---
+
+## Session v0.3.1 — Tutoriel onboarding + Éditeur templates emails
+
+### Demandes
+1. Créer un tutoriel multi-pages fonctionnel pour les nouveaux utilisateurs
+   (explique comment l'application fonctionne et les règles de respect).
+   Modifiable dans /admin.
+2. Créer dans /admin un éditeur de templates d'emails (style APM) avec
+   éditeur WYSIWYG et prévisualisation HTML.
+
+### Décisions prises
+- **Modèle `TutorialPage`** : pages ordonnées (order), titre, contenu HTML,
+  icône emoji, actif/inactif. CRUD admin complet.
+- **Modèle `EmailTemplate`** : clé unique par type d'email, contenu HTML,
+  sujet, flag `isSystem` (templates système non supprimables). Les templates
+  sont cherchés en DB par le `EmailService` et `NotificationsService`, avec
+  fallback sur le HTML codé en dur si le template n'existe pas.
+- **Champ `onboardingCompletedAt`** ajouté au modèle `User` (0/null = pas
+  fait, date = terminé). Le guard router redirige vers `/tutoriel` après
+  login si non terminé.
+- **Variables templates** : `{{user_name}}`, `{{item_title}}`, `{{item_url}}`,
+  `{{item_photo_url}}`, `{{verification_url}}`, `{{reset_url}}`,
+  `{{badge_name}}`, `{{reserver_name}}`, `{{collector_name}}`.
+- **WYSIWYG** : `@vueup/vue-quill` (équivalent Vue 3 de react-quill utilisé
+  dans APM). Éditeur code HTML avec toolbar basique + prévisualisation iframe.
+- **Contenu par défaut tutoriel** : 4 pages (Bienvenue, Comment ça marche,
+  Règles de respect, La communauté).
+- **Templates par défaut** : 6 templates système (email_verification,
+  password_reset, new_item_nearby, reservation_created, item_collected,
+  badge_unlocked) avec HTML styled inline.
+
+### Fait
+- [x] Schema Prisma : `TutorialPage`, `EmailTemplate`, `User.onboardingCompletedAt`
+- [x] Migration `20260722120000_add_tutorial_and_email_templates` appliquée
+- [x] Backend : `TutorialModule` (service + controller) — pages actives + completion
+- [x] Backend : `AdminTutorialController` — CRUD admin pages tutoriel
+- [x] Backend : `EmailTemplatesModule` (service + controller) — CRUD + preview
+- [x] Backend : `AdminEmailTemplatesController` — CRUD admin templates
+- [x] Backend : `EmailService` modifié — cherche templates en DB, fallback HTML dur
+- [x] Backend : `NotificationsService` modifié — même pattern DB + fallback
+- [x] Backend : seed avec 4 pages tutoriel + 6 templates email
+- [x] Backend : `SafeUser` inclut `onboardingCompletedAt`
+- [x] Frontend : `TutorialView.vue` — multi-pages, progress bar, skip/prev/next
+- [x] Frontend : `AdminTutorialView.vue` — CRUD, prévisualisation inline
+- [x] Frontend : `AdminEmailTemplatesView.vue` — WYSIWYG Quill, variables, preview
+- [x] Frontend : router guard redirige vers `/tutoriel` si onboarding pas fait
+- [x] Frontend : routes `/tutoriel`, `/admin/tutoriel`, `/admin/mails`
+- [x] Frontend : AdminLayout avec onglets "Tutoriel" et "Mails"
+- [x] Frontend : auth store/service avec `onboardingCompletedAt`
+- [x] Build backend + frontend sans erreur
 
 ---
 
