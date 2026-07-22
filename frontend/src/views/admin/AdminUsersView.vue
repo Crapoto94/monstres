@@ -12,7 +12,6 @@ import {
   deleteUser,
   type AdminUserSummary,
 } from '@/services/admin'
-import { formatRelativeTime } from '@/utils/time'
 
 const auth = useAuthStore()
 const users = ref<AdminUserSummary[]>([])
@@ -84,6 +83,14 @@ function onVerifyEmail(user: AdminUserSummary) {
 function isSelf(user: AdminUserSummary): boolean {
   return user.id === auth.user?.id
 }
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatDateTime(date: string) {
+  return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 </script>
 
 <template>
@@ -93,12 +100,12 @@ function isSelf(user: AdminUserSummary): boolean {
         v-model="search"
         type="text"
         placeholder="Rechercher (pseudo, email)"
-        class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+        class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
         @keyup.enter="onSearch"
       />
       <button
         type="button"
-        class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white"
+        class="flex-shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white"
         @click="onSearch"
       >
         Chercher
@@ -109,54 +116,80 @@ function isSelf(user: AdminUserSummary): boolean {
 
     <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
-    <ul v-else class="mt-4 flex flex-col gap-2">
+    <ul v-else class="mt-4 flex flex-col gap-3">
       <li
         v-for="user in users"
         :key="user.id"
-        class="rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
+        class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
       >
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <p class="truncate font-medium text-gray-900 dark:text-gray-100">
-              {{ user.name }}
-              <span v-if="isSelf(user)" class="font-normal text-gray-400 dark:text-gray-500">(vous)</span>
-            </p>
-            <p class="truncate text-xs text-gray-400 dark:text-gray-500">{{ user.email }}</p>
+        <!-- Header : avatar + noms + badges -->
+        <div class="flex items-start gap-3 p-3">
+          <div
+            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm"
+            :class="user.avatar && (user.avatar.startsWith('/') || user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"
+          >
+            <img v-if="user.avatar && (user.avatar.startsWith('/') || user.avatar.startsWith('http'))" :src="user.avatar" class="h-10 w-10 rounded-full object-cover" alt="" />
+            <span v-else>{{ user.avatar ?? user.name.charAt(0).toUpperCase() }}</span>
           </div>
-          <div class="flex flex-shrink-0 flex-col items-end gap-1 text-xs">
-            <span v-if="user.bannedAt" class="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <p class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ user.name }}</p>
+              <span v-if="isSelf(user)" class="text-[10px] text-gray-400">(vous)</span>
+            </div>
+            <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ user.email }}</p>
+          </div>
+          <div class="flex flex-shrink-0 flex-col items-end gap-1">
+            <span v-if="user.bannedAt" class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
               Banni
             </span>
-            <span v-else-if="user.suspendedAt" class="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+            <span v-else-if="user.suspendedAt" class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
               Suspendu
             </span>
-            <span v-if="!user.emailVerifiedAt" class="rounded-full bg-gray-100 px-2 py-0.5 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <span v-if="!user.emailVerifiedAt" class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">
               Email non vérifié
             </span>
           </div>
         </div>
 
-        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-          {{ user._count.items }} Monstre(s) · {{ user._count.reports }} signalement(s) reçu(s) · score {{ user.score }}
-        </p>
-
-        <!-- Métadonnées de connexion -->
-        <div class="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-400 dark:text-gray-500">
-          <span v-if="user.registrationOs || user.registrationBrowser">
-            📱 {{ user.registrationOs }} · {{ user.registrationBrowser }}
-          </span>
-          <span v-if="user.registrationIp">
-            🌐 {{ user.registrationIp }}
-          </span>
-          <span v-if="user.lastLoginAt">
-            🔑 Dernière connexion : {{ formatRelativeTime(user.lastLoginAt) }}
-          </span>
-          <span v-else>
-            🔑 Jamais connecté
-          </span>
+        <!-- Métriques -->
+        <div class="grid grid-cols-4 gap-2 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
+          <div class="text-center">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ user.score }}</p>
+            <p class="text-[10px] text-gray-400">Score</p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ user.trustScore }}</p>
+            <p class="text-[10px] text-gray-400">Confiance</p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ user._count.items }}</p>
+            <p class="text-[10px] text-gray-400">Monstres</p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ user.loginCount }}</p>
+            <p class="text-[10px] text-gray-400">Connexions</p>
+          </div>
         </div>
 
-        <div class="mt-2 flex flex-wrap items-center gap-2">
+        <!-- Infos détaillées -->
+        <div class="space-y-1 border-t border-gray-100 px-3 py-2 text-[11px] text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <p>📅 Inscrit le {{ formatDate(user.createdAt) }}</p>
+          <p v-if="user.registrationOs || user.registrationBrowser">
+            📱 Device inscription : {{ user.registrationOs }} · {{ user.registrationBrowser }}
+          </p>
+          <p v-if="user.registrationIp">🌐 IP inscription : {{ user.registrationIp }}</p>
+          <p v-if="user.lastLoginAt">
+            🔑 Dernière connexion : {{ formatDateTime(user.lastLoginAt) }}
+          </p>
+          <p v-else>🔑 Jamais connecté</p>
+          <p v-if="user.lastLoginOs || user.lastLoginBrowser">
+            📱 Dernier device : {{ user.lastLoginOs }} · {{ user.lastLoginBrowser }}
+          </p>
+          <p v-if="user.lastLoginIp">🌐 Dernière IP : {{ user.lastLoginIp }}</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-2 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
           <select
             :value="user.role"
             :disabled="busyId === user.id || !auth.isAdmin || isSelf(user)"
@@ -180,7 +213,6 @@ function isSelf(user: AdminUserSummary): boolean {
           <button
             type="button"
             :disabled="busyId === user.id || isSelf(user)"
-            :title="isSelf(user) ? 'Tu ne peux pas te suspendre toi-même.' : ''"
             class="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-gray-700"
             @click="onToggleSuspend(user)"
           >
@@ -190,7 +222,6 @@ function isSelf(user: AdminUserSummary): boolean {
           <button
             type="button"
             :disabled="busyId === user.id || isSelf(user)"
-            :title="isSelf(user) ? 'Tu ne peux pas te bannir toi-même.' : ''"
             class="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-40 dark:border-gray-700"
             @click="onToggleBan(user)"
           >
@@ -200,7 +231,6 @@ function isSelf(user: AdminUserSummary): boolean {
           <button
             type="button"
             :disabled="busyId === user.id || isSelf(user)"
-            :title="isSelf(user) ? 'Tu ne peux pas supprimer ton propre compte.' : ''"
             class="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-40 dark:border-red-800 dark:text-red-400"
             @click="onDelete(user)"
           >

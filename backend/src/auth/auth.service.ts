@@ -128,6 +128,7 @@ export class AuthService {
         lastLoginUserAgent: ua ?? null,
         lastLoginOs: os,
         lastLoginBrowser: browser,
+        loginCount: { increment: 1 },
       },
     });
 
@@ -181,7 +182,7 @@ export class AuthService {
     if (user.bannedAt) throw new ForbiddenException('Ce compte a été banni.');
     if (user.suspendedAt) throw new ForbiddenException('Ce compte est temporairement suspendu.');
 
-    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), loginCount: { increment: 1 } } });
 
     const token = this.issueToken(user.id, user.email, user.role);
     return { user: this.usersService.toSafeUser(user), token };

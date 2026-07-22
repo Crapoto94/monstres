@@ -4,6 +4,7 @@ export interface AdminUserSummary {
   id: string
   name: string
   email: string
+  avatar: string | null
   role: string
   score: number
   trustScore: number
@@ -12,9 +13,13 @@ export interface AdminUserSummary {
   bannedAt: string | null
   createdAt: string
   lastLoginAt: string | null
+  lastLoginIp: string | null
+  lastLoginOs: string | null
+  lastLoginBrowser: string | null
   registrationIp: string | null
   registrationOs: string | null
   registrationBrowser: string | null
+  loginCount: number
   _count: { items: number; reports: number }
 }
 
