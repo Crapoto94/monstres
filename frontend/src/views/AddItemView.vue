@@ -227,9 +227,6 @@ async function publish() {
       address: address.value || undefined,
       photos: photos.value,
     })
-    if (shareOnFacebook.value && facebookShareAvailable.value) {
-      await shareToFacebookGroup(publishedItem.value)
-    }
   } catch {
     submitError.value = 'La publication a échoué. Réessaie.'
   } finally {
@@ -237,6 +234,16 @@ async function publish() {
   }
 }
 
+/**
+ * Déclenché par un clic explicite (pas automatiquement après `publish()`) :
+ * `navigator.clipboard.writeText()` et `window.open()` exigent tous les
+ * deux un geste utilisateur direct pour fonctionner de façon fiable sur
+ * certains navigateurs (Safari en particulier) — après un `await` (la
+ * requête de création du Monstre), l'« activation utilisateur » du clic
+ * initial est perdue et les deux appels peuvent être silencieusement
+ * bloqués. Facebook ne permet de toute façon pas de pré-remplir la zone
+ * de post d'un Groupe via une URL — seul le copier-coller manuel marche.
+ */
 async function shareToFacebookGroup(item: Item) {
   const itemUrl = `${window.location.origin}/monstres/${item.id}`
   const text = `${item.title} — ${itemUrl}`
@@ -244,7 +251,7 @@ async function shareToFacebookGroup(item: Item) {
     await navigator.clipboard.writeText(text)
   } catch {
     // presse-papier indisponible (permission refusée, contexte non sécurisé) —
-    // on ouvre quand même le groupe, l'utilisateur copiera le lien à la main
+    // le lien de secours reste cliquable, l'utilisateur copiera le lien à la main
   }
   window.open(facebookGroupUrl.value, '_blank', 'noopener')
   facebookShareTriggered.value = true
@@ -261,9 +268,25 @@ function resetAndGoHome() {
 
     <div v-if="publishedItem" class="mt-6 flex flex-col gap-3">
       <p class="text-green-600 dark:text-green-400">Ton Monstre « {{ publishedItem.title }} » est publié !</p>
-      <p v-if="facebookShareTriggered" class="text-sm text-gray-600 dark:text-gray-300">
-        📘 Texte copié dans le presse-papier — colle-le dans un nouveau post du groupe Facebook qui vient de s'ouvrir.
-      </p>
+
+      <template v-if="shareOnFacebook && facebookShareAvailable">
+        <button
+          v-if="!facebookShareTriggered"
+          type="button"
+          class="self-start rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 dark:border-brand-700 dark:text-brand-300"
+          @click="shareToFacebookGroup(publishedItem)"
+        >
+          📘 Partager dans le groupe Facebook
+        </button>
+        <p v-else class="text-sm text-gray-600 dark:text-gray-300">
+          📘 Texte copié dans le presse-papier — colle-le (Ctrl/Cmd+V) dans un nouveau post du groupe Facebook.
+          <a :href="facebookGroupUrl" target="_blank" rel="noopener" class="font-medium text-brand-600 underline dark:text-brand-400">
+            Ouvrir le groupe Facebook
+          </a>
+          si l'onglet ne s'est pas ouvert automatiquement.
+        </p>
+      </template>
+
       <button class="self-start rounded-lg bg-brand-600 px-4 py-2 text-sm text-white" @click="resetAndGoHome">
         Retour à l'accueil
       </button>

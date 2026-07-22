@@ -2585,6 +2585,94 @@ Disponibles pour les super admins uniquement ».
 
 ---
 
+## Adresse raccourcie, zoom photo et partage groupe Facebook
+
+Trois demandes utilisateur regroupées dans cette session.
+
+### 1. Adresse raccourcie sur la fiche Monstre
+Nominatim renvoie une adresse complète (numéro, rue, ville, arrondissement,
+département, région, code postal, pays — ex. « 31, Rue du Caron,
+Monthureux-sur-Saône, Neufchâteau, Vosges, Grand Est, France
+métropolitaine, 88410, France »). `ItemDetailView.vue` affiche désormais
+un `computed shortAddress` qui ne garde que les 3 premiers segments
+séparés par virgule (numéro, rue, ville) — `31, Rue du Caron,
+Monthureux-sur-Saône` sur l'exemple ci-dessus. Différent du
+`simplifyAddress` déjà présent dans `AlertsView.vue` (2 segments
+seulement, pensé pour des adresses de zone sans numéro) : pas de
+factorisation, les deux besoins ne coïncident pas exactement.
+
+### 2. Zoom/pan dans la lightbox (molette + pincement)
+La lightbox ouverte au clic sur une photo n'affichait qu'un agrandissement
+fixe (`object-contain`), sans possibilité de zoomer davantage. Ajout dans
+`ItemDetailView.vue` d'un zoom/pan géré via **Pointer Events** (un seul
+jeu de handlers pour souris et tactile, au lieu de dupliquer wheel/touch) :
+molette pour zoomer/dézoomer sur desktop, pincement à deux doigts sur
+mobile, glisser pour déplacer l'image une fois zoomée (`scale > 1`).
+Écueil rencontré en testant avec des `PointerEvent` synthétiques :
+`setPointerCapture()` lève une exception si l'id de pointeur n'est pas un
+pointeur réellement actif au niveau du navigateur — un touch réel n'a pas
+ce problème, mais l'appel est maintenant protégé par un `try/catch` pour
+ne jamais couper le handler si la capture échoue (robustesse générale, pas
+seulement pour les tests). Zoom plafonné à ×4, réinitialisé à l'ouverture/
+fermeture de la lightbox.
+**Testé** : molette (scale 1 → 1.15 → ×1.75 après plusieurs crans),
+glisser-déplacer une fois zoomé (translate suit le delta de la souris),
+pincement à deux pointeurs simulés (scale → 4, plafond respecté),
+fermeture + réouverture (zoom bien remis à 1).
+
+### 3. Partage dans le groupe Facebook à la publication
+Demande initiale : proposer une case à cocher (par défaut oui) à la
+publication d'un Monstre, qui poste automatiquement dans le groupe
+Facebook communautaire. **Techniquement irréalisable proprement** :
+Facebook a verrouillé la publication automatique dans un Groupe via l'API
+depuis 2018 — permission `publish_to_groups` qui exige une validation
+Meta App Review, quasiment jamais accordée à de nouvelles apps depuis
+2023-2024 (vérification d'entreprise, risque de refus après plusieurs
+semaines d'attente). Expliqué à l'utilisateur avant tout code ; direction
+retenue : lien de partage pré-rempli plutôt qu'auto-post silencieux.
+- **Réglages** (`facebook_share_enabled` BOOLEAN, `facebook_group_url`
+  STRING) ajoutés à `settings` (seed + section admin dédiée « 📘 Partage
+  Facebook » dans `/admin/parametres`) — jamais l'URL de groupe en dur
+  dans le code, conformément à CLAUDE.md. Exposés en lecture publique via
+  `GET /settings/public` (même mécanisme que `pwaEnabled`, pas d'auth
+  requise).
+- **`AddItemView.vue`** : case « Partager aussi dans le groupe Facebook »
+  cochée par défaut à l'étape 4 (visible seulement si le réglage est
+  activé et une URL de groupe est configurée). Une fois le Monstre publié,
+  si la case était cochée, un bouton « 📘 Partager dans le groupe
+  Facebook » apparaît — au clic : texte (titre + lien du Monstre) copié
+  dans le presse-papier, puis `window.open()` sur l'URL du groupe.
+- **Pas d'auto-déclenchement après `publish()`, volontairement** :
+  `navigator.clipboard.writeText()` et `window.open()` exigent tous les
+  deux un geste utilisateur direct pour fonctionner de façon fiable
+  (Safari en particulier) — appelés juste après l'`await` de création du
+  Monstre, l'« activation utilisateur » du clic sur « Publier » est déjà
+  perdue et les deux appels peuvent être silencieusement bloqués. D'où le
+  passage à un bouton explicite plutôt qu'un déclenchement automatique.
+  Il n'existe par ailleurs **aucun moyen de pré-remplir directement la
+  zone de post d'un Groupe Facebook** via une URL (question posée par
+  l'utilisateur après un premier test) — c'est une limitation volontaire
+  de la plateforme, pas un manque côté appli ; le copier-coller manuel
+  reste la seule voie.
+- **Lien de secours** : en plus du bouton, un lien cliquable « Ouvrir le
+  groupe Facebook » reste affiché après le partage, au cas où l'ouverture
+  automatique de l'onglet aurait quand même été bloquée.
+- **Testé** : `GET /settings/public` renvoie bien `facebookShareEnabled`/
+  `facebookGroupUrl` ; publication d'un Monstre avec la case cochée
+  (compte jetable, supprimé après test) → bouton de partage affiché, clic
+  → bascule vers le message de confirmation avec lien vers le bon groupe
+  de test (`facebook.com/groups/160649897058`). Le clic étant simulé via
+  script dans cette session de test, le succès réel de
+  `clipboard.writeText()`/`window.open()` sur un vrai clic humain n'a pas
+  pu être vérifié à 100 % dans cet environnement (l'API Clipboard refuse
+  la lecture hors focus réel du document) — à confirmer par l'utilisateur
+  sur un vrai appareil.
+- **Reste à faire pour la mise en prod** : remplacer `facebook_group_url`
+  par le vrai groupe (`facebook.com/groups/971650613537464`) dans
+  `/admin/parametres` avant le lancement réel.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
