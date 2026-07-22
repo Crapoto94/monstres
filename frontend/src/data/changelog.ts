@@ -6,7 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '0.4.4',
+    version: '0.4.6',
+    date: '23 juillet 2026',
+    changes: [
+      'Admin paramètres : redesign complet avec descriptions, toggle, textarea avec aperçu',
+      'Seed : mise à jour automatique du contenu /pourquoi',
+    ],
+  },
+  {
+    version: '0.4.5',
     date: '22 juillet 2026',
     changes: [
       'Autocomplete des adresses dans les zones d\'alerte',
