@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchItem, collectItem, toggleVote, reportItem, type Item, type ReportType } from '@/services/items'
-import { reserveItem, cancelReservation } from '@/services/reservations'
+import { toggleInterest } from '@/services/reservations'
 import { fetchComments, createComment, deleteComment, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
@@ -12,20 +12,19 @@ const auth = useAuthStore()
 const item = ref<Item | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(true)
-const reserving = ref(false)
-const cancelling = ref(false)
+const togglingInterest = ref(false)
 const collecting = ref(false)
-const reserveError = ref<string | null>(null)
+const interestError = ref<string | null>(null)
 const collectError = ref<string | null>(null)
 const collectPreview = ref<string | null>(null)
 const collectFile = ref<File | null>(null)
-const now = ref(Date.now())
 const voting = ref(false)
 const voted = ref(false)
 const comments = ref<Comment[]>([])
 const commentContent = ref('')
 const postingComment = ref(false)
 const commentError = ref<string | null>(null)
+const lightboxSrc = ref<string | null>(null)
 
 const REPORT_TYPES: { value: ReportType; label: string }[] = [
   { value: 'ALREADY_COLLECTED', label: 'Déjà récupéré / plus disponible' },
@@ -41,8 +40,6 @@ const reporting = ref(false)
 const reportError = ref<string | null>(null)
 const reported = ref(false)
 
-let timer: ReturnType<typeof setInterval> | null = null
-
 onMounted(async () => {
   try {
     item.value = await fetchItem(String(route.params.id))
@@ -54,25 +51,6 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-  timer = setInterval(() => { now.value = Date.now() }, 1000)
-})
-
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
-
-const reservationRemaining = computed(() => {
-  if (!item.value?.activeReservation) return null
-  const expiresAt = new Date(item.value.activeReservation.expiresAt).getTime()
-  const diff = expiresAt - now.value
-  if (diff <= 0) return 'Expirée'
-  const minutes = Math.floor(diff / 60_000)
-  const seconds = Math.floor((diff % 60_000) / 1000)
-  return `${minutes} min ${seconds.toString().padStart(2, '0')} s`
-})
-
-const isMyReservation = computed(() => {
-  return auth.isAuthenticated && item.value?.activeReservation?.user.id === auth.user?.id
 })
 
 const isMyItem = computed(() => {
@@ -94,38 +72,21 @@ function onCollectFileChange(e: Event) {
   }
 }
 
-async function handleReserve() {
+async function handleToggleInterest() {
   if (!item.value) return
-  reserving.value = true
-  reserveError.value = null
+  togglingInterest.value = true
+  interestError.value = null
   try {
-    const reservation = await reserveItem(item.value.id)
+    const result = await toggleInterest(item.value.id)
     item.value = {
       ...item.value,
-      status: 'RESERVED',
-      activeReservation: reservation,
+      isInterested: result.interested,
+      interestedCount: result.interestedCount,
     }
   } catch (e: any) {
-    reserveError.value = e.response?.data?.error?.message ?? 'Impossible de réserver ce Monstre.'
+    interestError.value = e.response?.data?.error?.message ?? "Impossible de mettre à jour ton intérêt."
   } finally {
-    reserving.value = false
-  }
-}
-
-async function handleCancel() {
-  if (!item.value?.activeReservation) return
-  cancelling.value = true
-  try {
-    await cancelReservation(item.value.activeReservation.id)
-    item.value = {
-      ...item.value,
-      status: 'AVAILABLE',
-      activeReservation: null,
-    }
-  } catch (e: any) {
-    reserveError.value = e.response?.data?.error?.message ?? "Impossible d'annuler la réservation."
-  } finally {
-    cancelling.value = false
+    togglingInterest.value = false
   }
 }
 
@@ -221,8 +182,9 @@ async function handleDeleteComment(comment: Comment) {
           v-for="photo in item.photos.filter(p => p.type !== 'COLLECTION')"
           :key="photo.id"
           :src="photo.path"
-          class="h-48 w-48 flex-shrink-0 rounded-lg object-cover"
+          class="h-48 w-48 flex-shrink-0 cursor-zoom-in rounded-lg object-cover"
           alt=""
+          @click="lightboxSrc = photo.path"
         />
       </div>
 
@@ -304,23 +266,11 @@ async function handleDeleteComment(comment: Comment) {
         </form>
       </div>
 
-      <!-- Réservation -->
-      <div v-if="item.status === 'RESERVED' && item.activeReservation" class="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
+      <!-- Intéressés -->
+      <div v-if="item.status === 'AVAILABLE' && item.interestedCount > 0" class="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
         <p class="text-sm font-medium text-amber-800 dark:text-amber-200">
-          Réservé par {{ item.activeReservation.user.name }}
+          {{ item.interestedCount }} personne{{ item.interestedCount > 1 ? 's' : '' }} intéressée{{ item.interestedCount > 1 ? 's' : '' }}
         </p>
-        <p class="text-xs text-amber-600 dark:text-amber-400">
-          Expire dans {{ reservationRemaining }}
-        </p>
-        <button
-          v-if="isMyReservation"
-          type="button"
-          :disabled="cancelling"
-          class="mt-2 rounded-lg border border-amber-400 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-40 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900"
-          @click="handleCancel"
-        >
-          {{ cancelling ? 'Annulation…' : 'Annuler ma réservation' }}
-        </button>
       </div>
 
       <!-- Récupération validée -->
@@ -334,40 +284,51 @@ async function handleDeleteComment(comment: Comment) {
             v-for="photo in collectionPhotos"
             :key="photo.id"
             :src="photo.path"
-            class="h-24 w-24 rounded-lg object-cover"
+            class="h-24 w-24 cursor-zoom-in rounded-lg object-cover"
             alt="Photo du lieu vide"
+            @click="lightboxSrc = photo.path"
           />
         </div>
       </div>
 
-      <!-- Réserver -->
+      <!-- Je suis intéressé -->
       <button
         v-if="item.status === 'AVAILABLE' && auth.isAuthenticated && !isMyItem"
         type="button"
-        :disabled="reserving"
-        class="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
-        @click="handleReserve"
+        :disabled="togglingInterest"
+        class="rounded-lg px-4 py-2.5 text-sm font-medium disabled:opacity-40"
+        :class="
+          item.isInterested
+            ? 'border border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-600 dark:bg-brand-950 dark:text-brand-300'
+            : 'bg-brand-600 text-white hover:bg-brand-700'
+        "
+        @click="handleToggleInterest"
       >
-        {{ reserving ? 'Réservation…' : 'Réserver ce Monstre' }}
+        {{ togglingInterest ? '…' : (item.isInterested ? '✓ Je suis intéressé(e)' : 'Je suis intéressé(e)') }}
       </button>
 
       <p v-if="item.status === 'AVAILABLE' && !auth.isAuthenticated" class="text-sm text-gray-500 dark:text-gray-400">
         <RouterLink to="/connexion" class="text-brand-600 underline dark:text-brand-400">Connecte-toi</RouterLink>
-        pour réserver ce Monstre.
+        pour te déclarer intéressé(e) par ce Monstre.
       </p>
 
       <!-- Valider la récupération -->
-      <div v-if="item.status === 'RESERVED' && isMyReservation" class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div v-if="item.status === 'AVAILABLE' && item.isInterested" class="flex flex-col gap-2">
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
           J'ai récupéré ce Monstre — photo du lieu vide :
-        </label>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          class="text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-green-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-green-700 hover:file:bg-green-100"
-          @change="onCollectFileChange"
-        />
-        <img v-if="collectPreview" :src="collectPreview" class="h-32 w-32 rounded-lg object-cover" alt="Aperçu" />
+        </p>
+        <div
+          class="relative flex h-40 w-40 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-800"
+        >
+          <img v-if="collectPreview" :src="collectPreview" class="h-full w-full object-cover" alt="Aperçu" />
+          <span v-else class="text-xs text-gray-400 dark:text-gray-500">📷 Photo</span>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="absolute inset-0 cursor-pointer opacity-0"
+            @change="onCollectFileChange"
+          />
+        </div>
         <button
           type="button"
           :disabled="!collectFile || collecting"
@@ -378,7 +339,7 @@ async function handleDeleteComment(comment: Comment) {
         </button>
       </div>
 
-      <p v-if="reserveError" class="text-sm text-red-600 dark:text-red-400">{{ reserveError }}</p>
+      <p v-if="interestError" class="text-sm text-red-600 dark:text-red-400">{{ interestError }}</p>
       <p v-if="collectError" class="text-sm text-red-600 dark:text-red-400">{{ collectError }}</p>
 
       <!-- Commentaires -->
@@ -432,5 +393,23 @@ async function handleDeleteComment(comment: Comment) {
         <p v-if="commentError" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ commentError }}</p>
       </div>
     </div>
+
+    <!-- Lightbox : agrandir la photo -->
+    <Teleport to="body">
+      <div
+        v-if="lightboxSrc"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+        @click="lightboxSrc = null"
+      >
+        <button
+          type="button"
+          class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+          @click="lightboxSrc = null"
+        >
+          ×
+        </button>
+        <img :src="lightboxSrc" class="max-h-full max-w-full rounded-lg object-contain" alt="" @click.stop />
+      </div>
+    </Teleport>
   </section>
 </template>

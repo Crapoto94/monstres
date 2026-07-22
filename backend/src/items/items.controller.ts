@@ -55,6 +55,13 @@ export class ItemsController {
     return this.itemsService.findMany(query, user);
   }
 
+  /** Doit être déclaré avant `GET /:id` pour ne pas être capté comme un id. */
+  @Get('mine')
+  @UseGuards(JwtAuthGuard)
+  findMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.itemsService.findMine(user.id);
+  }
+
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
   findOne(

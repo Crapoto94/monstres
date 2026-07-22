@@ -28,6 +28,12 @@ const locating = ref(false)
 const subError = ref<string | null>(null)
 const creatingSub = ref(false)
 
+// Address input state
+const subMode = ref<'gps' | 'address'>('gps')
+const subAddress = ref('')
+const geocoding = ref(false)
+const geocodeError = ref<string | null>(null)
+
 onMounted(async () => {
   if (auth.isAuthenticated) {
     notifications.value = await fetchNotifications()
@@ -65,14 +71,17 @@ async function toggleEmailNotifications(event: Event) {
 }
 
 const canAddSubscription = computed(() => subscriptions.value.length < MAX_SUBSCRIPTIONS)
+const canSubmit = computed(() => subName.value.trim() && subLat.value !== null && subLng.value !== null)
 
 function locateMe() {
   if (!navigator.geolocation) return
   locating.value = true
+  geocodeError.value = null
   navigator.geolocation.getCurrentPosition(
     (position) => {
       subLat.value = position.coords.latitude
       subLng.value = position.coords.longitude
+      subAddress.value = ''
       locating.value = false
     },
     () => {
@@ -82,23 +91,54 @@ function locateMe() {
   )
 }
 
+async function geocodeAddress() {
+  if (!subAddress.value.trim()) return
+  geocoding.value = true
+  geocodeError.value = null
+  try {
+    const query = encodeURIComponent(subAddress.value.trim())
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+      headers: { 'Accept-Language': 'fr' },
+    })
+    const results = await res.json()
+    if (results.length === 0) {
+      geocodeError.value = 'Adresse introuvable. Sois plus précis.'
+      return
+    }
+    subLat.value = parseFloat(results[0].lat)
+    subLng.value = parseFloat(results[0].lon)
+    subAddress.value = results[0].display_name ?? subAddress.value.trim()
+  } catch {
+    geocodeError.value = 'Erreur lors de la recherche d\'adresse.'
+  } finally {
+    geocoding.value = false
+  }
+}
+
+function resetSubForm() {
+  showSubForm.value = false
+  subName.value = ''
+  subLat.value = null
+  subLng.value = null
+  subAddress.value = ''
+  subRadiusKm.value = 1
+  subMode.value = 'gps'
+  subError.value = null
+}
+
 async function handleCreateSubscription() {
-  if (!subName.value.trim() || subLat.value === null || subLng.value === null) return
+  if (!canSubmit.value) return
   creatingSub.value = true
   subError.value = null
   try {
     const subscription = await createSubscription({
       name: subName.value.trim(),
-      latitude: subLat.value,
-      longitude: subLng.value,
+      latitude: subLat.value!,
+      longitude: subLng.value!,
       radius: Math.round(subRadiusKm.value * 1000),
     })
     subscriptions.value.unshift(subscription)
-    subName.value = ''
-    subLat.value = null
-    subLng.value = null
-    subRadiusKm.value = 1
-    showSubForm.value = false
+    resetSubForm()
   } catch (e: any) {
     subError.value = e.response?.data?.error?.message ?? "Impossible d'ajouter cette zone."
   } finally {
@@ -170,22 +210,69 @@ async function handleDeleteSubscription(id: string) {
           </li>
         </ul>
 
-        <form v-if="showSubForm" class="mt-3 flex flex-col gap-2 text-sm" @submit.prevent="handleCreateSubscription">
+        <form v-if="showSubForm" class="mt-3 flex flex-col gap-3 text-sm" @submit.prevent="handleCreateSubscription">
           <input
             v-model="subName"
             type="text"
-            placeholder="Nom du lieu (ex. Chez moi)"
+            placeholder="Nom du lieu (ex. Chez moi, Boulangerie…)"
             class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
           />
 
+          <!-- Mode toggle -->
+          <div class="flex overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+              :class="subMode === 'gps' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
+              @click="subMode = 'gps'"
+            >
+              📍 Ma position
+            </button>
+            <button
+              type="button"
+              class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+              :class="subMode === 'address' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
+              @click="subMode = 'address'"
+            >
+              🔍 Une adresse
+            </button>
+          </div>
+
+          <!-- GPS mode -->
           <button
+            v-if="subMode === 'gps'"
             type="button"
-            class="self-start text-sm text-brand-600 dark:text-brand-400"
+            class="self-start rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             :disabled="locating"
             @click="locateMe"
           >
-            {{ locating ? 'Localisation…' : subLat !== null ? 'Position enregistrée ✓' : 'Utiliser ma position actuelle' }}
+            {{ locating ? '⏳ Localisation…' : subLat !== null ? '✓ Position enregistrée' : '📡 Géolocaliser' }}
           </button>
+
+          <!-- Address mode -->
+          <div v-if="subMode === 'address'" class="flex gap-2">
+            <input
+              v-model="subAddress"
+              type="text"
+              placeholder="Saisir une adresse…"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              @keyup.enter.prevent="geocodeAddress"
+            />
+            <button
+              type="button"
+              :disabled="geocoding || !subAddress.trim()"
+              class="flex-shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-40"
+              @click="geocodeAddress"
+            >
+              {{ geocoding ? '…' : '🔍' }}
+            </button>
+          </div>
+          <p v-if="geocodeError" class="text-xs text-red-600 dark:text-red-400">{{ geocodeError }}</p>
+
+          <!-- Position confirm -->
+          <p v-if="subLat !== null && subLng !== null" class="text-xs text-green-600 dark:text-green-400">
+            ✓ Position : {{ subLat.toFixed(5) }}, {{ subLng.toFixed(5) }}
+          </p>
 
           <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
             Rayon : {{ subRadiusKm }} km
@@ -196,7 +283,7 @@ async function handleDeleteSubscription(id: string) {
 
           <button
             type="submit"
-            :disabled="creatingSub || !subName.trim() || subLat === null"
+            :disabled="creatingSub || !canSubmit"
             class="self-start rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             {{ creatingSub ? 'Ajout…' : 'Ajouter cette zone' }}

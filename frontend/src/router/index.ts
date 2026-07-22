@@ -12,7 +12,7 @@ export const router = createRouter({
       path: '/ajouter',
       name: 'add-item',
       component: () => import('@/views/AddItemView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresVerifiedEmail: true },
     },
     { path: '/alertes', name: 'alerts', component: () => import('@/views/AlertsView.vue') },
     { path: '/profil', name: 'profile', component: () => import('@/views/ProfileView.vue') },
@@ -118,6 +118,9 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { path: '/connexion', query: { redirect: to.fullPath } }
   }
+  if (to.meta.requiresVerifiedEmail && !auth.user?.emailVerifiedAt) {
+    return { path: '/profil', query: { error: 'email_not_verified' } }
+  }
   if (to.meta.requiresModerator && !auth.isModerator) {
     return { path: '/' }
   }
@@ -127,8 +130,10 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresSuperAdmin && auth.user?.role !== 'SUPER_ADMIN') {
     return { path: '/admin' }
   }
-  // Redirect to tutorial after login if onboarding not completed
-  if (auth.isAuthenticated && !auth.user?.onboardingCompletedAt && to.name !== 'tutorial') {
+  // Tutoriel affiché juste après vérification de l'email (pas dès
+  // l'inscription) — un compte non vérifié navigue librement jusque-là,
+  // simplement restreint sur la localisation exacte et la publication.
+  if (auth.isAuthenticated && auth.user?.emailVerifiedAt && !auth.user?.onboardingCompletedAt && to.name !== 'tutorial') {
     return { path: '/tutoriel' }
   }
   return true

@@ -25,11 +25,14 @@ export interface Item {
   photos: ItemPhoto[]
   category: { id: string; name: string; icon: string | null } | null
   user: { id: string; name: string; avatar: string | null }
-  activeReservation: {
-    id: string
-    user: { id: string; name: string; avatar: string | null }
-    expiresAt: string
-  } | null
+  interestedCount: number
+  isInterested: boolean
+}
+
+export interface MyItems {
+  posted: Item[]
+  interested: Item[]
+  collected: Item[]
 }
 
 export interface ItemsPage {
@@ -47,6 +50,7 @@ export interface FindItemsParams {
   categoryId?: string
   page?: number
   pageSize?: number
+  sort?: 'recent' | 'nearby'
 }
 
 export interface CreateItemPayload {
@@ -82,6 +86,11 @@ export async function fetchItem(id: string) {
 
 export async function fetchItems(params: FindItemsParams) {
   const { data } = await api.get<ApiSuccess<ItemsPage>>('/items', { params })
+  return data.data
+}
+
+export async function fetchMyItems() {
+  const { data } = await api.get<ApiSuccess<MyItems>>('/items/mine')
   return data.data
 }
 

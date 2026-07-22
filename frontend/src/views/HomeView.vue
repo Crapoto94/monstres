@@ -13,6 +13,7 @@ const appVersion = __APP_VERSION__
 const items = ref<Item[]>([])
 const categories = ref<Category[]>([])
 const categoryId = ref('')
+const sortBy = ref<'recent' | 'nearby'>('recent')
 const page = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
@@ -47,6 +48,7 @@ async function load() {
       lat: userLat.value ?? undefined,
       lng: userLng.value ?? undefined,
       categoryId: categoryId.value || undefined,
+      sort: sortBy.value,
       page: page.value,
       pageSize: 20,
     })
@@ -66,7 +68,7 @@ onMounted(async () => {
   await load()
 })
 
-watch([userLat, userLng, categoryId], () => {
+watch([userLat, userLng, categoryId, sortBy], () => {
   page.value = 1
   load()
 })
@@ -108,7 +110,7 @@ function coverPhoto(item: Item) {
     </div>
 
     <div class="px-4 pt-3">
-      <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
         <select
           v-model="categoryId"
           class="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900"
@@ -118,13 +120,38 @@ function coverPhoto(item: Item) {
             {{ category.name }}
           </option>
         </select>
+      </div>
+
+      <div class="mt-2 flex items-center gap-2">
+        <div class="flex flex-1 overflow-hidden rounded-full border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <button
+            type="button"
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+            :class="sortBy === 'recent'
+              ? 'bg-brand-600 text-white'
+              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
+            @click="sortBy = 'recent'"
+          >
+            🕐 Récents
+          </button>
+          <button
+            type="button"
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+            :class="sortBy === 'nearby'
+              ? 'bg-brand-600 text-white'
+              : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
+            @click="sortBy = 'nearby'"
+          >
+            📍 Proches
+          </button>
+        </div>
         <button
           type="button"
           class="flex-shrink-0 rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 shadow-sm dark:bg-brand-900/60 dark:text-brand-200"
           :disabled="locating"
           @click="locateMe"
         >
-          {{ locating ? '…' : '📍 Distance' }}
+          {{ locating ? '…' : '📍 Géo' }}
         </button>
       </div>
 
@@ -147,10 +174,10 @@ function coverPhoto(item: Item) {
               <p class="flex items-center gap-2">
                 <span class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ item.title }}</span>
                 <span
-                  v-if="item.status === 'RESERVED'"
+                  v-if="item.status === 'AVAILABLE' && item.interestedCount > 0"
                   class="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
                 >
-                  Réservé
+                  {{ item.interestedCount }} intéressé{{ item.interestedCount > 1 ? 's' : '' }}
                 </span>
                 <span
                   v-else-if="item.status === 'COLLECTED'"

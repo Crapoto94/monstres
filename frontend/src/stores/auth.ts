@@ -67,6 +67,15 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
     },
 
+    /** Recharge le profil (ex. juste après vérification d'email) — contrairement à `init()`, toujours exécuté. */
+    async refreshUser() {
+      try {
+        this.user = await authService.fetchMe()
+      } catch {
+        this.user = null
+      }
+    },
+
     /** Suppression de compte en libre-service (§9 RGPD). Irréversible. */
     async deleteAccount() {
       await authService.deleteAccount()

@@ -1,17 +1,12 @@
 import { api, type ApiSuccess } from './api'
 
-export interface Reservation {
-  id: string
-  user: { id: string; name: string; avatar: string | null }
-  expiresAt: string
+export interface ToggleInterestResult {
+  interested: boolean
+  interestedCount: number
 }
 
-export async function reserveItem(itemId: string) {
-  const { data } = await api.post<ApiSuccess<Reservation>>('/reservations', { itemId })
-  return data.data
-}
-
-export async function cancelReservation(reservationId: string) {
-  const { data } = await api.post<ApiSuccess<{ success: boolean }>>(`/reservations/${reservationId}/cancel`)
+/** Bascule l'intérêt de l'utilisateur connecté pour un Monstre (toggle, comme les votes). */
+export async function toggleInterest(itemId: string) {
+  const { data } = await api.post<ApiSuccess<ToggleInterestResult>>('/reservations', { itemId })
   return data.data
 }

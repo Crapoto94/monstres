@@ -34,4 +34,8 @@ export class FindItemsQueryDto {
   @Min(1)
   @Max(50)
   pageSize?: number;
+
+  @IsOptional()
+  @IsString()
+  sort?: 'recent' | 'nearby';
 }

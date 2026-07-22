@@ -41,6 +41,13 @@ export class ItemsService {
     dto: CreateItemDto,
     files: Express.Multer.File[] | undefined,
   ) {
+    // §9 (redéfini) : un compte non vérifié ne peut pas publier — décision
+    // utilisateur, limite les faux comptes/spam avant même la modération.
+    const creator = await this.prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true } });
+    if (!creator?.emailVerifiedAt) {
+      throw new BadRequestException('Vérifie ton adresse email avant de publier un Monstre.');
+    }
+
     const maxPhotos = await this.settings.getNumber('max_photos_per_item', 3);
 
     if (!files || files.length === 0) {
@@ -87,7 +94,7 @@ export class ItemsService {
       photoUrl: this.photoUrl(item.photos[0]),
     });
 
-    return this.serialize(item, { id: userId } as AuthenticatedUser);
+    return this.serialize(item, { id: userId } as AuthenticatedUser, true);
   }
 
   async findById(id: string, viewer: AuthenticatedUser | null) {
@@ -106,7 +113,8 @@ export class ItemsService {
         })) !== null
       : false;
 
-    return this.serialize(item, viewer, null, hasVoted, hasReported);
+    const verified = await this.isViewerVerified(viewer);
+    return this.serialize(item, viewer, verified, null, hasVoted, hasReported);
   }
 
   /**
@@ -156,17 +164,17 @@ export class ItemsService {
       this.settings.getNumber('ranking_weight_trust', 0.1),
     ]);
 
-    const isAuthenticated = viewer !== null;
+    const verified = await this.isViewerVerified(viewer);
     const now = Date.now();
 
     let scored = items.map((item) => {
       // La distance est calculée sur les coordonnées telles que le viewer
-      // les verra (arrondies pour un visiteur non connecté, §9), pour rester
-      // cohérente avec la position exposée dans la réponse.
-      const itemLat = isAuthenticated
+      // les verra (arrondies pour un visiteur non connecté ou non vérifié,
+      // §9), pour rester cohérente avec la position exposée dans la réponse.
+      const itemLat = verified
         ? item.latitude
         : roundApprox(item.latitude);
-      const itemLng = isAuthenticated
+      const itemLng = verified
         ? item.longitude
         : roundApprox(item.longitude);
       const distanceKm = hasPosition
@@ -196,6 +204,14 @@ export class ItemsService {
     }
 
     scored.sort((a, b) => {
+      if (query.sort === 'recent') {
+        return b.item.createdAt.getTime() - a.item.createdAt.getTime();
+      }
+      if (query.sort === 'nearby' && hasPosition) {
+        if (a.distanceKm === null) return 1;
+        if (b.distanceKm === null) return -1;
+        return a.distanceKm - b.distanceKm;
+      }
       if (b.score !== a.score) return b.score - a.score;
       if (
         a.distanceKm !== null &&
@@ -233,6 +249,7 @@ export class ItemsService {
         this.serialize(
           entry.item,
           viewer,
+          verified,
           entry.distanceKm !== null ? Math.round(entry.distanceKm * 10) / 10 : null,
           votedItemIds.has(entry.item.id),
         ),
@@ -244,6 +261,47 @@ export class ItemsService {
     };
   }
 
+  /**
+   * §6.2 (redéfini) : puisque l'intérêt n'est plus exclusif, seul un membre
+   * ayant manifesté son intérêt peut valider la récupération — pas
+   * n'importe qui, mais plus "le" réservataire unique non plus.
+   */
+  /**
+   * §10 (profil) : mes Monstres publiés, ceux qui m'intéressent, ceux que
+   * j'ai récupérés — demande utilisateur, pour l'onglet "Mes Monstres" du
+   * profil.
+   */
+  async findMine(userId: string) {
+    const verified = await this.isViewerVerified({ id: userId } as AuthenticatedUser);
+    const viewer = { id: userId } as AuthenticatedUser;
+
+    const [posted, interested, collected] = await Promise.all([
+      this.prisma.item.findMany({
+        where: { userId },
+        include: this.includeRelations(),
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.item.findMany({
+        where: { reservations: { some: { userId, status: ReservationStatus.ACTIVE } } },
+        include: this.includeRelations(),
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.item.findMany({
+        where: { reservations: { some: { userId, status: ReservationStatus.COMPLETED } } },
+        include: this.includeRelations(),
+        orderBy: { collectedAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      // Ses propres Monstres : toujours en précision exacte, inutile de se
+      // cacher sa propre position à soi-même.
+      posted: posted.map((item) => this.serialize(item, viewer, true)),
+      interested: interested.map((item) => this.serialize(item, viewer, verified)),
+      collected: collected.map((item) => this.serialize(item, viewer, verified)),
+    };
+  }
+
   async collect(
     itemId: string,
     user: AuthenticatedUser,
@@ -251,27 +309,18 @@ export class ItemsService {
   ) {
     this.imageService.validateFormat(file.mimetype);
 
-    const item = await this.prisma.item.findUnique({
-      where: { id: itemId },
-      include: {
-        reservations: {
-          where: { status: ReservationStatus.ACTIVE },
-          take: 1,
-        },
-      },
-    });
-
+    const item = await this.prisma.item.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Monstre introuvable.');
-    if (item.status !== 'RESERVED') {
-      throw new BadRequestException(
-        "Ce Monstre n'est pas en cours de réservation.",
-      );
+    if (item.status !== 'AVAILABLE') {
+      throw new BadRequestException('Ce Monstre a déjà été récupéré.');
     }
 
-    const activeReservation = item.reservations[0];
-    if (!activeReservation || activeReservation.userId !== user.id) {
+    const myInterest = await this.prisma.reservation.findFirst({
+      where: { itemId, userId: user.id, status: ReservationStatus.ACTIVE },
+    });
+    if (!myInterest) {
       throw new BadRequestException(
-        'Seul le réservateur peut valider la récupération.',
+        "Indique d'abord que tu es intéressé pour pouvoir valider la récupération.",
       );
     }
 
@@ -288,8 +337,13 @@ export class ItemsService {
         },
       });
       await tx.reservation.update({
-        where: { id: activeReservation.id },
+        where: { id: myInterest.id },
         data: { status: ReservationStatus.COMPLETED },
+      });
+      // Les autres intérêts actifs sur ce Monstre n'ont plus lieu d'être.
+      await tx.reservation.updateMany({
+        where: { itemId, status: ReservationStatus.ACTIVE, NOT: { id: myInterest.id } },
+        data: { status: ReservationStatus.CANCELLED },
       });
       await tx.item.update({
         where: { id: itemId },
@@ -331,14 +385,12 @@ export class ItemsService {
       user: {
         select: { id: true, name: true, avatar: true, trustScore: true },
       },
+      // §6.2 (redéfini) : "intéressé" n'est plus exclusif — on récupère tous
+      // les intéressés actifs pour calculer le compteur et savoir si le
+      // viewer courant en fait partie.
       reservations: {
         where: { status: ReservationStatus.ACTIVE },
-        take: 1,
-        select: {
-          id: true,
-          user: { select: { id: true, name: true, avatar: true } },
-          expiresAt: true,
-        },
+        select: { userId: true },
       },
     };
   }
@@ -354,37 +406,45 @@ export class ItemsService {
   }
 
   /** §9 : position approximative pour les visiteurs non connectés, exacte pour les connectés. */
+  /**
+   * §9 (redéfini) : la localisation précise n'est plus liée à la simple
+   * authentification mais à l'email vérifié — un compte non vérifié ne
+   * doit pas pouvoir consulter les positions exactes (décision utilisateur).
+   */
+  private async isViewerVerified(viewer: AuthenticatedUser | null): Promise<boolean> {
+    if (!viewer) return false;
+    const user = await this.prisma.user.findUnique({ where: { id: viewer.id }, select: { emailVerifiedAt: true } });
+    return user?.emailVerifiedAt != null;
+  }
+
   private serialize(
     item: ItemWithRelations,
     viewer: AuthenticatedUser | null,
+    verified: boolean,
     distanceKm: number | null = null,
     hasVoted = false,
     hasReported = false,
   ) {
-    const isAuthenticated = viewer !== null;
     const imgBaseUrl = this.config.get<string>(
       'IMG_BASE_URL',
       'http://localhost:3000/uploads',
     );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { trustScore: _, ...userWithoutTrust } = item.user;
-    const activeReservation = item.reservations?.[0]
-      ? {
-          ...item.reservations[0],
-          user: { ...item.reservations[0].user, avatar: resolveAvatarUrl(item.reservations[0].user.avatar, imgBaseUrl) },
-        }
-      : null;
+    const activeInterests = item.reservations ?? [];
 
     return {
       ...item,
-      latitude: isAuthenticated ? item.latitude : roundApprox(item.latitude),
-      longitude: isAuthenticated ? item.longitude : roundApprox(item.longitude),
-      address: isAuthenticated ? item.address : null,
+      latitude: verified ? item.latitude : roundApprox(item.latitude),
+      longitude: verified ? item.longitude : roundApprox(item.longitude),
+      address: verified ? item.address : null,
       distance: distanceKm,
       hasVoted,
       hasReported,
+      interestedCount: activeInterests.length,
+      isInterested: viewer !== null && activeInterests.some((r) => r.userId === viewer.id),
       user: { ...userWithoutTrust, avatar: resolveAvatarUrl(userWithoutTrust.avatar, imgBaseUrl) },
-      activeReservation,
+      reservations: undefined,
       photos: item.photos.map((photo) => ({
         ...photo,
         path: `${imgBaseUrl}/${photo.path}`,

@@ -112,7 +112,8 @@ const DEFAULT_EMAIL_TEMPLATES = [
     htmlContent: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
   <h2 style="color:#7c3aed;">Nouveau Monstre détecté !</h2>
   <p>Un nouveau Monstre <strong>"{{item_title}}"</strong> est apparu près d'une de tes zones surveillées.</p>
-  {{item_photo_url}}<p><a href="{{item_url}}" style="color:#7c3aed;font-weight:bold;">Voir ce Monstre →</a></p>
+  <p><a href="{{item_url}}"><img src="{{item_photo_url}}" alt="{{item_title}}" style="max-width:300px;border-radius:8px;" /></a></p>
+  <p><a href="{{item_url}}" style="color:#7c3aed;font-weight:bold;">Voir ce Monstre →</a></p>
 </div>`,
   },
   {

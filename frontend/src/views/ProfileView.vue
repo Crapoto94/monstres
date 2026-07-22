@@ -1,15 +1,45 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 import { api, type ApiSuccess } from '@/services/api'
 import type { AuthUser } from '@/services/auth'
+import { fetchMyItems, type MyItems, type Item } from '@/services/items'
 
+const route = useRoute()
 const router = useRouter()
 const { canInstall, installed, install } = usePwaInstall()
 
 const auth = useAuthStore()
+
+const routeError = computed(() => {
+  if (route.query.error === 'email_not_verified') {
+    return "Vérifie ton adresse email avant de publier un Monstre ou de voir les positions exactes."
+  }
+  return null
+})
+
+const myItems = ref<MyItems | null>(null)
+const myItemsTab = ref<'posted' | 'interested' | 'collected'>('posted')
+const myItemsLoading = ref(false)
+
+const currentMyItemsList = computed<Item[]>(() => {
+  if (!myItems.value) return []
+  return myItems.value[myItemsTab.value]
+})
+
+onMounted(async () => {
+  if (!auth.isAuthenticated) return
+  myItemsLoading.value = true
+  try {
+    myItems.value = await fetchMyItems()
+  } catch {
+    // silencieux
+  } finally {
+    myItemsLoading.value = false
+  }
+})
 
 const AVATARS = [
   '😺', '🐶', '🦊', '🐻', '🐼', '🐨', '🦁', '🐮', '🐷', '🐸',
@@ -230,6 +260,10 @@ async function onDeleteAccount() {
   <section class="flex-1 p-4 pb-24">
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Mon profil</h1>
 
+    <p v-if="routeError" class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+      {{ routeError }}
+    </p>
+
     <template v-if="auth.isAuthenticated && auth.user">
       <!-- Actions rapides -->
       <div class="mt-4 flex flex-wrap gap-2">
@@ -392,6 +426,62 @@ async function onDeleteAccount() {
         <p v-if="phoneError" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ phoneError }}</p>
       </div>
 
+      <!-- Mes Monstres -->
+      <div class="mt-4">
+        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Mes Monstres</p>
+        <div class="mt-2 flex gap-2">
+          <button
+            type="button"
+            class="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="myItemsTab === 'posted' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'"
+            @click="myItemsTab = 'posted'"
+          >
+            Publiés {{ myItems ? `(${myItems.posted.length})` : '' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="myItemsTab === 'interested' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'"
+            @click="myItemsTab = 'interested'"
+          >
+            Intéressent {{ myItems ? `(${myItems.interested.length})` : '' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="myItemsTab === 'collected' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'"
+            @click="myItemsTab = 'collected'"
+          >
+            Récupérés {{ myItems ? `(${myItems.collected.length})` : '' }}
+          </button>
+        </div>
+
+        <p v-if="myItemsLoading" class="mt-3 text-sm text-gray-400 dark:text-gray-500">Chargement…</p>
+        <ul v-else class="mt-3 flex flex-col gap-2">
+          <li v-for="myItem in currentMyItemsList" :key="myItem.id">
+            <RouterLink
+              :to="`/monstres/${myItem.id}`"
+              class="flex items-center gap-3 rounded-xl border border-gray-200 p-2.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
+            >
+              <div class="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                <img v-if="myItem.photos[0]" :src="myItem.photos[0].thumbnailPath ?? myItem.photos[0].path" class="h-full w-full object-cover" alt="" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ myItem.title }}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">
+                  <span v-if="myItem.status === 'COLLECTED'">Récupéré</span>
+                  <span v-else-if="myItem.interestedCount > 0">{{ myItem.interestedCount }} intéressé{{ myItem.interestedCount > 1 ? 's' : '' }}</span>
+                  <span v-else>Disponible</span>
+                </p>
+              </div>
+            </RouterLink>
+          </li>
+          <li v-if="currentMyItemsList.length === 0" class="text-sm text-gray-400 dark:text-gray-500">
+            Aucun Monstre ici pour l'instant.
+          </li>
+        </ul>
+      </div>
+
       <!-- Installer l'app -->
       <button
         v-if="canInstall && !installed"
@@ -406,30 +496,30 @@ async function onDeleteAccount() {
       </p>
 
       <!-- Liens légaux -->
-      <div class="mt-6 flex flex-wrap gap-2">
+      <div class="mt-6 flex flex-col gap-2">
         <RouterLink
           to="/pourquoi"
-          class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
         >
-          Pourquoi Les Monstres ?
+          🌍 Pourquoi Les Monstres ?
         </RouterLink>
         <RouterLink
           to="/mentions-legales"
-          class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
         >
-          Mentions légales
+          📄 Mentions légales
         </RouterLink>
         <RouterLink
           to="/rgpd"
-          class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
         >
-          Politique de confidentialité (RGPD)
+          🔒 Politique de confidentialité (RGPD)
         </RouterLink>
         <RouterLink
           to="/suppression-donnees"
-          class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
         >
-          Suppression des données
+          🗑️ Suppression des données
         </RouterLink>
       </div>
 
