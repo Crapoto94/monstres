@@ -5,10 +5,12 @@ import { fetchItems, type Item } from '@/services/items'
 import { formatRelativeTime } from '@/utils/time'
 import { useAuthStore } from '@/stores/auth'
 import logo from '@/assets/logo-transparent.png'
+import WhatsNewModal from '@/components/WhatsNewModal.vue'
 
 const auth = useAuthStore()
 
 const appVersion = __APP_VERSION__
+const showWhatsNew = ref(false)
 
 const items = ref<Item[]>([])
 const categories = ref<Category[]>([])
@@ -243,6 +245,12 @@ function coverPhoto(item: Item) {
       </div>
     </div>
 
-    <p class="mt-8 pb-4 text-center text-xs text-gray-300 dark:text-gray-700">Les Monstres v{{ appVersion }}</p>
+    <p class="mt-8 pb-4 text-center text-xs text-gray-300 dark:text-gray-700">
+      <button type="button" class="underline underline-offset-2 hover:text-gray-500 dark:hover:text-gray-500" @click="showWhatsNew = true">
+        Les Monstres v{{ appVersion }}
+      </button>
+    </p>
+
+    <WhatsNewModal :open="showWhatsNew" @close="showWhatsNew = false" />
   </section>
 </template>
