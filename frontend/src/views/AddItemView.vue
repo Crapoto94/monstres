@@ -244,9 +244,18 @@ async function publish() {
  * bloqués. Facebook ne permet de toute façon pas de pré-remplir la zone
  * de post d'un Groupe via une URL — seul le copier-coller manuel marche.
  */
+/** Mêmes 3 premiers segments que `shortAddress` sur ItemDetailView.vue (numéro, rue, ville). */
+function shortenAddress(fullAddress: string): string {
+  const parts = fullAddress.split(',').map((s) => s.trim())
+  return parts.length <= 3 ? fullAddress : parts.slice(0, 3).join(', ')
+}
+
 async function shareToFacebookGroup(item: Item) {
   const itemUrl = `${window.location.origin}/monstres/${item.id}`
-  const text = `${item.title} — ${itemUrl}`
+  const lines = [item.title]
+  if (item.address) lines.push(`📍 ${shortenAddress(item.address)}`)
+  lines.push(itemUrl)
+  const text = lines.join('\n')
   try {
     await navigator.clipboard.writeText(text)
   } catch {
@@ -279,7 +288,7 @@ function resetAndGoHome() {
           📘 Partager dans le groupe Facebook
         </button>
         <p v-else class="text-sm text-gray-600 dark:text-gray-300">
-          📘 Texte copié dans le presse-papier — colle-le (Ctrl/Cmd+V) dans un nouveau post du groupe Facebook.
+          📘 Nom, adresse et lien copiés dans le presse-papier — colle-les (Ctrl/Cmd+V) dans la zone de publication du groupe Facebook.
           <a :href="facebookGroupUrl" target="_blank" rel="noopener" class="font-medium text-brand-600 underline dark:text-brand-400">
             Ouvrir le groupe Facebook
           </a>
@@ -452,13 +461,15 @@ function resetAndGoHome() {
           {{ address }}
         </p>
 
-        <label
-          v-if="facebookShareAvailable"
-          class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-        >
-          <input v-model="shareOnFacebook" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700" />
-          Partager aussi dans le groupe Facebook
-        </label>
+        <div v-if="facebookShareAvailable" class="flex flex-col gap-1">
+          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input v-model="shareOnFacebook" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700" />
+            Partager aussi dans le groupe Facebook
+          </label>
+          <p v-if="shareOnFacebook" class="pl-6 text-xs text-gray-400 dark:text-gray-500">
+            Après publication, un bouton copiera le nom, l'adresse et le lien du Monstre — il faudra les coller (Ctrl/Cmd+V) dans la zone de publication du groupe Facebook qui s'ouvrira.
+          </p>
+        </div>
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
 

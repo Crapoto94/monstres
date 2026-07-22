@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -21,7 +21,12 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  app.setGlobalPrefix('api/v1');
+  // `monstres/:id` reste hors préfixe /api/v1 : c'est la route publique
+  // exacte (nginx y route les robots de partage — voir ShareController)
+  // pour que `og:url` corresponde au vrai lien partagé.
+  app.setGlobalPrefix('api/v1', {
+    exclude: [{ path: 'monstres/:id', method: RequestMethod.GET }],
+  });
   app.use(cookieParser());
   app.enableCors({
     origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),

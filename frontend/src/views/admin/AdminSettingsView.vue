@@ -152,7 +152,7 @@ function meta(key: string): SettingMeta {
   return SETTINGS_META[key] ?? { label: key, description: '' }
 }
 function isBoolean(type: string) { return type === 'BOOLEAN' }
-function isTextarea(key: string) { return key.endsWith('_content') }
+function isTextarea(key: string) { return key.endsWith('_content') || key === 'legal_notices' }
 function hasChanged(key: string) { return drafts.value[key] !== settingByKey(key)?.value }
 function settingByKey(key: string): AdminSetting | undefined { return settings.value.find((s) => s.key === key) }
 

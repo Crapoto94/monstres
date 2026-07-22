@@ -25,6 +25,7 @@ import { ReportsModule } from './reports/reports.module';
 import { TutorialModule } from './tutorial/tutorial.module';
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { LegalModule } from './legal/legal.module';
+import { ShareModule } from './share/share.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { LegalModule } from './legal/legal.module';
     TutorialModule,
     EmailTemplatesModule,
     LegalModule,
+    ShareModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
