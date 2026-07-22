@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
 import type { User } from '../generated/prisma/client';
@@ -42,7 +43,26 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly imageService: ImageService,
+    private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Résout la valeur brute stockée en base vers ce que le frontend doit
+   * afficher : un emoji reste tel quel, une URL absolue (avatar Google/
+   * Facebook) reste telle quelle, un chemin relatif d'upload local
+   * (`avatars/{userId}/{fichier}`, cf. `ImageService.processAvatar`) est
+   * préfixé par `IMG_BASE_URL` — même logique que les photos de Monstres
+   * dans `ItemsService`.
+   */
+  private resolveAvatar(avatar: string | null): string | null {
+    if (!avatar) return null;
+    if (/^https?:\/\//.test(avatar)) return avatar;
+    if (avatar.startsWith('avatars/')) {
+      const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+      return `${imgBaseUrl}/${avatar}`;
+    }
+    return avatar;
+  }
 
   /** Profil complet de l'utilisateur connecté (exclut password et tokens). */
   toSafeUser(user: User): SafeUser {
@@ -50,7 +70,7 @@ export class UsersService {
       id: user.id,
       name: user.name,
       email: user.email,
-      avatar: user.avatar,
+      avatar: this.resolveAvatar(user.avatar),
       role: user.role,
       score: user.score,
       trustScore: user.trustScore,
@@ -104,7 +124,7 @@ export class UsersService {
     return {
       id: user.id,
       name: user.name,
-      avatar: user.avatar,
+      avatar: this.resolveAvatar(user.avatar),
       score: user.score,
       createdAt: user.createdAt,
     };
@@ -144,7 +164,7 @@ export class UsersService {
         return {
           id: user.id,
           name: user.name,
-          avatar: user.avatar,
+          avatar: this.resolveAvatar(user.avatar),
           score: user.score,
           createdAt: user.createdAt,
           itemsCreated: user._count.items,

@@ -7,9 +7,9 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.5 — mise en conformité
-soumission Facebook : icône 1024×1024, page suppression de données,
-identifiants OAuth Facebook vérifiés en local)
+Dernière mise à jour : **2026-07-22** (v0.3.6 — 3 correctifs après premier
+test réel de connexion Facebook : scope `email` manquant, avatar OAuth/
+upload local affiché en texte brut au lieu d'une image)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -1989,6 +1989,72 @@ suppression des données utilisateur, catégorie.
       faire lui-même puis redémarrer le conteneur backend.
 - [ ] Soumettre l'app Facebook à la revue une fois les 4 champs + les
       identifiants prod en place.
+
+---
+
+## Correctifs suite au premier test réel de connexion Facebook (v0.3.6)
+
+L'utilisateur a testé la connexion Facebook en conditions réelles (app en
+mode développement, lui-même comme testeur déclaré) et remonté 2 problèmes.
+
+### 1. Email de compte = adresse factice non joignable
+Le compte créé avait pour email
+`facebook-{providerId}@users.noreply.monstres.fbc.fr` — un **placeholder
+interne** généré par `AuthService.loginWithOAuth()`
+(`backend/src/auth/auth.service.ts:164`) uniquement quand Facebook ne
+renvoie aucun email, pour satisfaire la contrainte d'unicité de la colonne
+`email`. Ce n'est pas censé être une adresse joignable ; le bounce
+("domaine introuvable") est attendu pour un placeholder, **mais le vrai
+bug est que Facebook n'a jamais renvoyé le véritable email de
+l'utilisateur.**
+- **Cause** : `FacebookStrategy` (`backend/src/auth/facebook.strategy.ts`)
+  listait bien `emails` dans `profileFields`, mais **ne demandait jamais la
+  permission OAuth `email`** (`scope`) — contrairement à `GoogleStrategy`
+  qui a `scope: ['email', 'profile']`. Sans cette permission explicitement
+  demandée dans le dialogue de consentement Facebook, l'API ne renvoie
+  jamais le champ email même si `profileFields` le liste.
+- **Correctif** : ajout de `scope: ['email']` au constructeur de
+  `FacebookStrategy`. Les prochaines connexions Facebook demanderont bien
+  la permission email et l'utiliseront si l'utilisateur l'accorde (le
+  placeholder reste en fallback pour le cas, plus rare, où l'utilisateur
+  refuse explicitement cette permission).
+- **Le compte déjà créé avec l'email factice n'est pas corrigé
+  automatiquement** — il faudra soit le supprimer et se reconnecter via
+  Facebook (le correctif de scope s'appliquera), soit changer son email
+  manuellement en base.
+
+### 2. Photo de profil Facebook affichée en texte brut au lieu d'une image
+Deux bugs distincts empilés :
+- **Bug latent pré-existant** (avatar upload local, `ImageService.
+  processAvatar` — `backend/src/images/image.service.ts:70`) : la valeur
+  stockée en base est un chemin relatif (`avatars/{userId}/{fichier}`),
+  jamais préfixé par `IMG_BASE_URL` contrairement aux photos de Monstres
+  (`ItemsService` le fait déjà). `UsersService` renvoyait ce chemin brut
+  tel quel dans `toSafeUser`/`findPublicProfile`/`findCommunity`.
+- **Bug frontend** (`ProfileView.vue`) : l'affichage ne testait que
+  `selectedAvatar?.startsWith('/')` (chemin local) ou repli emoji — une URL
+  absolue Facebook/Google (`https://platform-lookaside.fbsbx.com/...`) ne
+  matchait ni l'un ni l'autre et atterrissait dans le `<span>` emoji,
+  affichant l'URL en texte brut à la taille de police par défaut (d'où le
+  texte énorme superposé au reste de la carte profil sur la capture
+  utilisateur).
+- **Correctifs** :
+  - `UsersService.resolveAvatar()` (nouvelle méthode privée) : renvoie tel
+    quel un emoji ou une URL déjà absolue (`http(s)://`, cas Google/
+    Facebook), préfixe par `IMG_BASE_URL` un chemin `avatars/...` (cas
+    upload local) — appliqué dans les 3 endroits qui exposaient
+    `user.avatar` brut.
+  - `ProfileView.vue` : nouveau `isImageAvatar` computed testant
+    `/^(\/|https?:\/\/)/` au lieu du seul `startsWith('/')` — couvre à la
+    fois les anciens chemins locaux et les URLs absolues OAuth.
+- **Testé** : compte de test promu ADMIN temporairement (script Prisma
+  ponctuel contre `dev.db`, supprimé après usage) pour passer la règle
+  "3 Monstres minimum", upload réel d'une image test via
+  `POST /users/me/avatar/upload` → `GET /auth/me` renvoie bien une URL
+  absolue `http://localhost:3000/uploads/avatars/.../....webp` (200,
+  `image/webp` confirmé), et affichage vérifié en navigateur (cercle avatar
+  au lieu du texte brut). Compte de test supprimé après vérification.
+- [x] Build backend + frontend sans erreur après les 2 correctifs.
 
 ---
 

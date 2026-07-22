@@ -18,6 +18,7 @@ const AVATARS = [
 ]
 
 const selectedAvatar = computed(() => auth.user?.avatar ?? null)
+const isImageAvatar = computed(() => /^(\/|https?:\/\/)/.test(selectedAvatar.value ?? ''))
 const uploading = ref(false)
 const uploadError = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -102,9 +103,9 @@ async function onDeleteAccount() {
         <div class="flex items-center gap-4">
           <div
             class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-3xl"
-            :class="selectedAvatar?.startsWith('/') ? '' : 'bg-brand-100 dark:bg-brand-900'"
+            :class="isImageAvatar ? '' : 'bg-brand-100 dark:bg-brand-900'"
           >
-            <img v-if="selectedAvatar?.startsWith('/')" :src="selectedAvatar" class="h-16 w-16 rounded-full object-cover" alt="" />
+            <img v-if="isImageAvatar" :src="selectedAvatar!" class="h-16 w-16 rounded-full object-cover" alt="" />
             <span v-else>{{ selectedAvatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
           </div>
           <div class="min-w-0">
