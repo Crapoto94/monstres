@@ -77,6 +77,12 @@ enum SettingType {
   JSON
 }
 
+enum EmailLogStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Modèles
 // ─────────────────────────────────────────────────────────────────────────
@@ -358,6 +364,10 @@ model Setting {
   @@map("settings")
 }
 
+// Journal global des actions effectuées dans l'appli (qui, quoi, quand),
+// réservé aux SUPER_ADMIN. Rempli automatiquement par `AuditLogInterceptor`
+// pour toute requête mutante (POST/PATCH/PUT/DELETE) — jamais alimenté à la
+// main dans les services, pour ne dépendre d'aucun oubli d'instrumentation.
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
@@ -367,7 +377,29 @@ model AuditLog {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
   @@map("audit_logs")
+}
+
+// Journal des emails envoyés (ou tentés) via EmailService, réservé aux
+// SUPER_ADMIN. Écrit systématiquement depuis `EmailService.send()`, quel
+// que soit l'appelant (vérification email, mot de passe oublié, notifications).
+model EmailLog {
+  id          String         @id @default(cuid())
+  to          String
+  subject     String
+  htmlContent String
+  templateKey String?
+  status      EmailLogStatus
+  error       String?
+  createdAt   DateTime       @default(now())
+
+  @@index([to])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
 }
 
 model TutorialPage {

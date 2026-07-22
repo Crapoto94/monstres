@@ -226,7 +226,8 @@ async function handleDeleteComment(comment: Comment) {
             v-for="photo in listingPhotos"
             :key="photo.id"
             :src="photo.path"
-            class="aspect-square w-full flex-shrink-0 cursor-zoom-in snap-center object-cover"
+            class="w-full flex-shrink-0 cursor-zoom-in snap-center object-contain"
+            style="max-height: 70vh;"
             alt=""
             @click="lightboxSrc = photo.path"
           />
