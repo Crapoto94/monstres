@@ -25,7 +25,7 @@ onMounted(async () => {
 
     <div
       v-else-if="content"
-      class="prose prose-sm dark:prose-invert mt-4 max-w-none text-gray-700 dark:text-gray-300"
+      class="html-content mt-4 max-w-none text-sm text-gray-700 dark:text-gray-300"
       v-html="content"
     />
 

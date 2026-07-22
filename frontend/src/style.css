@@ -44,3 +44,41 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* Styles pour le contenu HTML rendu via v-html (pages légales, /pourquoi…) */
+.html-content h2,
+.prose h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-gray-900);
+}
+.html-content p,
+.prose p {
+  margin-bottom: 0.75rem;
+  line-height: 1.65;
+}
+.html-content strong,
+.prose strong {
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+:root.dark .html-content h2,
+:root.dark .prose h2 {
+  color: var(--color-gray-100);
+}
+:root.dark .html-content strong,
+:root.dark .prose strong {
+  color: var(--color-gray-100);
+}
+.html-content a,
+.prose a {
+  color: var(--color-brand-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+:root.dark .html-content a,
+:root.dark .prose a {
+  color: var(--color-brand-400);
+}

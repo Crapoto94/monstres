@@ -27,6 +27,6 @@ onMounted(async () => {
 
     <p v-if="loading" class="text-sm text-gray-400">Chargement…</p>
     <p v-else-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-    <div v-else class="prose prose-sm dark:prose-invert max-w-none prose-a:text-brand-600 dark:prose-a:text-brand-400" v-html="content" />
+    <div v-else class="html-content max-w-none text-sm text-gray-700 dark:text-gray-300" v-html="content" />
   </section>
 </template>

@@ -67,6 +67,16 @@ const collectionPhotos = computed(() => {
   return item.value?.photos.filter(p => p.type === 'COLLECTION') ?? []
 })
 
+// Nominatim renvoie une adresse complète (numéro, rue, ville, arrondissement,
+// département, région, pays...) — on n'affiche que les 3 premiers segments
+// (numéro, rue, ville) pour rester lisible sur la fiche.
+const shortAddress = computed(() => {
+  if (!item.value?.address) return null
+  const parts = item.value.address.split(',').map((s) => s.trim())
+  if (parts.length <= 3) return item.value.address
+  return parts.slice(0, 3).join(', ')
+})
+
 function isImageAvatar(avatar: string | null | undefined): boolean {
   return !!avatar && /^(\/|https?:\/\/)/.test(avatar)
 }
@@ -294,7 +304,7 @@ async function handleDeleteComment(comment: Comment) {
         <!-- Adresse -->
         <div class="flex items-start gap-2 text-sm">
           <span class="mt-0.5">📍</span>
-          <span v-if="item.address" class="text-gray-700 dark:text-gray-300">{{ item.address }}</span>
+          <span v-if="shortAddress" class="text-gray-700 dark:text-gray-300">{{ shortAddress }}</span>
           <span v-else class="text-gray-400 dark:text-gray-500">Adresse non renseignée.</span>
         </div>
 
