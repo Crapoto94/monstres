@@ -55,7 +55,7 @@ export class NotificationsService {
     if (user.emailNotifications) {
       try {
         const { subject, htmlContent } = await this.buildEmail(type, data);
-        await this.emailService.send({ to: user.email, subject, htmlContent });
+        await this.emailService.send({ to: user.email, subject, htmlContent, templateKey: type.toLowerCase() });
       } catch (error) {
         this.logger.error(`Échec envoi email de notification (${type}) à ${user.email}`, error as Error);
       }

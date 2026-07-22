@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { api } from '@/services/api'
+import { api, type ApiSuccess } from '@/services/api'
 
 const content = ref('')
 const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/legal/mission')
-    content.value = data.content ?? ''
+    const { data: res } = await api.get<ApiSuccess<{ content: string }>>('/legal/mission')
+    content.value = res.data.content ?? ''
   } catch {
     content.value = ''
   } finally {

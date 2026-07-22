@@ -317,3 +317,32 @@ export async function previewEmailTemplate(id: string) {
   const { data } = await api.post<ApiSuccess<{ subject: string; htmlContent: string }>>(`/admin/email-templates/${id}/preview`)
   return data.data
 }
+
+export interface AdminAuditLogEntry {
+  id: string
+  action: string
+  data: { method: string; path: string; params: Record<string, unknown>; body: Record<string, unknown> } | null
+  createdAt: string
+  user: { id: string; name: string; email: string; avatar: string | null; role: string } | null
+}
+
+export async function fetchAuditLog(params: { userId?: string; action?: string; page?: number; pageSize?: number }) {
+  const { data } = await api.get<ApiSuccess<{ logs: AdminAuditLogEntry[] } & Paginated>>('/admin/audit-log', { params })
+  return data.data
+}
+
+export interface AdminEmailLogEntry {
+  id: string
+  to: string
+  subject: string
+  htmlContent: string
+  templateKey: string | null
+  status: 'SENT' | 'FAILED' | 'SKIPPED'
+  error: string | null
+  createdAt: string
+}
+
+export async function fetchEmailLog(params: { search?: string; status?: string; page?: number; pageSize?: number }) {
+  const { data } = await api.get<ApiSuccess<{ logs: AdminEmailLogEntry[] } & Paginated>>('/admin/email-log', { params })
+  return data.data
+}

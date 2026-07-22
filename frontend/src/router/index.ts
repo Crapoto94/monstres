@@ -106,6 +106,18 @@ export const router = createRouter({
           component: () => import('@/views/admin/AdminSqlView.vue'),
           meta: { requiresAdmin: true, requiresSuperAdmin: true },
         },
+        {
+          path: 'journal',
+          name: 'admin-audit-log',
+          component: () => import('@/views/admin/AdminAuditLogView.vue'),
+          meta: { requiresAdmin: true, requiresSuperAdmin: true },
+        },
+        {
+          path: 'journal-mails',
+          name: 'admin-email-log',
+          component: () => import('@/views/admin/AdminEmailLogView.vue'),
+          meta: { requiresAdmin: true, requiresSuperAdmin: true },
+        },
       ],
     },
   ],

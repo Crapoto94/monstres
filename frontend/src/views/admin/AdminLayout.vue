@@ -31,7 +31,11 @@ const tabs = computed(() => [
     : []),
   { to: '/admin/signalements', label: 'Signalements', badge: stats.value?.pendingReports ?? null },
   ...(auth.user?.role === 'SUPER_ADMIN'
-    ? [{ to: '/admin/sql', label: 'Console SQL', badge: null }]
+    ? [
+        { to: '/admin/journal', label: 'Journal', badge: null as number | null },
+        { to: '/admin/journal-mails', label: 'Journal mails', badge: null as number | null },
+        { to: '/admin/sql', label: 'Console SQL', badge: null as number | null },
+      ]
     : []),
 ])
 

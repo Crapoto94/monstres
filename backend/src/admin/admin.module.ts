@@ -16,6 +16,10 @@ import { AdminSqlService } from './admin-sql.service';
 import { AdminTutorialController } from './admin-tutorial.controller';
 import { AdminEmailTemplatesController } from './admin-email-templates.controller';
 import { EmailTemplatesModule } from '../email-templates/email-templates.module';
+import { AdminAuditController } from './admin-audit.controller';
+import { AdminAuditService } from './admin-audit.service';
+import { AdminEmailLogController } from './admin-email-log.controller';
+import { AdminEmailLogService } from './admin-email-log.service';
 
 @Module({
   imports: [UsersModule, CategoriesModule, EmailTemplatesModule],
@@ -29,7 +33,17 @@ import { EmailTemplatesModule } from '../email-templates/email-templates.module'
     AdminSqlController,
     AdminTutorialController,
     AdminEmailTemplatesController,
+    AdminAuditController,
+    AdminEmailLogController,
   ],
-  providers: [AdminUsersService, AdminItemsService, AdminDashboardService, AdminReportsService, AdminSqlService],
+  providers: [
+    AdminUsersService,
+    AdminItemsService,
+    AdminDashboardService,
+    AdminReportsService,
+    AdminSqlService,
+    AdminAuditService,
+    AdminEmailLogService,
+  ],
 })
 export class AdminModule {}
