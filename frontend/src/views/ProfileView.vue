@@ -60,6 +60,9 @@ function onFileSelected(event: Event) {
     img.onload = () => {
       cropImg.value = img
       cropZoom.value = 1
+      // Auto-zoom out if image is larger than 280px display to fit the face
+      const fitZoom = 280 / Math.max(img.naturalWidth, img.naturalHeight)
+      if (fitZoom < 1) cropZoom.value = fitZoom
       cropX.value = 0
       cropY.value = 0
       showCrop.value = true
@@ -94,7 +97,7 @@ function onCropMouseUp() {
 function onCropWheel(e: WheelEvent) {
   e.preventDefault()
   const delta = e.deltaY > 0 ? -0.1 : 0.1
-  cropZoom.value = Math.max(0.5, Math.min(3, cropZoom.value + delta))
+  cropZoom.value = Math.max(0.2, Math.min(3, cropZoom.value + delta))
   drawCrop()
 }
 
@@ -487,7 +490,7 @@ async function onDeleteAccount() {
         <input
           type="range"
           :value="cropZoom"
-          min="0.5"
+          min="0.2"
           max="3"
           step="0.05"
           class="flex-1 accent-brand-500"
