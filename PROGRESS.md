@@ -2278,6 +2278,79 @@ compte de test remis dans leur état d'origine après vérification.
 
 ---
 
+## Notifications WhatsApp (Meta WhatsApp Cloud API)
+
+Demande utilisateur : ajouter WhatsApp comme canal de notification, avec
+un toggle sur le profil comme pour les notifications email.
+
+### Décisions
+- **Fournisseur : Meta WhatsApp Cloud API** (choix utilisateur, plutôt que
+  Twilio) — peut réutiliser l'app Facebook déjà créée pour la connexion
+  Facebook (Phase 11), palier gratuit jusqu'à 1000 conversations/mois.
+- **Nouveau champ `phoneNumber`** sur `User` (aucun champ téléphone
+  n'existait) + `whatsappNotifications Boolean @default(false)` — désactivé
+  par défaut (contrairement à `emailNotifications`, vrai par défaut) car ça
+  nécessite un numéro que l'utilisateur doit explicitement renseigner.
+  Migration `20260722163838_add_whatsapp_notifications`.
+- **Un seul template générique** (`WHATSAPP_TEMPLATE_NAME`, une variable de
+  corps = le texte de la notification) plutôt qu'un template par type de
+  notification (4 templates à faire approuver par Meta) — limite le travail
+  de configuration côté Meta Business Manager à un seul template. Contrainte
+  Meta : un message initié par l'app (hors fenêtre de 24h suivant un message
+  du client) doit obligatoirement passer par un template pré-approuvé,
+  impossible d'envoyer du texte libre.
+- **Garde-fou données** : retirer le numéro de téléphone désactive
+  automatiquement `whatsappNotifications` côté serveur (`UsersService.
+  updatePreferences`) — évite l'état incohérent "activé sans numéro".
+
+### Fait
+- [x] `backend/src/whatsapp/whatsapp.service.ts` (+ module `@Global()`,
+      même pattern que `EmailModule`) : `sendNotification(to, message)`
+      via `POST https://graph.facebook.com/v21.0/{phoneNumberId}/messages`,
+      fallback log (pas d'envoi) si `WHATSAPP_ACCESS_TOKEN`/
+      `WHATSAPP_PHONE_NUMBER_ID` absents — même esprit que Brevo.
+- [x] `NotificationsService.notify()` : email et WhatsApp envoyés
+      indépendamment (chacun son `if` + son propre try/catch), un canal en
+      échec ne bloque plus l'autre. Nouvelle méthode privée
+      `buildWhatsAppMessage()` (texte brut, pendant de `buildEmail()` en HTML).
+- [x] `UpdatePreferencesDto` étendu (tous les champs optionnels
+      maintenant) : `whatsappNotifications?: boolean`,
+      `phoneNumber?: string | null` (regex format international
+      `+33612345678`, `@ValidateIf` pour autoriser `null` explicite = retrait
+      du numéro). `UsersService.updatePreferences()` prend désormais un
+      objet de mises à jour partielles au lieu d'un seul booléen.
+- [x] Frontend : `ProfileView.vue` — bloc "Notifications WhatsApp" sous
+      celui des emails, toggle désactivé (grisé) tant qu'aucun numéro n'est
+      renseigné, + champ numéro avec bouton Sauver. `stores/auth.ts` :
+      `setWhatsappNotifications()`, `setPhoneNumber()`. `services/auth.ts` :
+      `updatePreferences()` généralisé (remplace `updateEmailNotifications`
+      qui ne gérait qu'un seul champ).
+- [x] `.env.example` (racine + `backend/`) documentés :
+      `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
+      `WHATSAPP_TEMPLATE_NAME`, `WHATSAPP_TEMPLATE_LANGUAGE`.
+- [x] Testé de bout en bout en local (sans identifiants Meta réels, donc
+      chemin "log" uniquement) : `PATCH /users/me/preferences` avec
+      `phoneNumber` invalide → 400 ; numéro valide + activation WhatsApp →
+      200 ; retrait du numéro → `whatsappNotifications` repasse bien à
+      `false` automatiquement. `NotificationsService.notify()` invoqué
+      directement (script Nest `createApplicationContext`, plus fiable
+      qu'un flux HTTP complet réservation/item) : log confirmé —
+      `WhatsAppService` a bien construit et tenté d'envoyer le message
+      texte correct au numéro de test. Compte de test supprimé après
+      vérification.
+- [x] Build backend + frontend sans erreur.
+
+### Restant (dépend entièrement de l'utilisateur, hors de portée du code)
+- [ ] Créer l'app "WhatsApp Business Platform" dans Meta for Developers
+      (peut réutiliser l'app Facebook Login existante), obtenir un numéro
+      WhatsApp Business (numéro de test gratuit disponible pour le dev).
+- [ ] Créer et faire approuver le message template `monstres_notification`
+      (une variable de corps) dans Meta Business Manager.
+- [ ] Renseigner `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID` dans le
+      `.env` de production, redémarrer le conteneur backend.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
