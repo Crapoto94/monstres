@@ -186,6 +186,74 @@ async function main() {
     }
   }
 
+  // Contenu RGPD et Mentions légales (modifiables depuis /admin/parametres)
+  const LEGAL_SETTINGS = [
+    {
+      key: 'legal_notices',
+      value: `<h2>Mentions légales</h2>
+<p><strong>Éditeur du site</strong><br>Les Monstres — Application communautaire de repérage et récupération d'objets encombrants abandonnés.</p>
+<p><strong>Contact</strong><br>Pour toute question, contacte-nous via l'application ou à l'adresse email indiquée dans les paramètres de ton compte.</p>
+<p><strong>Hébergement</strong><br>Ce site est hébergé sur un serveur Proxmox.</p>
+<p><strong>Propriété intellectuelle</strong><br>Le contenu publié par les utilisateurs (photos, descriptions) reste leur propriété. L'application Les Monstres se réserve le droit d'utiliser le contenu publié dans le cadre du fonctionnement du service.</p>
+<p><strong>Responsabilité</strong><br>Les Monstres agit comme intermédiaire technique. La responsabilité du contenu publié incombe à chaque utilisateur. Les administrateurs se réservent le droit de modérer ou supprimer tout contenu contraire aux règles de la communauté.</p>`,
+      type: 'JSON',
+    },
+    {
+      key: 'rgpd_content',
+      value: `<h2>Politique de confidentialité (RGPD)</h2>
+<h3>1. Données collectées</h3>
+<p>Lors de ton inscription et de ton utilisation de Les Monstres, nous collectons :</p>
+<ul>
+  <li><strong>Données d'inscription</strong> : nom, adresse email, mot de passe (chiffré)</li>
+  <li><strong>Données de publication</strong> : photos, descriptions, localisation GPS des Monstres signalés</li>
+  <li><strong>Données de navigation</strong> : historique des actions (votes, réservations, commentaires, signalements)</li>
+  <li><strong>Métadonnées techniques</strong> : adresse IP, système d'exploitation, navigateur (à l'inscription et à la connexion)</li>
+</ul>
+
+<h3>2. Finalité du traitement</h3>
+<p>Tes données sont utilisées pour :</p>
+<ul>
+  <li>Le fonctionnement du service (publication, réservation, récupération des Monstres)</li>
+  <li>La gestion de ta compte et de ton score communautaire</li>
+  <li>L'envoi de notifications email (si activées) : nouveaux Monstres à proximité, réservations, récupérations</li>
+  <li>La modération et la sécurité du service (signalements, sanctions)</li>
+  <li>Les statistiques anonymisées du service</li>
+</ul>
+
+<h3>3. Durée de conservation</h3>
+<p>Tes données personnelles sont conservées tant que ton compte est actif. En cas de suppression de compte, tes données personnelles sont effacées dans un délai de 30 jours, à l'exception des données anonymisées nécessaires au fonctionnement des statistiques.</p>
+
+<h3>4. Tes droits (RGPD)</h3>
+<p>Conformément au Règlement Général sur la Protection des Données, tu dispose des droits suivants :</p>
+<ul>
+  <li><strong>Droit d'accès</strong> : obtenir une copie de tes données personnelles</li>
+  <li><strong>Droit de rectification</strong> : corriger tes données inexactes</li>
+  <li><strong>Droit à l'effacement</strong> : demander la suppression de tes données</li>
+  <li><strong>Droit à la portabilité</strong> : récupérer tes données dans un format structuré</li>
+  <li><strong>Droit d'opposition</strong> : t'opposer au traitement de tes données</li>
+</ul>
+<p>Pour exercer ces droits, utilise les paramètres de ton compte ou contacte-nous via l'application.</p>
+
+<h3>5. Notifications email</h3>
+<p>Tu peux activer ou désactiver les notifications email depuis ton profil. Les notifications concernent uniquement l'activité en lien avec tes Monstres et tes zones surveillées.</p>
+
+<h3>6. Sécurité</h3>
+<p>Nous mettons en œuvre les mesures techniques et organisationnelles appropriées pour protéger tes données : mots de passe chiffrés, cookies httpOnly, accès restreint aux données.</p>
+
+<h3>7. Contact</h3>
+<p>Pour toute question relative à la protection de tes données, contacte-nous via l'application.</p>`,
+      type: 'JSON',
+    },
+  ];
+
+  for (const setting of LEGAL_SETTINGS) {
+    const existing = await prisma.setting.findUnique({ where: { key: setting.key } });
+    if (!existing) {
+      await prisma.setting.create({ data: setting });
+      console.log(`+ setting ${setting.key}`);
+    }
+  }
+
   await prisma.$disconnect();
 }
 

@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.1 — tutoriel onboarding + éditeur templates emails
-+ connexion Google/Facebook, Phase 11 terminée)
+Dernière mise à jour : **2026-07-22** (v0.3.3 — re-correctif sécurité
+console SQL admin, régression d'une session parallèle)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -1864,6 +1864,75 @@ d'une confirmation explicite — donnée dans ce message).
 - [x] Frontend : AdminLayout avec onglets "Tutoriel" et "Mails"
 - [x] Frontend : auth store/service avec `onboardingCompletedAt`
 - [x] Build backend + frontend sans erreur
+
+---
+
+## Correctif de sécurité (bis) : régression sur la console SQL admin
+
+En reprenant la main pour aider l'utilisateur à configurer Google/Facebook,
+constat : le commit `b76273e` ("v0.3.2 : pastilles dashboard admin + fix
+console SQL tables", fait entre-temps) avait **réverté** le correctif de
+sécurité de la console SQL (`## Correctif de sécurité : console SQL
+réellement en lecture seule` ci-dessus) — retour à la connexion Prisma
+partagée (capable d'écrire) protégée par le seul filtre de premier-mot,
+recontournable par un commentaire SQL (`/* x */ DELETE FROM users`). Very
+probablement un effet de bord non intentionnel : le message du commit
+("fix console SQL tables") suggère que la connexion SQLite dédiée
+(`@libsql/client` séparé + `PRAGMA query_only`) causait un problème sur
+`listTables()`, et la correction a réintroduit la faille en même temps
+qu'elle réglait ce bug.
+
+### Décision
+Plutôt que de relancer une 2e connexion dédiée (source du bug précédent,
+cause exacte non identifiée — possible conflit de verrou SQLite entre les
+deux connexions persistantes sur le même fichier), le correctif reste sur
+la connexion Prisma partagée (qui marchait pour `listTables`) mais durcit
+la **validation lexicale** de la requête avant exécution :
+- Commentaires SQL (`--` et `/* */`) retirés avant toute inspection — un
+  mot interdit caché derrière un commentaire ne passe plus inaperçu.
+- Requêtes empilées (plusieurs instructions séparées par `;`) refusées
+  explicitement.
+- **Liste blanche** (la requête nettoyée doit commencer par `SELECT` ou
+  `WITH`) plutôt qu'une liste noire de mots interdits — SQLite n'autorise
+  de toute façon aucune écriture dans une CTE (`WITH ... AS (...)`),
+  contrairement à Postgres, donc l'autoriser ne rouvre pas la faille.
+
+### Fait
+- [x] `backend/src/admin/admin-sql.service.ts` réécrit (validation
+      lexicale, connexion Prisma partagée conservée).
+- [x] Testé de bout en bout avec un compte SUPER_ADMIN de test :
+      `listTables()` fonctionne, `SELECT` normal fonctionne, tentative de
+      contournement par commentaire bloquée (comme avant sa
+      réintroduction), **requête empilée (`SELECT 1; DELETE FROM users`)
+      également bloquée** (cas non couvert par le tout premier correctif),
+      compte ciblé confirmé toujours présent après les deux tentatives.
+      Accès refusé pour un compte `ADMIN` simple (inchangé). Compte de
+      test supprimé après vérification.
+- [x] Build backend sans erreur.
+
+### Aide apportée : configuration Google/Facebook
+L'utilisateur a renseigné `GOOGLE_CLIENT_ID` dans le `.env` de production
+(Proxmox) mais pas encore `GOOGLE_CLIENT_SECRET`. Vérifié en local
+(`backend/.env`, `GOOGLE_CLIENT_ID` renseigné avec sa vraie valeur,
+`GOOGLE_CLIENT_SECRET` vide) : `GET /auth/google` redirige bien vers
+`/connexion?error=google_unavailable` — confirme que **les deux valeurs
+sont requises**, le `CLIENT_ID` seul ne suffit pas. Marche à suivre donnée
+en chat pour récupérer le secret (Google Cloud Console → APIs & Services →
+Identifiants → cliquer sur le client OAuth existant → "Client secret") et
+pour créer une app Facebook complète (developers.facebook.com → Créer une
+app → produit "Facebook Login" → URI de redirection OAuth valide →
+Paramètres → Basique pour l'ID/secret de l'app), y compris l'avertissement
+qu'une app Facebook en mode développement ne laisse se connecter que les
+développeurs/testeurs déclarés tant qu'elle n'est pas passée en mode Live
+(bascule qui demande une politique de confidentialité et une revue de
+l'app par Facebook pour la permission de login).
+
+### Restant / reporté
+- [ ] `GOOGLE_CLIENT_SECRET` à renseigner par l'utilisateur (Google Cloud
+      Console, même projet que `GOOGLE_CLIENT_ID`).
+- [ ] App Facebook à créer entièrement par l'utilisateur (aucun accès à
+      son compte développeur depuis cette session) — `FACEBOOK_CLIENT_ID`/
+      `FACEBOOK_CLIENT_SECRET` toujours vides.
 
 ---
 
