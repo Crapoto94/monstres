@@ -79,145 +79,146 @@ function coverPhoto(item: Item) {
 </script>
 
 <template>
-  <section class="flex-1">
-    <!-- Header fixe : logo + profil/connexion -->
-    <div class="sticky top-0 z-10 flex items-center justify-between bg-white/90 px-4 py-3 backdrop-blur dark:bg-gray-900/90">
-      <div class="flex items-center gap-2">
-        <img :src="logo" alt="Les Monstres" class="h-8 w-8 object-contain" />
-        <h1 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100">Les Monstres</h1>
-      </div>
-      <RouterLink
-        v-if="auth.isAuthenticated && auth.user"
-        to="/profil"
-        class="flex items-center gap-2"
-      >
-        <div
-          class="flex h-8 w-8 items-center justify-center rounded-full text-sm"
-          :class="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"
-        >
-          <img v-if="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http'))" :src="auth.user.avatar" class="h-8 w-8 rounded-full object-cover" alt="" />
-          <span v-else>{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
-        </div>
-      </RouterLink>
-      <RouterLink
-        v-else
-        to="/connexion"
-        class="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700"
-      >
-        Se connecter
-      </RouterLink>
+  <section class="relative flex-1">
+    <!-- Image de fond plein écran -->
+    <div class="pointer-events-none fixed inset-0 z-0">
+      <img :src="heroImage" alt="" class="h-full w-full object-cover" />
+      <div class="absolute inset-0 bg-white/80 dark:bg-gray-950/85"></div>
     </div>
 
-    <div class="px-4 pt-3">
-      <div class="flex items-center justify-between gap-2">
-        <select
-          v-model="categoryId"
-          class="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900"
+    <!-- Contenu par-dessus -->
+    <div class="relative z-10 flex flex-1 flex-col">
+      <!-- Header sticky : logo + profil/connexion -->
+      <div class="sticky top-0 z-10 flex items-center justify-between bg-white/70 px-4 py-2 backdrop-blur-md dark:bg-gray-900/70">
+        <RouterLink to="/" class="flex items-center">
+          <img :src="logo" alt="Les Monstres" class="h-12 w-12 object-contain" />
+        </RouterLink>
+        <RouterLink
+          v-if="auth.isAuthenticated && auth.user"
+          to="/profil"
+          class="flex items-center gap-2"
         >
-          <option value="">Toutes les catégories</option>
-          <option v-for="category in categories" :key="category.id" :value="category.id">
-            {{ category.name }}
-          </option>
-        </select>
-        <button
-          type="button"
-          class="flex-shrink-0 rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 shadow-sm dark:bg-brand-900/60 dark:text-brand-200"
-          :disabled="locating"
-          @click="locateMe"
-        >
-          {{ locating ? '…' : '📍 Distance' }}
-        </button>
-      </div>
-
-      <p v-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-      <p v-else-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
-      <p v-else-if="items.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-        Aucun Monstre à proximité pour l'instant.
-      </p>
-
-      <ul v-else class="mt-4 flex flex-col gap-3">
-        <li v-for="item in items" :key="item.id">
-          <RouterLink
-            :to="`/monstres/${item.id}`"
-            class="flex gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+          <div
+            class="flex h-9 w-9 items-center justify-center rounded-full text-sm"
+            :class="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"
           >
-            <div class="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-              <img v-if="coverPhoto(item)" :src="coverPhoto(item)!" class="h-full w-full object-cover" alt="" />
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="flex items-center gap-2">
-                <span class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ item.title }}</span>
-                <span
-                  v-if="item.status === 'RESERVED'"
-                  class="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                >
-                  Réservé
-                </span>
-                <span
-                  v-else-if="item.status === 'COLLECTED'"
-                  class="flex-shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950 dark:text-green-300"
-                >
-                  Récupéré
-                </span>
-              </p>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                <span v-if="item.distance !== null">{{ item.distance }} km · </span>
-                <span>★ {{ item.votesScore }} · </span>
-                <span>{{ formatRelativeTime(item.createdAt) }}</span>
-              </p>
-              <div class="mt-1.5 flex items-center gap-2">
-                <span
-                  v-if="item.category"
-                  class="inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-900/60 dark:text-brand-200"
-                >
-                  {{ item.category.name }}
-                </span>
-                <span class="text-[11px] text-gray-400 dark:text-gray-500">par {{ item.user.name }}</span>
-              </div>
-            </div>
-            <!-- Avatar déposant -->
-            <div class="flex flex-shrink-0 flex-col items-center justify-center gap-1 self-center">
-              <div
-                class="flex h-8 w-8 items-center justify-center rounded-full text-xs"
-                :class="item.user.avatar && (item.user.avatar.startsWith('/') || item.user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"
-              >
-                <img v-if="item.user.avatar && (item.user.avatar.startsWith('/') || item.user.avatar.startsWith('http'))" :src="item.user.avatar" class="h-8 w-8 rounded-full object-cover" alt="" />
-                <span v-else>{{ item.user.avatar ?? item.user.name.charAt(0).toUpperCase() }}</span>
-              </div>
-            </div>
-          </RouterLink>
-        </li>
-      </ul>
-
-      <div v-if="totalPages > 1" class="mt-4 flex items-center justify-between text-sm">
-        <button
-          type="button"
-          :disabled="page <= 1"
-          class="rounded-full border border-gray-200 px-4 py-1.5 disabled:opacity-40 dark:border-gray-700"
-          @click="page -= 1"
+            <img v-if="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http'))" :src="auth.user.avatar" class="h-9 w-9 rounded-full object-cover" alt="" />
+            <span v-else>{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
+          </div>
+        </RouterLink>
+        <RouterLink
+          v-else
+          to="/connexion"
+          class="rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700"
         >
-          Précédent
-        </button>
-        <span class="text-gray-500 dark:text-gray-400">Page {{ page }} / {{ totalPages }} ({{ total }})</span>
-        <button
-          type="button"
-          :disabled="page >= totalPages"
-          class="rounded-full border border-gray-200 px-4 py-1.5 disabled:opacity-40 dark:border-gray-700"
-          @click="page += 1"
-        >
-          Suivant
-        </button>
+          Se connecter
+        </RouterLink>
       </div>
-    </div>
 
-    <!-- Photo hero en bas de page -->
-    <div class="relative mt-6 h-48 w-full overflow-hidden rounded-t-3xl">
-      <img :src="heroImage" alt="" class="h-full w-full object-cover object-[center_25%]" />
-      <div class="absolute inset-0 bg-gradient-to-b from-brand-900/40 via-transparent to-brand-900/80"></div>
-      <div class="absolute inset-x-0 bottom-0 p-4 text-center">
-        <p class="text-xs text-brand-50/80">Repère, réserve, récupère — le réemploi près de chez toi.</p>
-        <p class="mt-1 text-[10px] text-brand-100/50">Les Monstres v{{ appVersion }}</p>
+      <div class="px-4 pt-3">
+        <div class="flex items-center justify-between gap-2">
+          <select
+            v-model="categoryId"
+            class="min-w-0 flex-1 rounded-full border border-gray-200 bg-white/80 px-4 py-2 text-sm shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-900/80"
+          >
+            <option value="">Toutes les catégories</option>
+            <option v-for="category in categories" :key="category.id" :value="category.id">
+              {{ category.name }}
+            </option>
+          </select>
+          <button
+            type="button"
+            class="flex-shrink-0 rounded-full bg-brand-50/80 px-4 py-2 text-sm font-medium text-brand-700 shadow-sm backdrop-blur dark:bg-brand-900/60 dark:text-brand-200"
+            :disabled="locating"
+            @click="locateMe"
+          >
+            {{ locating ? '…' : '📍 Distance' }}
+          </button>
+        </div>
+
+        <p v-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+        <p v-else-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+        <p v-else-if="items.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          Aucun Monstre à proximité pour l'instant.
+        </p>
+
+        <ul v-else class="mt-4 flex flex-col gap-3">
+          <li v-for="item in items" :key="item.id">
+            <RouterLink
+              :to="`/monstres/${item.id}`"
+              class="flex gap-3 rounded-2xl border border-gray-100/80 bg-white/80 p-3 shadow-sm backdrop-blur transition-shadow hover:shadow-md dark:border-gray-800/80 dark:bg-gray-900/80"
+            >
+              <div class="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+                <img v-if="coverPhoto(item)" :src="coverPhoto(item)!" class="h-full w-full object-cover" alt="" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="flex items-center gap-2">
+                  <span class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ item.title }}</span>
+                  <span
+                    v-if="item.status === 'RESERVED'"
+                    class="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                  >
+                    Réservé
+                  </span>
+                  <span
+                    v-else-if="item.status === 'COLLECTED'"
+                    class="flex-shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950 dark:text-green-300"
+                  >
+                    Récupéré
+                  </span>
+                </p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  <span v-if="item.distance !== null">{{ item.distance }} km · </span>
+                  <span>★ {{ item.votesScore }} · </span>
+                  <span>{{ formatRelativeTime(item.createdAt) }}</span>
+                </p>
+                <div class="mt-1.5 flex items-center gap-2">
+                  <span
+                    v-if="item.category"
+                    class="inline-block rounded-full bg-brand-50/80 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-900/60 dark:text-brand-200"
+                  >
+                    {{ item.category.name }}
+                  </span>
+                  <span class="text-[11px] text-gray-400 dark:text-gray-500">par {{ item.user.name }}</span>
+                </div>
+              </div>
+              <!-- Avatar déposant -->
+              <div class="flex flex-shrink-0 flex-col items-center justify-center gap-1 self-center">
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-full text-xs"
+                  :class="item.user.avatar && (item.user.avatar.startsWith('/') || item.user.avatar.startsWith('http')) ? '' : 'bg-brand-100/80 text-brand-700 dark:bg-brand-900/80 dark:text-brand-300'"
+                >
+                  <img v-if="item.user.avatar && (item.user.avatar.startsWith('/') || item.user.avatar.startsWith('http'))" :src="item.user.avatar" class="h-8 w-8 rounded-full object-cover" alt="" />
+                  <span v-else>{{ item.user.avatar ?? item.user.name.charAt(0).toUpperCase() }}</span>
+                </div>
+              </div>
+            </RouterLink>
+          </li>
+        </ul>
+
+        <div v-if="totalPages > 1" class="mt-4 flex items-center justify-between text-sm">
+          <button
+            type="button"
+            :disabled="page <= 1"
+            class="rounded-full border border-gray-200 bg-white/60 px-4 py-1.5 backdrop-blur disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900/60"
+            @click="page -= 1"
+          >
+            Précédent
+          </button>
+          <span class="text-gray-500 dark:text-gray-400">Page {{ page }} / {{ totalPages }} ({{ total }})</span>
+          <button
+            type="button"
+            :disabled="page >= totalPages"
+            class="rounded-full border border-gray-200 bg-white/60 px-4 py-1.5 backdrop-blur disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900/60"
+            @click="page += 1"
+          >
+            Suivant
+          </button>
+        </div>
       </div>
+
+      <!-- Footer -->
+      <p class="mt-8 pb-4 text-center text-[10px] text-gray-400/60 dark:text-gray-600/60">Les Monstres v{{ appVersion }}</p>
     </div>
   </section>
 </template>
