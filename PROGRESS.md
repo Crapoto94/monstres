@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.2.0 — métadonnées utilisateur, console
-SQL admin, avatars, géocodage, caméra, boutons nav, correctifs multiples)
+Dernière mise à jour : **2026-07-22** (v0.2.1 — durcissement sécurité de la
+console SQL admin, lecture seule réellement appliquée par SQLite)
 
 **Statut : Phases 0 à 10 terminées et validées.** Prochaine étape :
 **Phase 11 — Facebook** (voir détail plus bas ; à ne construire qu'après
@@ -1587,6 +1587,55 @@ en une seule session.
 - [x] Frontend : route `/admin/sql` avec garde `requiresSuperAdmin`.
 - [x] Version bumpée à 0.2.0 (backend + frontend synchronisés).
 - [x] Build backend et frontend sans erreur.
+
+---
+
+## Correctif de sécurité : console SQL réellement en lecture seule
+
+Cette session a repris la main juste après le commit v0.2.0 (fait par une
+autre session/outil IA en parallèle sur ce dépôt, cf. notes précédentes sur
+la coordination multi-sessions). En relisant ce commit avant de continuer,
+la console SQL (`AdminSqlService.exec`) posait un problème de sécurité
+réel : la « lecture seule » n'était qu'un contrôle sur le **premier mot**
+de la requête (`INSERT`/`UPDATE`/`DELETE`/… interdits), contournable
+trivialement par un commentaire SQL placé avant le mot interdit
+(`/* x */ DELETE FROM users`) — le premier "mot" devient `/*`, qui ne
+matche aucun terme de la liste, et la requête complète (y compris la
+suppression) partait sur la connexion partagée avec `PrismaService`, qui
+peut écrire. Signalé à l'utilisateur avant de continuer (question posée :
+supprimer la console / la durcir / la laisser telle quelle) — réponse :
+**la durcir**.
+
+### Décision
+- **Connexion SQLite dédiée, distincte de `PrismaService`**, ouverte avec
+  `PRAGMA query_only = ON` dès `onModuleInit` et jamais désactivée : la
+  garantie de lecture seule est maintenant appliquée par le moteur SQLite
+  lui-même, plus par une inspection de chaîne de caractères. Un contournement
+  par commentaire produit désormais une erreur SQLite explicite
+  (`SQLITE_READONLY: attempt to write a readonly database`) au lieu de
+  s'exécuter silencieusement.
+- **`PRAGMA busy_timeout = 3000`** sur cette même connexion, en prévision
+  d'un léger conflit de verrou avec la connexion d'écriture de Prisma.
+- **Timeout applicatif de 5 s** (`Promise.race`) sur chaque requête, pour
+  éviter qu'une requête coûteuse ne bloque indéfiniment la réponse.
+- **Le filtre par mot-clé est conservé**, mais uniquement comme confort
+  UX (message clair immédiat sur le cas évident) — ce n'est plus la
+  garantie de sécurité, qui repose entièrement sur `query_only`. `PRAGMA`
+  ajouté à la liste des mots bloqués par ce filtre (dans le cas où
+  quelqu'un tenterait de désactiver `query_only` sur sa propre requête,
+  bien que cela n'aurait aucun effet sur la connexion dédiée de toute façon).
+
+### Fait
+- [x] `backend/src/admin/admin-sql.service.ts` réécrit : connexion `@libsql/client`
+      dédiée (`createClient`), `onModuleInit`/`onModuleDestroy`, timeout.
+- [x] Testé de bout en bout avec un compte SUPER_ADMIN de test : `SELECT`
+      normal fonctionne, tentative d'écriture directe bloquée par le filtre
+      UX, **tentative de contournement par commentaire
+      (`/* x */ DELETE FROM users WHERE email=...`) bloquée par le moteur
+      SQLite** (vérifié : le compte ciblé existe toujours après la
+      tentative), accès refusé pour un compte `ADMIN` simple (réservé
+      `SUPER_ADMIN`). Compte de test supprimé après vérification.
+- [x] Build backend sans erreur.
 
 ---
 
