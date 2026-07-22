@@ -51,6 +51,7 @@ const AVATARS = [
 
 const selectedAvatar = computed(() => auth.user?.avatar ?? null)
 const isImageAvatar = computed(() => /^(\/|https?:\/\/)/.test(selectedAvatar.value ?? ''))
+const showEmojiGrid = ref(false)
 const uploading = ref(false)
 const uploadError = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -332,8 +333,28 @@ async function onDeleteAccount() {
 
       <!-- Avatar -->
       <div class="mt-4">
-        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Choisir un avatar</p>
-        <div class="mt-2 flex flex-wrap gap-2">
+        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Avatar</p>
+        <div class="mt-2 flex gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+            @click="showEmojiGrid = !showEmojiGrid"
+          >
+            🎨 Choisir un avatar
+          </button>
+          <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onFileSelected" />
+          <button
+            type="button"
+            :disabled="uploading"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+            @click="triggerUpload"
+          >
+            📷 {{ uploading ? 'Upload en cours…' : 'Uploader ma propre photo' }}
+          </button>
+        </div>
+        <p v-if="uploadError" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ uploadError }}</p>
+
+        <div v-if="showEmojiGrid" class="mt-2 flex flex-wrap gap-2">
           <button
             v-for="emoji in AVATARS"
             :key="emoji"
@@ -346,20 +367,6 @@ async function onDeleteAccount() {
           >
             {{ emoji }}
           </button>
-        </div>
-
-        <!-- Upload avatar personnalisé -->
-        <div class="mt-3">
-          <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onFileSelected" />
-          <button
-            type="button"
-            :disabled="uploading"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-40 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-            @click="triggerUpload"
-          >
-            📷 {{ uploading ? 'Upload en cours…' : 'Uploader ma propre photo' }}
-          </button>
-          <p v-if="uploadError" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ uploadError }}</p>
         </div>
       </div>
 

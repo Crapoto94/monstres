@@ -58,13 +58,26 @@ onMounted(async () => {
         Chaque récupération est un petit pas pour la planète, et un grand pas pour ta communauté.
         Rejoins-nous — ensemble, on transforme les déchets en opportunités.
       </p>
+      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">💰 Gratuit, et ça le restera</h2>
+      <p>
+        Les Monstres est entièrement <strong>gratuit</strong> — sans publicité, sans abonnement, sans frais cachés.
+        Pourquoi ? Parce que le projet est <strong>auto-hébergé</strong> : le serveur tourne sur un petit ordinateur
+        chez l'association, pas sur les serveurs d'une grande entreprise tech. Tant que le coût d'exploitation
+        reste faible (électricité + connexion internet), il n'y a aucune raison de mettre un prix.
+      </p>
+      <p>
+        Pas de pub, pas de collecte de données pour revendre. L'objectif n'est pas de faire du profit,
+        mais de <strong>créer un service utile</strong> pour les quartiers et la planète.
+        Si un jour les coûts augmentent, on préviendra la communauté en transparence — mais l'idée de base
+        restera toujours la même : un service libre, ouvert et gratuit.
+      </p>
     </div>
 
     <RouterLink
-      to="/profil"
+      to="/"
       class="mt-6 inline-block text-sm font-medium text-brand-600 dark:text-brand-400"
     >
-      ← Retour au profil
+      ← Retour à l'accueil
     </RouterLink>
   </section>
 </template>

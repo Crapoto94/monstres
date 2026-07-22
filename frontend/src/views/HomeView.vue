@@ -100,13 +100,20 @@ function coverPhoto(item: Item) {
           <span v-else>{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
         </div>
       </RouterLink>
-      <RouterLink
-        v-else
-        to="/connexion"
-        class="rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700"
-      >
-        Se connecter
-      </RouterLink>
+      <template v-else>
+        <RouterLink
+          to="/pourquoi"
+          class="flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+        >
+          <span class="text-base">❓</span> C'est quoi ?
+        </RouterLink>
+        <RouterLink
+          to="/connexion"
+          class="rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700"
+        >
+          Se connecter
+        </RouterLink>
+      </template>
     </div>
 
     <div class="px-4 pt-3">

@@ -270,7 +270,10 @@ async function main() {
 <h2>🤝 La force du partage</h2>
 <p>Les Monstres, c'est avant tout une communauté. On partage, on s'entraide, on donne une seconde chance aux objets. Un canapé qui ne te sert plus peut devenir le coin canapé parfait de quelqu'un d'autre. C'est la beauté du réusage : rien ne se perd, tout se transforme.</p>
 <h2>♻️ Ensemble, on fait bouger les choses</h2>
-<p>Plus on est nombreux à signaler et récupérer les Monstres, plus on crée un cercle vertueux. Chaque récupération est un petit pas pour la planète, et un grand pas pour ta communauté. Rejoins-nous — ensemble, on transforme les déchets en opportunités.</p>`,
+<p>Plus on est nombreux à signaler et récupérer les Monstres, plus on crée un cercle vertueux. Chaque récupération est un petit pas pour la planète, et un grand pas pour ta communauté. Rejoins-nous — ensemble, on transforme les déchets en opportunités.</p>
+<h2>💰 Gratuit, et ça le restera</h2>
+<p>Les Monstres est entièrement <strong>gratuit</strong> — sans publicité, sans abonnement, sans frais cachés. Pourquoi ? Parce que le projet est <strong>auto-hébergé</strong> : le serveur tourne sur un petit ordinateur chez l'association, pas sur les serveurs d'une grande entreprise tech. Tant que le coût d'exploitation reste faible (électricité + connexion internet), il n'y a aucune raison de mettre un prix.</p>
+<p>Pas de pub, pas de collecte de données pour revendre. L'objectif n'est pas de faire du profit, mais de <strong>créer un service utile</strong> pour les quartiers et la planète. Si un jour les coûts augmentent, on préviendra la communauté en transparence — mais l'idée de base restera toujours la même : un service libre, ouvert et gratuit.</p>`,
         type: 'JSON',
       },
     });
