@@ -41,27 +41,27 @@ function isActive(tab: { to: string; exact?: boolean }) {
 </script>
 
 <template>
-  <div class="flex flex-1">
+  <div class="flex flex-1 lg:h-full">
     <!-- Sidebar desktop (lg+) -->
-    <aside class="hidden lg:flex lg:w-56 lg:flex-col lg:border-r lg:border-gray-200 lg:bg-white lg:dark:border-gray-800 lg:dark:bg-gray-900">
-      <div class="flex items-center gap-2 px-4 py-4">
+    <aside class="hidden lg:flex lg:w-48 lg:flex-col lg:border-r lg:border-gray-200 lg:bg-white lg:dark:border-gray-800 lg:dark:bg-gray-900">
+      <div class="flex items-center gap-2 px-3 py-3">
         <RouterLink to="/" class="text-xl font-bold text-violet-600 dark:text-violet-400">👹</RouterLink>
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Administration</h2>
+        <h2 class="text-xs font-semibold text-gray-900 dark:text-gray-100">Admin</h2>
       </div>
-      <nav class="flex flex-1 flex-col gap-1 px-2 pb-4">
+      <nav class="flex flex-1 flex-col gap-0.5 px-1.5 pb-3">
         <RouterLink
           v-for="tab in tabs"
           :key="tab.to"
           :to="tab.to"
-          class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors"
+          class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors"
           :class="isActive(tab)
             ? 'bg-violet-100 font-semibold text-violet-700 dark:bg-violet-900 dark:text-violet-300'
             : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'"
         >
-          <span class="flex-1">{{ tab.label }}</span>
+          <span class="flex-1 truncate">{{ tab.label }}</span>
           <span
             v-if="tab.badge !== null && tab.badge !== undefined"
-            class="rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
+            class="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
             :class="isActive(tab)
               ? 'bg-violet-200 text-violet-800 dark:bg-violet-800 dark:text-violet-200'
               : tab.badge > 0 && tab.label === 'Signalements'
@@ -72,14 +72,14 @@ function isActive(tab: { to: string; exact?: boolean }) {
           </span>
         </RouterLink>
       </nav>
-      <div class="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
-        <RouterLink to="/profil" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← Retour au profil</RouterLink>
+      <div class="border-t border-gray-200 px-3 py-2 dark:border-gray-800">
+        <RouterLink to="/profil" class="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← Profil</RouterLink>
       </div>
     </aside>
 
     <!-- Main content -->
-    <div class="flex flex-1 flex-col">
-      <section class="flex-1 p-4">
+    <div class="flex flex-1 flex-col lg:overflow-hidden">
+      <section class="flex-1 overflow-y-auto p-2 lg:p-3">
         <!-- Header mobile -->
         <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 lg:hidden">Administration</h1>
 
@@ -109,7 +109,7 @@ function isActive(tab: { to: string; exact?: boolean }) {
           </RouterLink>
         </nav>
 
-        <div class="mt-4">
+        <div class="mt-2 lg:mt-3">
           <RouterView />
         </div>
       </section>
