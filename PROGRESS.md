@@ -2533,6 +2533,58 @@ inchangées à 100 %.
 
 ---
 
+## Journal d'activité global + journal des emails (réservés SUPER_ADMIN)
+
+Demande utilisateur : « construit un log global de toutes les actions
+faites dans l'appli, par qui ; et un log des mails envoyés aussi.
+Disponibles pour les super admins uniquement ».
+
+- **Journal d'activité (`AuditLog`, déjà présent au schéma mais jamais
+  alimenté)** : plutôt que d'ajouter un appel à la main dans chaque service
+  (fragile, oublié à coup sûr sur une future route), un nouvel
+  `AuditLogInterceptor` global (`common/interceptors/audit-log.interceptor.ts`,
+  enregistré dans `main.ts` aux côtés du `ResponseInterceptor`) journalise
+  **automatiquement** toute requête mutante (POST/PATCH/PUT/DELETE — les GET
+  sont ignorés) : action = `NomDuController.methode`, auteur si authentifié
+  (`req.user`), et `body`/`params` de la requête. Un nouveau
+  `sanitizeForLog()` (`common/sanitize.util.ts`) masque récursivement les
+  clés `password`/`token`/`secret`/`apikey` avant stockage. Couvre donc
+  tout le trafic mutant de l'appli (inscription, connexion, création de
+  Monstre, intérêt, vote, commentaire, signalement, toutes les actions
+  admin...) sans qu'aucune route future ne puisse être oubliée.
+- **Journal des emails (`EmailLog`, nouveau modèle)** : `EmailService.send()`
+  écrit une ligne à chaque tentative d'envoi (destinataire, sujet, HTML
+  complet, `templateKey`, statut `SENT`/`FAILED`/`SKIPPED`, erreur le cas
+  échéant) — couvre tous les appelants (vérification email, mot de passe
+  oublié, notifications) puisqu'ils passent tous par cette même méthode,
+  sans instrumentation supplémentaire à ajouter côté appelant (juste
+  propagation d'un `templateKey` optionnel pour le contexte).
+- **Migration** : `add_audit_and_email_log` (table `email_logs` + index sur
+  `AuditLog.userId`/`action`/`createdAt`), générée via le workaround non
+  interactif documenté dans `backend/README.md` (`prisma migrate diff` +
+  écriture manuelle + `migrate deploy`).
+- **Endpoints** : `GET /admin/audit-log` (?userId=, ?action=, ?page=) et
+  `GET /admin/email-log` (?search=, ?status=, ?page=), tous deux gardés
+  `@Roles('SUPER_ADMIN')` (même pattern que `AdminSqlController`, déjà en
+  prod) — un ADMIN simple n'y a pas accès, ni côté API ni côté route
+  frontend (`meta: { requiresSuperAdmin: true }`, déjà utilisé pour
+  `/admin/sql`).
+- **Frontend** : deux nouveaux onglets réservés SUPER_ADMIN dans
+  `AdminLayout.vue` — « Journal » (`AdminAuditLogView.vue`, liste paginée
+  avec recherche par nom d'action, ligne dépliable affichant méthode/route/
+  params/body) et « Journal mails » (`AdminEmailLogView.vue`, liste paginée
+  avec recherche + filtre par statut, ligne dépliable affichant le HTML
+  complet de l'email envoyé).
+- **Testé** : build backend (`nest build`) et frontend
+  (`vue-tsc -b && vite build`) propres. En local, compte jetable promu
+  `SUPER_ADMIN` via `scripts/promote-admin.js` (supprimé après test) —
+  inscription et connexion de ce compte visibles dans `/admin/journal`
+  (mot de passe correctement masqué `[masqué]` dans le body affiché),
+  email de vérification visible dans `/admin/journal-mails` avec statut
+  `SENT` et contenu HTML complet.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

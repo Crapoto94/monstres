@@ -107,7 +107,24 @@ PATCH/DELETE /admin/categories/:id        Modification / suppression (refusée s
 
 GET  /admin/settings                      Liste tous les paramètres
 PATCH /admin/settings/:key                Modifie une valeur (le type est préservé si non précisé)
+
+GET  /admin/audit-log                     Journal global des actions (?userId=, ?action=, ?page=) — réservé SUPER_ADMIN
+GET  /admin/email-log                     Journal des emails envoyés/tentés (?search=, ?status=, ?page=) — réservé SUPER_ADMIN
 ```
+
+### Journal d'activité et journal des emails (réservés SUPER_ADMIN)
+`AuditLogInterceptor` (global, `src/common/interceptors/audit-log.interceptor.ts`)
+journalise automatiquement **toute requête mutante** (POST/PATCH/PUT/DELETE,
+peu importe le module) dans la table `audit_logs` — action = `Controller.methode`,
+auteur (si authentifié), et `body`/`params` de la requête (mots de passe et
+tokens masqués par `sanitizeForLog`). Volontairement générique : aucun appel à
+ajouter à la main dans les services, donc aucune route (actuelle ou future) ne
+peut être oubliée.
+
+`EmailService.send()` journalise de son côté chaque email dans `email_logs`
+(destinataire, sujet, contenu HTML, statut `SENT`/`FAILED`/`SKIPPED`) — couvre
+tous les appelants (vérification email, mot de passe oublié, notifications)
+puisqu'ils passent tous par cette même méthode.
 
 Un admin ne peut pas s'auto-modérer (suspendre/bannir/supprimer/changer son
 propre rôle), et seul un `SUPER_ADMIN` peut modérer un compte
