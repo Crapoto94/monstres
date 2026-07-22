@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -13,11 +14,13 @@ const links = [
 function isActive(to: string): boolean {
   return to === '/' ? route.path === '/' : route.path.startsWith(to)
 }
+const isAdmin = computed(() => route.path.startsWith('/admin'))
 </script>
 
 <template>
   <nav
-    class="sticky bottom-0 flex items-center border-t border-gray-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-gray-800/80 dark:bg-gray-950/95"
+    v-if="!isAdmin"
+    class="sticky bottom-0 z-30 flex items-center border-t border-gray-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-gray-800/80 dark:bg-gray-950/95"
   >
     <RouterLink
       :to="links[0].to"
@@ -45,7 +48,8 @@ function isActive(to: string): boolean {
 
     <RouterLink
       to="/ajouter"
-      class="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-[11px] text-gray-400 dark:text-gray-500"
+      class="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-[11px] transition-colors"
+      :class="isActive('/ajouter') ? 'text-brand-600 dark:text-brand-300' : 'text-gray-400 dark:text-gray-500'"
     >
       <span
         class="absolute -top-5 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg shadow-brand-600/30 ring-4 ring-white transition-transform active:scale-95 dark:ring-gray-950"
