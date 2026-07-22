@@ -184,11 +184,12 @@ async function main() {
   }
 
   for (const template of DEFAULT_EMAIL_TEMPLATES) {
-    const existing = await prisma.emailTemplate.findUnique({ where: { key: template.key } });
-    if (!existing) {
-      await prisma.emailTemplate.create({ data: template });
-      console.log(`+ template email : ${template.key}`);
-    }
+    await prisma.emailTemplate.upsert({
+      where: { key: template.key },
+      update: { subject: template.subject, htmlContent: template.htmlContent, name: template.name },
+      create: template,
+    });
+    console.log(`✓ template email : ${template.key}`);
   }
 
   // Contenu RGPD et Mentions légales (modifiables depuis /admin/parametres)
@@ -246,17 +247,39 @@ async function main() {
 <p>Nous mettons en œuvre les mesures techniques et organisationnelles appropriées pour protéger tes données : mots de passe chiffrés, cookies httpOnly, accès restreint aux données.</p>
 
 <h3>7. Contact</h3>
-<p>Pour toute question relative à la protection de tes données, contacte-nous via l'application.</p>`,
+      <p>Pour toute question relative à la protection de tes données, contacte-nous via l'application.</p>`,
+      type: 'JSON',
+    },
+    {
+      key: 'data_deletion_content',
+      value: `<h2>Depuis l'application</h2>
+<p>Tu peux à tout moment supprimer définitivement ton compte et tes données depuis ton profil :</p>
+<ol>
+  <li>Connecte-toi à ton compte sur <strong>monstres.fbc.fr</strong>.</li>
+  <li>Rends-toi sur la page <strong>Mon profil</strong>.</li>
+  <li>Clique sur le bouton <strong>« Supprimer mon compte »</strong> en bas de page.</li>
+  <li>Confirme la suppression : elle est immédiate et irréversible.</li>
+</ol>
+
+<h2>Que se passe-t-il ?</h2>
+<p>La suppression efface immédiatement ton compte, ton profil, tes photos et tous les Monstres que tu as publiés de notre base de données et de notre stockage. Cette action ne peut pas être annulée.</p>
+
+<h2>Sans accès à ton compte</h2>
+<p>Si tu ne peux pas te connecter (mot de passe perdu, compte lié uniquement à un fournisseur externe, etc.), écris-nous à <a href="mailto:no-reply@fbc.fr">no-reply@fbc.fr</a> en précisant l'adresse email ou le compte Google/Facebook utilisé : nous supprimerons ton compte et tes données sous 30 jours.</p>
+
+<h2>Révoquer l'accès Facebook ou Google</h2>
+<p>Supprimer ton compte Les Monstres supprime aussi la liaison avec ton compte Facebook ou Google. Tu peux également révoquer l'accès de « Les Monstres » directement depuis les paramètres de ton compte Facebook (Paramètres → Applications et sites web) ou Google (Sécurité → Applications tierces ayant accès à votre compte) — cela ne supprime toutefois pas automatiquement tes données côté Les Monstres, la suppression du compte reste nécessaire.</p>`,
       type: 'JSON',
     },
   ];
 
   for (const setting of LEGAL_SETTINGS) {
-    const existing = await prisma.setting.findUnique({ where: { key: setting.key } });
-    if (!existing) {
-      await prisma.setting.create({ data: setting });
-      console.log(`+ setting ${setting.key}`);
-    }
+    await prisma.setting.upsert({
+      where: { key: setting.key },
+      update: { value: setting.value },
+      create: { key: setting.key, value: setting.value, type: setting.type ?? 'JSON' },
+    });
+    console.log(`✓ setting ${setting.key}`);
   }
 
   // Contenu "Pourquoi les Monstres" (modifiable depuis /admin/parametres)

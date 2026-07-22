@@ -17,6 +17,12 @@ export class LegalController {
     return { content };
   }
 
+  @Get('data-deletion')
+  async getDataDeletion() {
+    const content = await this.settingsService.getString('data_deletion_content', '');
+    return { content };
+  }
+
   @Get('mission')
   async getMission() {
     const content = await this.settingsService.getString('mission_content', '');

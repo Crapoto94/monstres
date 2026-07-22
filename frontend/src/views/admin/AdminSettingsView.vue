@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { fetchAdminSettings, updateSetting, type AdminSetting } from '@/services/admin'
 
 const settings = ref<AdminSetting[]>([])
@@ -9,6 +9,7 @@ const busyKey = ref<string | null>(null)
 const actionError = ref<string | null>(null)
 const savedKey = ref<string | null>(null)
 const previewHtml = ref(false)
+const previewingKey = ref<string | null>(null)
 
 interface SettingMeta {
   label: string
@@ -123,6 +124,18 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     label: 'Contenu de la page /pourquoi',
     description: 'Contenu HTML affiché sur la page "Pourquoi Les Monstres". Utilise les balises &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;. Si vide, un contenu par défaut est affiché.',
   },
+  legal_notices: {
+    label: 'Mentions légales',
+    description: 'Contenu HTML de la page /mentions-legales. Visible depuis le profil utilisateur.',
+  },
+  rgpd_content: {
+    label: 'Politique de confidentialité (RGPD)',
+    description: 'Contenu HTML de la page /rgpd. Visible depuis le profil utilisateur.',
+  },
+  data_deletion_content: {
+    label: 'Suppression des données',
+    description: 'Contenu HTML de la page /suppression. Instructions pour supprimer son compte.',
+  },
 }
 
 const SECTIONS = [
@@ -132,22 +145,25 @@ const SECTIONS = [
   { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'whatsapp_test_mode'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
-  { title: '📝 Contenu', keys: ['mission_content'] },
+  { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content'] },
 ]
 
 function meta(key: string): SettingMeta {
   return SETTINGS_META[key] ?? { label: key, description: '' }
 }
 function isBoolean(type: string) { return type === 'BOOLEAN' }
-function isTextarea(key: string) { return key === 'mission_content' }
+function isTextarea(key: string) { return key.endsWith('_content') }
 function hasChanged(key: string) { return drafts.value[key] !== settingByKey(key)?.value }
 function settingByKey(key: string): AdminSetting | undefined { return settings.value.find((s) => s.key === key) }
 
 
-const previewContent = computed(() => {
-  if (!previewHtml.value || !isTextarea('mission_content')) return ''
-  return drafts.value['mission_content'] ?? ''
-})
+const PREVIEW_ROUTES: Record<string, string> = {
+  mission_content: '/pourquoi',
+  legal_notices: '/mentions-legales',
+  rgpd_content: '/rgpd',
+  data_deletion_content: '/suppression',
+}
+function previewRoute(key: string) { return PREVIEW_ROUTES[key] ?? '/' }
 
 async function load() {
   loading.value = true
@@ -232,29 +248,29 @@ async function onSave(setting: AdminSetting) {
               </span>
             </div>
 
-            <!-- TEXTAREA (mission_content) -->
+            <!-- TEXTAREA (content fields) -->
             <template v-else-if="isTextarea(key)">
               <div class="mt-3 overflow-hidden rounded-lg border border-gray-300 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 dark:border-gray-700 dark:focus-within:border-brand-500">
                 <div class="flex items-center border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
                   <button
                     type="button"
                     class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
-                    :class="!previewHtml ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'"
-                    @click="previewHtml = false"
+                    :class="!(previewHtml && previewingKey === key) ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'"
+                    @click="previewHtml = false; previewingKey = key"
                   >
                     HTML
                   </button>
                   <button
                     type="button"
                     class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
-                    :class="previewHtml ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'"
-                    @click="previewHtml = true"
+                    :class="(previewHtml && previewingKey === key) ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'"
+                    @click="previewHtml = true; previewingKey = key"
                   >
                     Aperçu
                   </button>
                 </div>
                 <textarea
-                  v-if="!previewHtml"
+                  v-if="!(previewHtml && previewingKey === key)"
                   v-model="drafts[key]"
                   rows="14"
                   class="w-full resize-y border-0 px-3 py-2.5 font-mono text-xs leading-relaxed text-gray-800 focus:outline-none dark:bg-gray-900 dark:text-gray-200"
@@ -263,13 +279,13 @@ async function onSave(setting: AdminSetting) {
                 />
                 <div
                   v-else
-                  class="prose prose-sm dark:prose-invert min-h-[200px] max-w-none px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300"
-                  v-html="previewContent || '<p class=\'text-gray-400\'>Aucun contenu</p>'"
+                  class="html-content min-h-[200px] max-w-none px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300"
+                  v-html="drafts[key] || '<p class=\'text-gray-400\'>Aucun contenu</p>'"
                 />
               </div>
               <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
                 Cmd/Ctrl + Entrée pour sauvegarder.
-                Aperçu sur <RouterLink to="/pourquoi" target="_blank" class="text-brand-600 underline dark:text-brand-400">/pourquoi ↗</RouterLink>.
+                Aperçu sur <RouterLink :to="previewRoute(key)" target="_blank" class="text-brand-600 underline dark:text-brand-400">{{ previewRoute(key) }} ↗</RouterLink>.
               </p>
             </template>
 
