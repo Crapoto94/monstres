@@ -9,12 +9,19 @@ const auth = useAuthStore()
 const name = ref('')
 const email = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const submitting = ref(false)
+const localError = ref<string | null>(null)
 
 async function onSubmit() {
+  localError.value = null
+  if (password.value !== confirmPassword.value) {
+    localError.value = 'Les mots de passe ne correspondent pas.'
+    return
+  }
   submitting.value = true
   try {
-    await auth.register({ name: name.value, email: email.value, password: password.value })
+    await auth.register({ name: name.value, email: email.value, password: password.value, confirmPassword: confirmPassword.value })
     router.push('/profil')
   } catch {
     // l'erreur est déjà exposée via auth.error
@@ -64,7 +71,19 @@ async function onSubmit() {
         />
       </label>
 
-      <p v-if="auth.error" class="text-sm text-red-600 dark:text-red-400">{{ auth.error }}</p>
+      <label class="flex flex-col gap-1 text-sm text-gray-700 dark:text-gray-300">
+        Confirme le mot de passe
+        <input
+          v-model="confirmPassword"
+          type="password"
+          required
+          minlength="8"
+          autocomplete="new-password"
+          class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+        />
+      </label>
+
+      <p v-if="localError || auth.error" class="text-sm text-red-600 dark:text-red-400">{{ localError ?? auth.error }}</p>
 
       <button
         type="submit"

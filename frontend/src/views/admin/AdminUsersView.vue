@@ -12,6 +12,7 @@ import {
   deleteUser,
   type AdminUserSummary,
 } from '@/services/admin'
+import { formatRelativeTime } from '@/utils/time'
 
 const auth = useAuthStore()
 const users = ref<AdminUserSummary[]>([])
@@ -138,6 +139,22 @@ function isSelf(user: AdminUserSummary): boolean {
         <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
           {{ user._count.items }} Monstre(s) · {{ user._count.reports }} signalement(s) reçu(s) · score {{ user.score }}
         </p>
+
+        <!-- Métadonnées de connexion -->
+        <div class="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-400 dark:text-gray-500">
+          <span v-if="user.registrationOs || user.registrationBrowser">
+            📱 {{ user.registrationOs }} · {{ user.registrationBrowser }}
+          </span>
+          <span v-if="user.registrationIp">
+            🌐 {{ user.registrationIp }}
+          </span>
+          <span v-if="user.lastLoginAt">
+            🔑 Dernière connexion : {{ formatRelativeTime(user.lastLoginAt) }}
+          </span>
+          <span v-else>
+            🔑 Jamais connecté
+          </span>
+        </div>
 
         <div class="mt-2 flex flex-wrap items-center gap-2">
           <select

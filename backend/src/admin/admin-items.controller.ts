@@ -32,4 +32,11 @@ export class AdminItemsController {
   remove(@Param('id') id: string) {
     return this.adminItemsService.remove(id);
   }
+
+  /** Vider complètement la base de Monstres — SUPER_ADMIN uniquement. */
+  @Delete()
+  @Roles('SUPER_ADMIN')
+  removeAll() {
+    return this.adminItemsService.removeAll();
+  }
 }

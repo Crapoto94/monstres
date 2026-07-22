@@ -13,7 +13,7 @@ export interface AuthUser {
   createdAt: string
 }
 
-export async function register(payload: { name: string; email: string; password: string }) {
+export async function register(payload: { name: string; email: string; password: string; confirmPassword: string }) {
   const { data } = await api.post<ApiSuccess<AuthUser>>('/auth/register', payload)
   return data.data
 }
@@ -49,5 +49,10 @@ export async function resetPassword(payload: { token: string; password: string }
 
 export async function updateEmailNotifications(emailNotifications: boolean) {
   const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/preferences', { emailNotifications })
+  return data.data
+}
+
+export async function updateAvatar(avatar: string | null) {
+  const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/avatar', { avatar })
   return data.data
 }

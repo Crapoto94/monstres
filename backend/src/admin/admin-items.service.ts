@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
 import { AdminListItemsQueryDto } from './dto/admin-list-items-query.dto';
@@ -16,7 +17,21 @@ export class AdminItemsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly imageService: ImageService,
+    private readonly config: ConfigService,
   ) {}
+
+  private photoUrl(path: string): string {
+    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+    return `${imgBaseUrl}/${path}`;
+  }
+
+  private serializePhotos(photos: { path: string; thumbnailPath: string | null }[]) {
+    return photos.map((p) => ({
+      ...p,
+      path: this.photoUrl(p.path),
+      thumbnailPath: p.thumbnailPath ? this.photoUrl(p.thumbnailPath) : null,
+    }));
+  }
 
   async findMany(query: AdminListItemsQueryDto) {
     const page = query.page ?? 1;
@@ -43,7 +58,12 @@ export class AdminItemsService {
       this.prisma.item.count({ where }),
     ]);
 
-    return { items, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+    const serialized = items.map((item) => ({
+      ...item,
+      photos: this.serializePhotos(item.photos),
+    }));
+
+    return { items: serialized, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
   }
 
   async findOne(id: string) {
@@ -58,7 +78,7 @@ export class AdminItemsService {
       },
     });
     if (!item) throw new NotFoundException('Monstre introuvable.');
-    return item;
+    return { ...item, photos: this.serializePhotos(item.photos) };
   }
 
   async updateStatus(id: string, status: ItemStatus) {
@@ -72,6 +92,14 @@ export class AdminItemsService {
     await this.prisma.item.delete({ where: { id } });
     await this.imageService.deleteItemPhotos(id);
     return { deleted: true };
+  }
+
+  /** Vider complètement la base de Monstres (SUPER_ADMIN uniquement). */
+  async removeAll() {
+    const items = await this.prisma.item.findMany({ select: { id: true } });
+    await this.prisma.item.deleteMany();
+    await Promise.all(items.map((item) => this.imageService.deleteItemPhotos(item.id)));
+    return { deleted: items.length };
   }
 
   private async findOrThrow(id: string) {

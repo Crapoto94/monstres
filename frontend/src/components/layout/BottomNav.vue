@@ -1,10 +1,10 @@
 <script setup lang="ts">
 const links = [
-  { to: '/', label: 'Accueil' },
-  { to: '/carte', label: 'Carte' },
-  { to: '/ajouter', label: 'Ajouter' },
-  { to: '/alertes', label: 'Alertes' },
-  { to: '/profil', label: 'Profil' },
+  { to: '/', label: 'Accueil', icon: '🏠' },
+  { to: '/carte', label: 'Carte', icon: '🗺️' },
+  { to: '/ajouter', label: 'Ajouter', icon: '➕' },
+  { to: '/alertes', label: 'Alertes', icon: '🔔' },
+  { to: '/profil', label: 'Profil', icon: '👤' },
 ]
 </script>
 
@@ -16,10 +16,11 @@ const links = [
       v-for="link in links"
       :key="link.to"
       :to="link.to"
-      class="flex-1 py-3 text-center text-xs text-gray-500 dark:text-gray-400"
+      class="flex flex-1 flex-col items-center gap-0.5 py-3 text-center text-xs text-gray-500 dark:text-gray-400"
       active-class="text-violet-600 dark:text-violet-400 font-medium"
     >
-      {{ link.label }}
+      <span class="text-lg leading-none">{{ link.icon }}</span>
+      <span>{{ link.label }}</span>
     </RouterLink>
   </nav>
 </template>

@@ -10,8 +10,29 @@ import { UsersService, SafeUser } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { JwtPayload } from './jwt.strategy';
+import type { Request } from 'express';
 
 const PASSWORD_SALT_ROUNDS = 10;
+
+function parseUserAgent(ua: string | undefined): { os: string; browser: string } {
+  if (!ua) return { os: 'Inconnu', browser: 'Inconnu' };
+
+  let os = 'Autre';
+  if (ua.includes('Windows')) os = 'Windows';
+  else if (ua.includes('Mac OS')) os = 'macOS';
+  else if (ua.includes('Linux')) os = 'Linux';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+
+  let browser = 'Autre';
+  if (ua.includes('Firefox/')) browser = 'Firefox';
+  else if (ua.includes('Edg/')) browser = 'Edge';
+  else if (ua.includes('OPR/') || ua.includes('Opera')) browser = 'Opera';
+  else if (ua.includes('Chrome/')) browser = 'Chrome';
+  else if (ua.includes('Safari/') && ua.includes('Version/')) browser = 'Safari';
+
+  return { os, browser };
+}
 
 @Injectable()
 export class AuthService {
@@ -26,15 +47,24 @@ export class AuthService {
     private readonly usersService: UsersService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<{ user: SafeUser; token: string }> {
+  async register(dto: RegisterDto, request?: Request): Promise<{ user: SafeUser; token: string }> {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) {
       throw new ConflictException('Un compte existe déjà avec cet email.');
+    }
+    if (dto.password !== dto.confirmPassword) {
+      throw new BadRequestException('Les mots de passe ne correspondent pas.');
     }
 
     const password = await bcrypt.hash(dto.password, PASSWORD_SALT_ROUNDS);
     const emailVerificationToken = randomBytes(32).toString('hex');
     const ttlHours = await this.settings.getNumber('email_verification_token_ttl_hours', 24);
+
+    const ua = request?.headers['user-agent'];
+    const ip = (request?.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      ?? request?.socket?.remoteAddress
+      ?? null;
+    const { os, browser } = parseUserAgent(ua);
 
     const user = await this.prisma.user.create({
       data: {
@@ -43,6 +73,10 @@ export class AuthService {
         password,
         emailVerificationToken,
         emailVerificationExpiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
+        registrationIp: ip,
+        registrationUserAgent: ua ?? null,
+        registrationOs: os,
+        registrationBrowser: browser,
       },
     });
 
@@ -73,9 +107,28 @@ export class AuthService {
     return user;
   }
 
-  async login(dto: LoginDto): Promise<{ user: SafeUser; token: string }> {
+  async login(dto: LoginDto, request?: Request): Promise<{ user: SafeUser; token: string }> {
     const user = await this.validateUser(dto.email, dto.password);
     const token = this.issueToken(user.id, user.email, user.role);
+
+    // Enregistrer la dernière connexion
+    const ua = request?.headers['user-agent'];
+    const ip = (request?.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      ?? request?.socket?.remoteAddress
+      ?? null;
+    const { os, browser } = parseUserAgent(ua);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIp: ip,
+        lastLoginUserAgent: ua ?? null,
+        lastLoginOs: os,
+        lastLoginBrowser: browser,
+      },
+    });
+
     return { user: this.usersService.toSafeUser(user), token };
   }
 

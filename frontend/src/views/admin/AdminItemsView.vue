@@ -4,11 +4,14 @@ import {
   fetchAdminItems,
   updateItemStatus,
   deleteItem,
+  deleteAllItems,
   fetchAdminCategories,
   type AdminItemSummary,
   type AdminCategory,
 } from '@/services/admin'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const STATUSES = ['AVAILABLE', 'RESERVED', 'COLLECTED', 'PENDING_REVIEW', 'HIDDEN', 'ARCHIVED']
 
 const items = ref<AdminItemSummary[]>([])
@@ -77,6 +80,25 @@ async function onDelete(item: AdminItemSummary) {
     busyId.value = null
   }
 }
+
+const clearingDb = ref(false)
+
+async function onClearAll() {
+  if (!confirm('⚠️ Supprimer TOUS les Monstres ? Cette action est irréversible.')) return
+  if (!confirm('Vraiment tout supprimer ?')) return
+  clearingDb.value = true
+  actionError.value = null
+  try {
+    const result = await deleteAllItems()
+    actionError.value = null
+    alert(`${result.deleted} Monstre(s) supprimé(s).`)
+    await load()
+  } catch (e: any) {
+    actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
+  } finally {
+    clearingDb.value = false
+  }
+}
 </script>
 
 <template>
@@ -116,6 +138,18 @@ async function onDelete(item: AdminItemSummary) {
           <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
         </select>
       </div>
+    </div>
+
+    <!-- Bouton vider la base (SUPER_ADMIN uniquement) -->
+    <div v-if="auth.user?.role === 'SUPER_ADMIN'" class="mt-3">
+      <button
+        type="button"
+        :disabled="clearingDb"
+        class="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-40 dark:border-red-800 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+        @click="onClearAll"
+      >
+        {{ clearingDb ? 'Suppression…' : '🗑️ Vider la base (supprimer tous les Monstres)' }}
+      </button>
     </div>
 
     <p v-if="actionError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ actionError }}</p>

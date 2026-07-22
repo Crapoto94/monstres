@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (correctif erreurs admin silencieuses
-+ seed auto au démarrage Docker, v0.1.9)
+Dernière mise à jour : **2026-07-22** (v0.2.0 — métadonnées utilisateur, console
+SQL admin, avatars, géocodage, caméra, boutons nav, correctifs multiples)
 
 **Statut : Phases 0 à 10 terminées et validées.** Prochaine étape :
 **Phase 11 — Facebook** (voir détail plus bas ; à ne construire qu'après
@@ -1507,6 +1507,86 @@ deux cas, mais rien ne l'expliquait à l'écran).
       qu'aux futurs rebuilds — un conteneur déjà construit doit être
       reconstruit, ou le seed lancé à la main pour combler l'absence
       actuelle sans attendre un rebuild).
+
+---
+
+## Session v0.2.0 — Correctifs et améliorations multiples
+
+Demande utilisateur : corriger plusieurs bugs et ajouter des fonctionnalités
+en une seule session.
+
+### Décisions prises pendant cette session
+- **Confirm password obligatoire à l'inscription** (front + back). Le DTO
+  `RegisterDto` accepte `confirmPassword`, le service vérifie la cohérence
+  côté serveur, le frontend affiche un 2ᵉ champ et vérifie aussi
+  côté client. Message d'erreur explicite si discordance.
+- **Métadonnées de connexion capturées à l'inscription et au login** :
+  `registrationIp`, `registrationUserAgent`, `registrationOs`,
+  `registrationBrowser` (inscription) + `lastLoginAt`, `lastLoginIp`,
+  `lastLoginUserAgent`, `lastLoginOs`, `lastLoginBrowser` (login). Parsing
+  user-agent natif (pas de dépendance additionnelle) — extraction OS
+  (Windows/macOS/Linux/Android/iOS) et navigateur (Chrome/Firefox/Edge/
+  Opera/Safari). Toutes ces infos visibles dans l'admin utilisateurs.
+- **Console SQL réservée SUPER_ADMIN** : `AdminSqlController` avec deux
+  endpoints — `POST /admin/sql/tables` (liste toutes les tables SQLite) et
+  `POST /admin/sql/exec` (exécute une requête SELECT uniquement, les
+  mutations sont bloquées côté service). Vue `AdminSqlView` avec sélection
+  rapide de table et rendu en tableau.
+- **"Vider la base" réservé SUPER_ADMIN** : `DELETE /admin/items` (sans
+  paramètre ID) supprime tous les Monstres (cascade DB + nettoyage photos
+  disque). Bouton rouge avec double confirmation dans `AdminItemsView`.
+- **Images corrigées dans admin/monstres** : `AdminItemsService` préfixe
+  désormais les chemins photos avec `IMG_BASE_URL` (était un chemin relatif
+  absolu dans les réponses admin, les images ne chargeaient pas).
+- **Avatar emoji** : 32 emojis prédéfinis, sélection/désélection en un clic.
+  Stocké dans `User.avatar` (déjà existant, nullable). Endpoint
+  `PATCH /users/me/avatar` ajouté. Affiché dans le profil et la liste
+  communautaire.
+- **Caméra par défaut à la création** : le premier bouton « Photo » utilise
+  `capture="environment"` pour ouvrir l'appareil photo sur mobile. Le
+  2ᵉ bouton « Galerie » permet de choisir depuis la galerie (sans
+  `capture`). Expérience desktop inchangée (les deux ouvrent le sélecteur
+  de fichier).
+- **Géocodage inverse automatique** : à la géolocalisation et au déplacement
+  du marqueur, un appel Nominatim `reverse` est fait pour remplir le champ
+  `address` automatiquement. L'adresse pré-remplie est affichée dans
+  l'étape 2 et dans le récapitulatif. Headers `User-Agent` ajoutés
+  aux appels Nominatim (conformes à leur politique d'utilisation).
+- **Nav bar plus grosse** : icônes emoji + texte empilés verticalement,
+  padding `py-3` maintenu, `text-lg` pour les icônes. Plus lisible sur
+  mobile.
+- **Bug mot de passe oublié** : le flow existant était correct techniquement
+  (token généré, email envoyé, formulaire de réinitialisation fonctionnel).
+  Le problème probable était une mauvaise configuration `FRONTEND_URL` en
+  production (l'email contenait un lien vers localhost au lieu de
+  `monstres.fbc.fr`). Pas de changement de code nécessaire côté backend
+  pour ce point ; le flow a été renforcé avec la confirmation de mot de
+  passe.
+- **Migration** : `20260722100000_add_user_metadata` — 9 nouvelles colonnes
+  sur `users` (métadonnées inscription + login). Pas de `RedefineTables`,
+  pas de perte de données.
+
+### Fait
+- [x] Backend : `schema.prisma` étendu (9 colonnes métadonnées sur `User`).
+- [x] Backend : migration `20260722100000_add_user_metadata` appliquée.
+- [x] Backend : `AuthService.register()` capture IP/UA/OS/browser via `Request`.
+- [x] Backend : `AuthService.login()` enregistre les métadonnées de connexion.
+- [x] Backend : `RegisterDto.confirmPassword` + vérification dans `AuthService`.
+- [x] Backend : `AdminSqlController`/`AdminSqlService` (tables + exec SELECT).
+- [x] Backend : `AdminItemsService.removeAll()` + endpoint `DELETE /admin/items`.
+- [x] Backend : `AdminItemsService` corrige les URLs photos (préfixe `IMG_BASE_URL`).
+- [x] Backend : `UsersController.PATCH /users/me/avatar` + `UsersService.updateAvatar`.
+- [x] Frontend : `RegisterView` avec champ confirmation mot de passe.
+- [x] Frontend : `AdminUsersView` affiche OS, navigateur, IP, dernière connexion.
+- [x] Frontend : `AdminSqlView` (console SQL, sélection tables, rendu tableau).
+- [x] Frontend : `AdminItemsView` avec bouton "Vider la base" (SUPER_ADMIN).
+- [x] Frontend : `AdminLayout` avec onglet "Console SQL" conditionnel.
+- [x] Frontend : `ProfileView` avec sélection d'avatar emoji.
+- [x] Frontend : `AddItemView` — caméra par défaut + géocodage inverse auto.
+- [x] Frontend : `BottomNav` avec icônes + texte plus gros.
+- [x] Frontend : route `/admin/sql` avec garde `requiresSuperAdmin`.
+- [x] Version bumpée à 0.2.0 (backend + frontend synchronisés).
+- [x] Build backend et frontend sans erreur.
 
 ---
 

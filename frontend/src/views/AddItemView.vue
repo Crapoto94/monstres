@@ -80,6 +80,7 @@ function initMap() {
     const pos = marker!.getLatLng()
     latitude.value = pos.lat
     longitude.value = pos.lng
+    reverseGeocode(pos.lat, pos.lng)
   })
 }
 
@@ -90,12 +91,32 @@ function setPosition(lat: number, lng: number) {
   marker?.setLatLng([lat, lng])
 }
 
+// Géocodage inverse : récupérer l'adresse à partir des coordonnées
+async function reverseGeocode(lat: number, lng: number) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'LesMonstres/1.0' },
+    })
+    const data = await response.json()
+    if (data.display_name) {
+      address.value = data.display_name
+      addressQuery.value = data.display_name
+    }
+  } catch {
+    // silencieux — l'adresse reste ce qu'elle était
+  }
+}
+
 function locateMe() {
   if (!navigator.geolocation) return
   locating.value = true
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      setPosition(position.coords.latitude, position.coords.longitude)
+      const lat = position.coords.latitude
+      const lng = position.coords.longitude
+      setPosition(lat, lng)
+      reverseGeocode(lat, lng)
       locating.value = false
     },
     () => {
@@ -115,7 +136,9 @@ watch(addressQuery, (query) => {
     searching.value = true
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'LesMonstres/1.0' },
+      })
       addressResults.value = await response.json()
     } finally {
       searching.value = false
@@ -148,8 +171,6 @@ onBeforeUnmount(() => {
 
 watch(step, async (value) => {
   if (value === 2) {
-    // Attend que Vue ait monté le <div ref="mapContainer"> de l'étape 2
-    // avant d'initialiser Leaflet dessus (sinon mapContainer.value est null).
     await nextTick()
     initMap()
     map?.invalidateSize()
@@ -233,11 +254,28 @@ function resetAndGoHome() {
             </button>
           </div>
 
+          <!-- Bouton principal : appareil photo -->
+          <label
+            v-if="photos.length < MAX_PHOTOS"
+            class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-violet-400 bg-violet-50 text-sm font-medium text-violet-600 dark:bg-violet-950 dark:text-violet-400"
+          >
+            📷 Photo
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture="environment"
+              multiple
+              class="hidden"
+              @change="onPhotosSelected"
+            />
+          </label>
+
+          <!-- Option galerie (sans capture) -->
           <label
             v-if="photos.length < MAX_PHOTOS"
             class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-400 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
           >
-            + Photo
+            🖼️ Galerie
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -286,7 +324,10 @@ function resetAndGoHome() {
           </ul>
         </div>
 
-        <p class="text-xs text-gray-500 dark:text-gray-400">
+        <p v-if="address" class="text-xs text-gray-500 dark:text-gray-400">
+          Adresse détectée : {{ address }}
+        </p>
+        <p v-else class="text-xs text-gray-500 dark:text-gray-400">
           Déplace le marqueur pour ajuster la position exacte.
         </p>
       </div>
@@ -345,6 +386,9 @@ function resetAndGoHome() {
         </p>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           Position : {{ latitude.toFixed(5) }}, {{ longitude.toFixed(5) }}
+        </p>
+        <p v-if="address" class="text-xs text-gray-400 dark:text-gray-500">
+          {{ address }}
         </p>
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>

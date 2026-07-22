@@ -15,6 +15,9 @@ const tabs = computed(() => [
       ]
     : []),
   { to: '/admin/signalements', label: 'Signalements' },
+  ...(auth.user?.role === 'SUPER_ADMIN'
+    ? [{ to: '/admin/sql', label: 'Console SQL' }]
+    : []),
 ])
 </script>
 

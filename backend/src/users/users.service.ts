@@ -68,6 +68,12 @@ export class UsersService {
     return this.toSafeUser(user);
   }
 
+  /** Mise à jour de l'avatar (emoji ou URL). */
+  async updateAvatar(id: string, avatar: string | null): Promise<SafeUser> {
+    const user = await this.prisma.user.update({ where: { id }, data: { avatar } });
+    return this.toSafeUser(user);
+  }
+
   /** Profil public (§10) : pas d'email ni de trustScore, visible de tous. */
   async findPublicProfile(id: string): Promise<PublicProfile> {
     const user = await this.prisma.user.findUnique({ where: { id } });

@@ -78,6 +78,12 @@ export const router = createRouter({
           name: 'admin-reports',
           component: () => import('@/views/admin/AdminReportsView.vue'),
         },
+        {
+          path: 'sql',
+          name: 'admin-sql',
+          component: () => import('@/views/admin/AdminSqlView.vue'),
+          meta: { requiresAdmin: true, requiresSuperAdmin: true },
+        },
       ],
     },
   ],
@@ -96,6 +102,9 @@ router.beforeEach(async (to) => {
   }
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { path: '/admin/signalements' }
+  }
+  if (to.meta.requiresSuperAdmin && auth.user?.role !== 'SUPER_ADMIN') {
+    return { path: '/admin' }
   }
   return true
 })

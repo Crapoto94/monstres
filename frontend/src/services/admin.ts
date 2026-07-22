@@ -11,6 +11,10 @@ export interface AdminUserSummary {
   suspendedAt: string | null
   bannedAt: string | null
   createdAt: string
+  lastLoginAt: string | null
+  registrationIp: string | null
+  registrationOs: string | null
+  registrationBrowser: string | null
   _count: { items: number; reports: number }
 }
 
@@ -220,5 +224,20 @@ export async function fetchAdminSettings() {
 
 export async function updateSetting(key: string, value: string) {
   const { data } = await api.patch<ApiSuccess<AdminSetting>>(`/admin/settings/${key}`, { value })
+  return data.data
+}
+
+export async function listTables() {
+  const { data } = await api.post<ApiSuccess<{ tables: string[] }>>('/admin/sql/tables')
+  return data.data
+}
+
+export async function execSql(sql: string) {
+  const { data } = await api.post<ApiSuccess<{ rows: any[]; count: number }>>('/admin/sql/exec', { sql })
+  return data.data
+}
+
+export async function deleteAllItems() {
+  const { data } = await api.delete<ApiSuccess<{ deleted: number }>>('/admin/items')
   return data.data
 }

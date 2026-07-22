@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async register(payload: { name: string; email: string; password: string }) {
+    async register(payload: { name: string; email: string; password: string; confirmPassword: string }) {
       this.loading = true
       this.error = null
       try {
@@ -69,6 +69,10 @@ export const useAuthStore = defineStore('auth', {
 
     async setEmailNotifications(enabled: boolean) {
       this.user = await authService.updateEmailNotifications(enabled)
+    },
+
+    async setAvatar(avatar: string | null) {
+      this.user = await authService.updateAvatar(avatar)
     },
   },
 })
