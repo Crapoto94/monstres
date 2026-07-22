@@ -8,6 +8,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { fetchCategories, type Category } from '@/services/categories'
 import { createItem, type Item } from '@/services/items'
+import { fetchPublicSettings } from '@/services/settings'
 
 // Corrige le chemin des icônes par défaut de Leaflet (cassé par les bundlers).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
@@ -25,6 +26,17 @@ const step = ref(1)
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const publishedItem = ref<Item | null>(null)
+
+// Partage groupe Facebook (§ settings `facebook_share_enabled`/`facebook_group_url`) :
+// Facebook ne permet pas de poster automatiquement dans un groupe via l'API
+// (permission `publish_to_groups` quasi impossible à obtenir depuis 2018) —
+// on copie le texte du Monstre dans le presse-papier et on ouvre le groupe,
+// à l'utilisateur de coller et publier lui-même.
+const facebookGroupUrl = ref('')
+const facebookShareEnabled = ref(false)
+const shareOnFacebook = ref(true)
+const facebookShareTriggered = ref(false)
+const facebookShareAvailable = computed(() => facebookShareEnabled.value && !!facebookGroupUrl.value)
 
 // Étape 1 — Photos
 const photos = ref<File[]>([])
@@ -162,6 +174,13 @@ const categories = ref<Category[]>([])
 onMounted(async () => {
   categories.value = await fetchCategories()
   locateMe()
+  try {
+    const settings = await fetchPublicSettings()
+    facebookGroupUrl.value = settings.facebookGroupUrl
+    facebookShareEnabled.value = settings.facebookShareEnabled
+  } catch {
+    // silencieux — la case de partage reste simplement masquée
+  }
 })
 
 onBeforeUnmount(() => {
@@ -208,11 +227,27 @@ async function publish() {
       address: address.value || undefined,
       photos: photos.value,
     })
+    if (shareOnFacebook.value && facebookShareAvailable.value) {
+      await shareToFacebookGroup(publishedItem.value)
+    }
   } catch {
     submitError.value = 'La publication a échoué. Réessaie.'
   } finally {
     submitting.value = false
   }
+}
+
+async function shareToFacebookGroup(item: Item) {
+  const itemUrl = `${window.location.origin}/monstres/${item.id}`
+  const text = `${item.title} — ${itemUrl}`
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // presse-papier indisponible (permission refusée, contexte non sécurisé) —
+    // on ouvre quand même le groupe, l'utilisateur copiera le lien à la main
+  }
+  window.open(facebookGroupUrl.value, '_blank', 'noopener')
+  facebookShareTriggered.value = true
 }
 
 function resetAndGoHome() {
@@ -226,6 +261,9 @@ function resetAndGoHome() {
 
     <div v-if="publishedItem" class="mt-6 flex flex-col gap-3">
       <p class="text-green-600 dark:text-green-400">Ton Monstre « {{ publishedItem.title }} » est publié !</p>
+      <p v-if="facebookShareTriggered" class="text-sm text-gray-600 dark:text-gray-300">
+        📘 Texte copié dans le presse-papier — colle-le dans un nouveau post du groupe Facebook qui vient de s'ouvrir.
+      </p>
       <button class="self-start rounded-lg bg-brand-600 px-4 py-2 text-sm text-white" @click="resetAndGoHome">
         Retour à l'accueil
       </button>
@@ -390,6 +428,14 @@ function resetAndGoHome() {
         <p v-if="address" class="text-xs text-gray-400 dark:text-gray-500">
           {{ address }}
         </p>
+
+        <label
+          v-if="facebookShareAvailable"
+          class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+        >
+          <input v-model="shareOnFacebook" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700" />
+          Partager aussi dans le groupe Facebook
+        </label>
 
         <p v-if="submitError" class="text-sm text-red-600 dark:text-red-400">{{ submitError }}</p>
 

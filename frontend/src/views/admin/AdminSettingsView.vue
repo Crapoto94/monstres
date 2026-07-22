@@ -110,6 +110,15 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     label: 'Mode test WhatsApp',
     description: 'En mode test, les notifications WhatsApp sont simulées en base sans être réellement envoyées. Utile pour le développement.',
   },
+  facebook_share_enabled: {
+    label: 'Partage groupe Facebook',
+    description: 'Propose une case "Partager dans le groupe Facebook" (cochée par défaut) à la publication d\'un Monstre. Facebook ne permet pas de poster automatiquement dans un groupe : ça copie le texte du Monstre dans le presse-papier et ouvre le groupe, à l\'utilisateur de coller et publier.',
+  },
+  facebook_group_url: {
+    label: 'URL du groupe Facebook',
+    description: 'Lien du groupe Facebook cible (ex. https://www.facebook.com/groups/xxxxxxxxxx). Mettre le groupe de test pendant le développement, le vrai groupe en production.',
+    placeholder: 'https://www.facebook.com/groups/...',
+  },
   mission_content: {
     label: 'Contenu de la page /pourquoi',
     description: 'Contenu HTML affiché sur la page "Pourquoi Les Monstres". Utilise les balises &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;. Si vide, un contenu par défaut est affiché.',
@@ -122,6 +131,7 @@ const SECTIONS = [
   { title: '⭐ Points & Classement', keys: ['points_creation', 'points_recuperation', 'points_validation', 'points_vote_utile', 'ranking_weight_distance', 'ranking_weight_popularity', 'ranking_weight_recency', 'ranking_weight_trust'] },
   { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'whatsapp_test_mode'] },
+  { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
   { title: '📝 Contenu', keys: ['mission_content'] },
 ]
 

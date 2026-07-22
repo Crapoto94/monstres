@@ -86,7 +86,7 @@ function coverPhoto(item: Item) {
     <!-- Header sticky : logo + profil/connexion -->
     <div class="sticky top-0 z-10 flex items-center justify-between bg-white/90 px-4 py-2 backdrop-blur-md dark:bg-gray-900/90">
       <RouterLink to="/" class="flex items-center">
-        <img :src="logo" alt="Les Monstres" class="h-40 w-40 object-contain" />
+        <img :src="logo" alt="Les Monstres" class="w-40" />
       </RouterLink>
       <RouterLink
         v-if="auth.isAuthenticated && auth.user"
