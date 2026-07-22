@@ -2341,13 +2341,63 @@ un toggle sur le profil comme pour les notifications email.
 - [x] Build backend + frontend sans erreur.
 
 ### Restant (dépend entièrement de l'utilisateur, hors de portée du code)
-- [ ] Créer l'app "WhatsApp Business Platform" dans Meta for Developers
-      (peut réutiliser l'app Facebook Login existante), obtenir un numéro
-      WhatsApp Business (numéro de test gratuit disponible pour le dev).
 - [ ] Créer et faire approuver le message template `monstres_notification`
       (une variable de corps) dans Meta Business Manager.
 - [ ] Renseigner `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID` dans le
       `.env` de production, redémarrer le conteneur backend.
+
+### Mise en place effective (session d'assistance Meta)
+L'utilisateur a créé une **app Meta séparée** ("Les monstres notifs")
+plutôt que d'ajouter WhatsApp à l'app Facebook Login existante — Meta ne
+proposait pas cette option (probablement une contrainte de type d'app,
+WhatsApp Business Platform nécessitant un type "Business"). Aucun impact
+code, juste des identifiants différents en `.env`.
+
+Connectivité confirmée de bout en bout avec le numéro de test Meta et le
+token temporaire (24h) : lecture `GET /{phone_number_id}` (200, quality
+`GREEN`), puis envoi réel via le template par défaut `hello_world` reçu
+sur le téléphone de l'utilisateur. Le template custom
+`monstres_notification` (catégorie Utilitaire, corps `{{1}}`, pied de page
+« ne pas répondre ») a été créé côté Meta Business Manager mais reste
+**"En cours d'examen"** au moment de cette session — l'envoi avec ce
+template échoue tant qu'il n'est pas approuvé (`#132001 Template name does
+not exist in the translation`, quel que soit le code langue essayé (`fr`
+puis `fr_FR`) — le vrai problème était le statut, pas la langue).
+
+### Réglage `whatsapp_test_mode` (admin → Paramètres)
+Ajouté à la demande de l'utilisateur pour pouvoir vérifier que la chaîne
+d'envoi fonctionne pendant l'attente d'approbation du template custom par
+Meta (habituellement quelques minutes à 24-48h) :
+- [x] `backend/src/whatsapp/whatsapp.service.ts` : si le réglage
+      `whatsapp_test_mode` (nouveau, `BOOLEAN`, défaut `false`, seedé dans
+      `backend/scripts/seed.js`) est activé, l'envoi bascule sur le
+      template `hello_world` (`en_US`, aucune variable — fourni par Meta,
+      toujours pré-approuvé) au lieu de `monstres_notification`. Le
+      contenu réel de la notification est alors ignoré (hello_world ne
+      prend aucun paramètre) — sert uniquement à vérifier que le pipeline
+      d'envoi fonctionne, pas à tester le vrai contenu.
+- [x] Aucune UI dédiée nécessaire : `whatsapp_test_mode` apparaît
+      automatiquement dans `/admin/parametres` comme case à cocher (même
+      mécanisme générique que `pwa_enabled`).
+- [x] Testé de bout en bout : réglage activé directement en base (script
+      Prisma ponctuel), `WhatsAppService.sendNotification()` invoqué via
+      `NestFactory.createApplicationContext` (script ponctuel, supprimé
+      après usage) → message "Hello World" reçu sur le téléphone de
+      l'utilisateur. Réglage remis à `false` après vérification (l'admin
+      pourra le réactiver lui-même si besoin en attendant l'approbation).
+- [x] Build backend sans erreur.
+
+### Sur l'impossibilité de désactiver les réponses WhatsApp
+L'utilisateur a demandé si on pouvait empêcher les destinataires de
+répondre aux notifications. Réponse donnée : WhatsApp ne permet pas de
+désactiver la saisie côté destinataire (contrairement à un SMS
+court-code) — mais dans les faits, **l'app n'a pas de webhook** écoutant
+les messages entrants, donc une éventuelle réponse n'est jamais lue ni
+traitée par Les Monstres ; elle resterait uniquement visible (et sans
+suite) dans la boîte de réception WhatsApp Business de Meta Business
+Suite. Le pied de page "ne pas répondre" du template créé par
+l'utilisateur couvre l'aspect UX. Aucun développement supplémentaire
+nécessaire ni prévu sur ce point.
 
 ---
 
