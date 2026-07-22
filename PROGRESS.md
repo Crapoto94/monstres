@@ -2235,6 +2235,49 @@ existant.
 
 ---
 
+## Correctif : déconnexion non persistante (cookie jamais réellement effacé)
+
+L'utilisateur a remonté qu'après clic sur « Se déconnecter », un
+rechargement de page le reconnectait automatiquement.
+
+### Cause
+`res.clearCookie(name, { path: '/' })` (dans `auth.controller.ts` et
+`users.controller.ts` pour la suppression de compte) n'utilisait que
+`path`, alors que le cookie avait été posé avec en plus `domain`,
+`secure` et `sameSite` (`AuthService.getCookieOptions()`). Un navigateur
+n'efface un cookie que si le `Set-Cookie` d'effacement porte **exactement**
+les mêmes attributs `Domain`/`Path` que ceux utilisés à la pose — sinon
+il l'ignore silencieusement (aucune erreur visible) et le cookie de
+session original survit. En local, `JWT_COOKIE_DOMAIN=localhost` est
+traduit en `domain: undefined` des deux côtés (voir `getCookieOptions()`),
+donc le bug ne s'y reproduisait jamais — uniquement visible en production
+où `JWT_COOKIE_DOMAIN=.monstres.fbc.fr` diffère réellement entre les deux
+appels. Explique aussi pourquoi ce bug n'avait jamais été détecté malgré
+les tests de bout en bout précédents (Phase 1, suppression de compte) :
+tous faits en local.
+
+### Correctif
+Nouveau `backend/src/auth/cookie.util.ts` (`getCookieName`,
+`getCookieOptions`, prenant un `ConfigService` en paramètre) : source
+unique utilisée à la fois pour poser le cookie (`AuthService`) et pour
+l'effacer (`AuthController.logout`, `UsersController.deleteSelf`) — ne
+peuvent plus diverger par construction. `AuthService.getCookieName()`/
+`getCookieOptions()` délèguent maintenant à cet util plutôt que de
+dupliquer la logique.
+
+### Testé
+Domaine de cookie temporairement basculé sur une valeur non-`localhost`
+(`.test-domain.local`) en local pour reproduire les conditions de
+production : `curl -i` sur `/auth/register` puis `/auth/logout` confirme
+que le `Set-Cookie` d'effacement porte maintenant `Domain=.test-domain.local`
+identique à celui de la pose (absent avant le correctif). Flux complet
+testé aussi en conditions locales normales : `register` → `GET /auth/me`
+200 → `logout` → `GET /auth/me` 401 (cookie bien absent). `.env` et
+compte de test remis dans leur état d'origine après vérification.
+- [x] Build backend sans erreur.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
