@@ -2188,6 +2188,53 @@ unique et peuvent expirer après un premier échange raté côté réseau.
 
 ---
 
+## Coupe-circuit PWA : réglage `pwa_enabled` (admin → Paramètres)
+
+Après les deux correctifs de cache du service worker ci-dessus, l'utilisateur
+a demandé un moyen de désactiver complètement ce cache pendant qu'il
+développe/teste en production (les rechargements ne reflétaient pas
+toujours les derniers changements, gênant plus qu'aidant à ce stade).
+
+### Décision
+Plutôt qu'un flag codé en dur, nouveau réglage `pwa_enabled` (table
+`settings`, type `BOOLEAN`, défaut `true`) modifiable depuis `/admin/parametres`
+sans redéploiement — cohérent avec la règle d'or « aucune règle métier en
+dur ». Contrairement aux settings existants (durées, seuils, points), c'est
+le premier de type `BOOLEAN` : `AdminSettingsView.vue` a été étendu pour
+afficher une case à cocher (Activé/Désactivé) au lieu d'un champ texte
+quand `setting.type === 'BOOLEAN'`, les autres types gardent le champ texte
+existant.
+
+### Fait
+- [x] Backend : `backend/src/settings/settings.controller.ts` (nouveau) —
+      route **publique** `GET /settings/public` (`{ pwaEnabled }`), seule
+      route non protégée du module Settings : le frontend doit pouvoir la
+      lire dès le boot, avant toute connexion, pour décider d'enregistrer
+      ou non le service worker. Enregistrée dans `SettingsModule`
+      (`@Global()`, qui n'avait jusque-là aucun contrôleur).
+- [x] `backend/scripts/seed.js` : entrée `pwa_enabled` ajoutée à
+      `DEFAULT_SETTINGS` (idempotent, comme les autres).
+- [x] Frontend : `frontend/src/services/settings.ts` (nouveau) —
+      `fetchPublicSettings()`. `frontend/src/main.ts` : avant d'appeler
+      `registerSW()`, on lit ce réglage — si désactivé, on désenregistre
+      tout service worker déjà actif **et** on vide ses caches (débloque
+      immédiatement un appareil resté sur une ancienne version, sans
+      attendre une réactivation ultérieure) ; si activé, comportement
+      inchangé (`registerSW` + auto-update de la session précédente).
+- [x] `AdminSettingsView.vue` : case à cocher pour les settings `BOOLEAN`.
+- [x] Testé de bout en bout : `GET /settings/public` (200,
+      `{"pwaEnabled":true}`), bascule via `PATCH /admin/settings/pwa_enabled`
+      (compte de test promu `SUPER_ADMIN` temporairement, supprimé après),
+      confirmé en navigateur (build de production via `vite preview`) que
+      `navigator.serviceWorker.getRegistrations()` passe bien de
+      `[sw actif]` à `[]` (+ caches vidés) quand désactivé, et se
+      réenregistre quand réactivé. Case à cocher confirmée visible et de
+      type `checkbox` dans `/admin/parametres` (interaction de clic non
+      re-testée jusqu'au bout en navigateur automatisé, outil instable
+      cette session — mécanisme sous-jacent déjà validé par API).
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
