@@ -91,15 +91,22 @@ export interface AdminReportEntry {
   type: string
   reason: string | null
   createdAt: string
+  photoLatitude: number | null
+  photoLongitude: number | null
   user: { id: string; name: string }
 }
 
 export interface AdminReportQueueItem {
   id: string
   title: string
+  description: string | null
   status: string
+  latitude: number
+  longitude: number
+  address: string | null
+  createdAt: string
   updatedAt: string
-  user: { id: string; name: string; email: string; trustScore: number }
+  user: { id: string; name: string; email: string; trustScore: number; avatar: string | null }
   photos: { thumbnailPath: string | null; path: string }[]
   reports: AdminReportEntry[]
 }

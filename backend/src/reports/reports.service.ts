@@ -4,6 +4,9 @@ import { SettingsService } from '../settings/settings.service';
 import { ReportType, ItemStatus } from '../generated/prisma/enums';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { CreateReportDto } from './dto/create-report.dto';
+import * as exifr from 'exifr';
+import { join } from 'path';
+import { readFile } from 'fs/promises';
 
 /** §6.5 : signalements « qualité » — distincts du signal "déjà récupéré". */
 const QUALITY_TYPES: ReportType[] = [
@@ -34,13 +37,43 @@ export class ReportsService {
       throw new ConflictException('Tu as déjà signalé ce Monstre.');
     }
 
+    // Extraire les GPS EXIF de la photo de couverture
+    const photoGps = await this.extractCoverPhotoGps(itemId);
+
     await this.prisma.report.create({
-      data: { itemId, userId: user.id, type: dto.type, reason: dto.reason },
+      data: {
+        itemId,
+        userId: user.id,
+        type: dto.type,
+        reason: dto.reason,
+        photoLatitude: photoGps?.latitude ?? null,
+        photoLongitude: photoGps?.longitude ?? null,
+      },
     });
 
     await this.applyThresholds(itemId);
 
     return { reported: true };
+  }
+
+  private async extractCoverPhotoGps(itemId: string): Promise<{ latitude: number; longitude: number } | null> {
+    try {
+      const photo = await this.prisma.itemPhoto.findFirst({
+        where: { itemId },
+        orderBy: { order: 'asc' },
+      });
+      if (!photo) return null;
+
+      const filePath = join(process.cwd(), 'storage', photo.path);
+      const buffer = await readFile(filePath);
+      const exif = await exifr.parse(buffer, { gps: true });
+      if (exif?.latitude != null && exif?.longitude != null) {
+        return { latitude: exif.latitude, longitude: exif.longitude };
+      }
+    } catch {
+      // Photo absente ou pas de GPS — pas grave
+    }
+    return null;
   }
 
   /**

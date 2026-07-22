@@ -7,10 +7,8 @@ import type { ReportDecision } from './dto/resolve-report.dto';
 const DEFAULT_PAGE_SIZE = 20;
 
 /**
- * §6.5/§14 : file de modération. Un Item passe en `PENDING_REVIEW` quand ses
- * signalements « qualité » atteignent `report_threshold` (voir
- * `ReportsService`) ; le modérateur décide alors de conserver, masquer ou
- * supprimer, ce qui referme aussi les signalements PENDING associés.
+ * §6.5/§14 : file de modération. Affiche tous les Items ayant au moins un
+ * signalement PENDING (quel que soit le statut de l'Item).
  */
 @Injectable()
 export class AdminReportsService {
@@ -20,13 +18,23 @@ export class AdminReportsService {
   ) {}
 
   async findQueue(page = 1, pageSize = DEFAULT_PAGE_SIZE) {
-    const where = { status: ItemStatus.PENDING_REVIEW };
+    // Trouver tous les items qui ont au moins un report PENDING
+    const itemsWithPending = await this.prisma.report.findMany({
+      where: { status: ReportStatus.PENDING },
+      select: { itemId: true },
+      distinct: ['itemId'],
+    });
+    const itemIds = itemsWithPending.map((r) => r.itemId);
+
+    if (itemIds.length === 0) {
+      return { items: [], page, pageSize, total: 0, totalPages: 1 };
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.item.findMany({
-        where,
+        where: { id: { in: itemIds } },
         include: {
-          user: { select: { id: true, name: true, email: true, trustScore: true } },
+          user: { select: { id: true, name: true, email: true, trustScore: true, avatar: true } },
           photos: { orderBy: { order: 'asc' as const }, take: 1 },
           reports: {
             where: { status: ReportStatus.PENDING },
@@ -38,7 +46,10 @@ export class AdminReportsService {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      this.prisma.item.count({ where }),
+      this.prisma.report.groupBy({
+        by: ['itemId'],
+        where: { status: ReportStatus.PENDING },
+      }).then((r) => r.length),
     ]);
 
     return { items, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
@@ -47,14 +58,14 @@ export class AdminReportsService {
   async resolve(itemId: string, decision: ReportDecision) {
     const item = await this.prisma.item.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Monstre introuvable.');
-    if (item.status !== ItemStatus.PENDING_REVIEW) {
-      throw new BadRequestException("Ce Monstre n'est pas (ou plus) en file de modération.");
-    }
 
     switch (decision) {
       case 'KEEP':
         await this.prisma.$transaction([
-          this.prisma.item.update({ where: { id: itemId }, data: { status: ItemStatus.AVAILABLE } }),
+          this.prisma.item.update({
+            where: { id: itemId },
+            data: { status: item.status === ItemStatus.PENDING_REVIEW ? ItemStatus.AVAILABLE : item.status },
+          }),
           this.prisma.report.updateMany({
             where: { itemId, status: ReportStatus.PENDING },
             data: { status: ReportStatus.REJECTED },

@@ -321,13 +321,15 @@ model ScoringEvent {
 }
 
 model Report {
-  id        String       @id @default(cuid())
-  itemId    String
-  userId    String
-  type      ReportType
-  reason    String?
-  status    ReportStatus @default(PENDING)
-  createdAt DateTime     @default(now())
+  id             String       @id @default(cuid())
+  itemId         String
+  userId         String
+  type           ReportType
+  reason         String?
+  status         ReportStatus @default(PENDING)
+  photoLatitude  Float?
+  photoLongitude Float?
+  createdAt      DateTime     @default(now())
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
