@@ -2496,6 +2496,43 @@ une récupération (disparaît de "Intéressent", apparaît dans "Récupérés")
 
 ---
 
+## Refonte UX de la fiche Monstre (`ItemDetailView.vue`)
+
+Demande utilisateur : « Refais l'expérience utilisateur de la page de
+Monstre ». Réécriture complète du template, logique métier et méthodes
+inchangées à 100 %.
+
+- **Galerie photo** : carrousel plein cadre en scroll-snap horizontal
+  (`snap-x snap-mandatory`) avec indicateurs à points en overlay, bouton
+  retour et badge vote flottants par-dessus la photo (au lieu d'une bande
+  de vignettes séparée).
+- **Badges de statut** : catégorie, « 🔥 X intéressé(s) » et « ✓ Récupéré »
+  regroupés en pastilles au-dessus du titre plutôt que dispersés dans le
+  texte.
+- **Bloc déposant** : puce avatar + nom dans un encart dédié (rendu avatar
+  via un helper local `isImageAvatar()`, identique au pattern déjà utilisé
+  sur `HomeView.vue`/`CommunityView.vue`). Initialement un `RouterLink`
+  vers un profil public `/utilisateurs/:id` avait été ajouté par erreur —
+  cette route n'existe pas côté frontend (seul `GET /users/:id` existe côté
+  API, sans page consommatrice) ; remplacé par un simple `<div>` non
+  cliquable pour éviter un lien mort en production.
+- **CTA « Je suis intéressé(e) »** : bouton pleine largeur mis en avant
+  (au lieu d'un bouton de taille standard), style rempli/plein quand
+  disponible, style contour + coché quand déjà intéressé.
+- **Signalement** : rétrogradé d'un bouton bordé à un simple lien texte
+  discret, pour ne pas concurrencer visuellement le CTA principal.
+- **Commentaires** : passés en bulles façon messagerie (avatar rond +
+  bulle de fond gris), au lieu d'une simple liste texte.
+- **Testé** : build `vue-tsc -b && vite build` propre (0 erreur) ; en
+  local, navigation non connectée (galerie, lightbox ouverture/fermeture,
+  invite de connexion) puis avec un compte jetable créé pour l'occasion
+  (`ux-redesign-test@example.com`, supprimé après test) — toggle
+  « Je suis intéressé(e) » → « ✓ Tu es intéressé(e) » avec mise à jour du
+  badge compteur, publication d'un commentaire avec rendu bulle/avatar
+  correct.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
