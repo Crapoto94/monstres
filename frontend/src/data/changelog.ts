@@ -6,6 +6,25 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.8',
+    date: '23 juillet 2026',
+    changes: [
+      'Journal d\'activité et journal des emails (SUPER_ADMIN)',
+      'Lightbox zoom molette (desktop) et pincement (mobile)',
+      'Style des contenus HTML (/pourquoi, mentions légales, RGPD)',
+      'Logo x1.7 sur l\'accueil',
+    ],
+  },
+  {
+    version: '0.4.7',
+    date: '23 juillet 2026',
+    changes: [
+      'Fix des avatars dans les commentaires',
+      'Fix de la troncature des photos d\'objets',
+      'Fix du double-wrapping axios sur /pourquoi',
+    ],
+  },
+  {
     version: '0.4.6',
     date: '23 juillet 2026',
     changes: [
