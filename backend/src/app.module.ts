@@ -23,6 +23,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { ReportsModule } from './reports/reports.module';
 import { TutorialModule } from './tutorial/tutorial.module';
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
+import { LegalModule } from './legal/legal.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { EmailTemplatesModule } from './email-templates/email-templates.module';
     ReportsModule,
     TutorialModule,
     EmailTemplatesModule,
+    LegalModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

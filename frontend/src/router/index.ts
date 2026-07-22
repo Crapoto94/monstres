@@ -17,6 +17,8 @@ export const router = createRouter({
     { path: '/alertes', name: 'alerts', component: () => import('@/views/AlertsView.vue') },
     { path: '/profil', name: 'profile', component: () => import('@/views/ProfileView.vue') },
     { path: '/communaute', name: 'community', component: () => import('@/views/CommunityView.vue') },
+    { path: '/mentions-legales', name: 'legal-notices', component: () => import('@/views/LegalView.vue') },
+    { path: '/rgpd', name: 'legal-rgpd', component: () => import('@/views/RgpdView.vue') },
     { path: '/connexion', name: 'login', component: () => import('@/views/LoginView.vue') },
     { path: '/inscription', name: 'register', component: () => import('@/views/RegisterView.vue') },
     {
