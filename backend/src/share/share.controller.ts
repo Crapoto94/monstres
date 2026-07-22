@@ -59,11 +59,12 @@ export class ShareController {
   private renderHtml({ title, description, image, url }: { title: string; description: string; image: string | null; url: string }): string {
     const safeTitle = escapeHtml(title);
     const safeDescription = escapeHtml(description);
+    const pageTitle = title === 'Les Monstres' ? title : `${safeTitle} — Les Monstres`;
     return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>${safeTitle} — Les Monstres</title>
+  <title>${pageTitle}</title>
   <meta property="og:type" content="website" />
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />

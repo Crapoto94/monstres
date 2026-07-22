@@ -2673,6 +2673,71 @@ retenue : lien de partage pré-rempli plutôt qu'auto-post silencieux.
 
 ---
 
+## Tri par défaut, presse-papier enrichi et aperçu photo Facebook (ShareController)
+
+Suite directe de la section précédente, 3 demandes complémentaires.
+
+### 1. Tri par défaut sur la distance
+`HomeView.vue` : `sortBy` initialisé à `'nearby'` au lieu de `'recent'`.
+Testé : au chargement, le bouton « 📍 Proches » est bien actif par défaut
+(classes `bg-brand-600 text-white`).
+
+### 2. Presse-papier enrichi + instruction avant l'action
+Deux retours utilisateur après un premier test réel :
+- Le texte copié ne contenait que le titre et le lien, pas l'adresse.
+- Il fallait prévenir **avant** de cliquer que le collage se fait dans la
+  zone de publication du groupe (pas une évidence pour tout le monde).
+
+`AddItemView.vue` : le texte copié inclut maintenant titre + adresse
+raccourcie (même logique 3-segments que `shortAddress` sur
+`ItemDetailView.vue`, dupliquée en local `shortenAddress()` — pas de
+partage de code frontend/frontend forcé pour 3 lignes) + lien, sur 3
+lignes. Une phrase d'explication apparaît sous la case à cocher dès
+qu'elle est activée, avant même de publier : « Après publication, un
+bouton copiera le nom, l'adresse et le lien du Monstre — il faudra les
+coller (Ctrl/Cmd+V) dans la zone de publication du groupe Facebook qui
+s'ouvrira. »
+
+### 3. Aperçu avec photo au collage du lien (ShareController)
+Question directe de l'utilisateur : peut-on pré-remplir la photo aussi ?
+**Non pas en copiant l'image** (comportement peu fiable, dépend du
+navigateur, donnerait un rendu éloigné de la fiche Monstre) — la bonne
+solution est de laisser **Facebook générer sa carte de prévisualisation
+automatique** à partir du lien collé (comme pour n'importe quel lien
+YouTube/article), ce qui inclut déjà une photo. Le blocage : le robot de
+Facebook (`facebookexternalhit`) n'exécute pas JavaScript, et l'appli est
+une SPA Vue 100 % côté client — sans intervention, il ne verrait que le
+HTML générique de `index.html`, pas les données du Monstre.
+- **`ShareController`** (nouveau module `share/`) : sert `GET
+  /monstres/:id` avec des balises Open Graph (`og:title`, `og:description`
+  = adresse raccourcie ou description, `og:image` = première photo,
+  `og:url`) — exclu du préfixe `/api/v1` (voir `main.ts`,
+  `setGlobalPrefix` avec `exclude`) pour matcher exactement l'URL publique
+  réelle partagée. Item introuvable → carte générique "Les Monstres" sans
+  image plutôt qu'une erreur.
+- **`nginx/nginx.conf`** : `map $http_user_agent $monstres_upstream`
+  routant les User-Agent de robots de partage connus
+  (`facebookexternalhit`, `WhatsApp`, `Twitterbot`, `LinkedInBot`,
+  `TelegramBot`, `Slackbot`, `Discordbot`, `SkypeUriPreview`, `Pinterest`)
+  vers le backend sur `/monstres/`, tout le reste (vrais visiteurs)
+  continuant vers le frontend Vue comme avant. Nouveau `location ~
+  ^/monstres/` déclaré avant le `location /` générique.
+- **`common/html.util.ts`** : `escapeHtml()` extrait en fonction partagée
+  (déjà dupliquée dans `email.service.ts` et `notifications.service.ts` —
+  non retouchées pour éviter de toucher des fichiers actifs sur une autre
+  session en parallèle, seul le nouveau fichier l'utilise pour l'instant).
+- **Testé en local** (sans nginx, `npm run start:dev` sans Docker) :
+  `curl http://localhost:3000/monstres/<id>` renvoie le HTML avec les 3
+  bonnes balises OG (titre, description, `og:image` pointant vers la vraie
+  photo, vérifié `200 image/webp` en direct) ; item inexistant → carte
+  générique sans doublon de titre. **Non testé** : le routage nginx
+  lui-même (pas de conteneur nginx en dev local) ni le rendu réel de la
+  carte par le débogueur de partage Facebook (à faire une fois déployé,
+  avec l'outil [developers.facebook.com/tools/debug](https://developers.facebook.com/tools/debug/)
+  pour forcer Facebook à re-scanner une URL après un changement).
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
