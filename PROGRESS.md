@@ -2401,6 +2401,101 @@ nécessaire ni prévu sur ce point.
 
 ---
 
+## 5 changements produit : image email, agrandissement photo, intérêt sans limite, restriction email non vérifié, "Mes Monstres" au profil
+
+Demande utilisateur groupée, chacune traitée ci-dessous.
+
+### 1. Image cassée dans l'email "Nouveau Monstre à proximité"
+Bug : le template seedé (`backend/scripts/seed.js`, `new_item_nearby`)
+substituait `{{item_photo_url}}` en texte brut au lieu de l'envelopper
+dans une balise `<img>` — le fallback HTML codé en dur (utilisé seulement
+si aucune ligne n'existe en base) le faisait correctement, mais la ligne
+réellement seedée en base ne le faisait pas. Corrigé dans le seed (futurs
+environnements) **et** appliqué directement à la ligne existante de
+`dev.db` par script ponctuel (seed n'écrase jamais une ligne déjà créée).
+**À faire manuellement en prod** : éditer le template "Nouveau Monstre à
+proximité" dans `/admin/mails` et remplacer la ligne image par :
+```html
+<p><a href="{{item_url}}"><img src="{{item_photo_url}}" alt="{{item_title}}" style="max-width:300px;border-radius:8px;" /></a></p>
+```
+
+### 2. Agrandir la photo sur la fiche Monstre
+`ItemDetailView.vue` : clic sur une photo (annonce ou récupération) →
+lightbox plein écran (`Teleport` + overlay `fixed inset-0`, même schéma
+que la modale de recadrage d'avatar du profil). Fermeture par clic
+extérieur ou bouton ×.
+
+### 3. Réservation → "Intéressé" (sans limite de temps, compteur)
+Refonte du modèle : l'ancienne réservation exclusive avec expiration
+(cron toutes les minutes, un seul intéressé bloque les autres) est
+remplacée par un simple marqueur d'intérêt, plusieurs personnes pouvant
+être intéressées simultanément, sans expiration.
+- **Schéma** : `Reservation.expiresAt` devient optionnel (migration
+  `interest_no_expiry`) ; le cron d'expiration est supprimé.
+- **`ReservationsService.toggleInterest()`** remplace `reserve()`/
+  `cancel()` — même principe de toggle que les votes : un utilisateur
+  ajoute ou retire son propre intérêt, sans vérifier ceux des autres.
+  `Item.status` ne passe plus à `RESERVED` à la création d'un intérêt.
+- **`ItemsService`** : `activeReservation` (objet unique) remplacé par
+  `interestedCount`/`isInterested` dans la sérialisation. `collect()`
+  exige désormais que l'appelant ait sa propre réservation `ACTIVE` sur
+  cet Item (donc avoir manifesté son intérêt au préalable) plutôt que
+  d'être "le" réservataire unique ; les autres intérêts actifs sont
+  annulés automatiquement une fois l'objet marqué récupéré.
+- **Frontend** : bouton "Je suis intéressé(e)" (toggle) + badge "X
+  personnes intéressées" sur la fiche et dans la liste d'accueil
+  (remplace le badge "Réservé", plus jamais déclenché). Notification à
+  l'ajout d'un intérêt : historique "Alertes" toujours écrit, mais sans
+  email/WhatsApp (décision affinée en cours de session : trop de bruit
+  potentiel sur un Monstre populaire).
+- **Testé de bout en bout** (comptes jetables, supprimés après) : deux
+  utilisateurs intéressés simultanément sur le même Monstre (pas de
+  blocage) ; tentative de récupération par un tiers sans intérêt
+  préalable refusée ; récupération réussie par un intéressé ; l'intérêt
+  de l'autre utilisateur toujours listé mais sans effet après récupération.
+
+### 4. Restriction email non vérifié + tuto après vérification
+- **Backend** : `ItemsService.create()` refuse la publication si
+  `emailVerifiedAt` est vide. Nouvelle méthode `isViewerVerified()` :
+  la précision de localisation (latitude/longitude/adresse, déjà
+  arrondie pour les visiteurs anonymes) est désormais aussi arrondie pour
+  un compte **authentifié mais non vérifié** — auparavant seule
+  l'authentification comptait.
+- **Frontend** : route `/ajouter` gardée par un nouveau meta
+  `requiresVerifiedEmail`, redirige vers `/profil?error=email_not_verified`
+  avec un message explicite si non vérifié.
+- **Tutoriel déclenché après vérification, pas après inscription** :
+  la redirection automatique vers `/tutoriel` (router `beforeEach`)
+  exige maintenant `auth.user.emailVerifiedAt` en plus de l'absence
+  d'onboarding — un compte fraîchement inscrit navigue librement
+  (simplement restreint sur localisation/publication) jusqu'à
+  vérification de son email. `VerifyEmailView.vue` rafraîchit
+  `auth.user` à la confirmation puis redirige vers `/tutoriel` (ou
+  `/profil` si déjà onboardé) après un court délai.
+- **Testé** : création d'Item refusée tant que non vérifié (400) ;
+  après vérification via script (email réel non testé, flux
+  `GET /auth/verify-email` inchangé), localisation exacte pour le
+  compte vérifié vs arrondie pour un compte non vérifié sur le même Item.
+
+### 5. "Mes Monstres" dans le profil
+Nouvel endpoint `GET /items/mine` (`ItemsService.findMine()`, doit être
+déclaré avant `GET /items/:id` dans le contrôleur pour ne pas être
+capté comme un id) : trois listes — publiés (`userId`), intéressent
+(réservation `ACTIVE` de l'utilisateur), récupérés (réservation
+`COMPLETED` de l'utilisateur). Localisation en précision exacte pour ses
+propres Monstres publiés (inutile de se la cacher à soi-même), arrondie
+selon le statut de vérification réel pour les deux autres listes.
+`ProfileView.vue` : nouvelle section avec 3 onglets, liste de cartes
+(miniature, titre, statut/compteur), lien vers la fiche.
+**Testé** : compte jetable avec un Monstre publié, un intérêt actif sur
+un autre Monstre, une récupération validée — chaque onglet reflète
+correctement les 3 catégories, y compris après bascule d'un intérêt vers
+une récupération (disparaît de "Intéressent", apparaît dans "Récupérés").
+
+- [x] Build backend + frontend sans erreur après l'ensemble des 5 points.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
