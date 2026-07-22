@@ -67,6 +67,12 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
     },
 
+    /** Suppression de compte en libre-service (§9 RGPD). Irréversible. */
+    async deleteAccount() {
+      await authService.deleteAccount()
+      this.user = null
+    },
+
     async setEmailNotifications(enabled: boolean) {
       this.user = await authService.updateEmailNotifications(enabled)
     },

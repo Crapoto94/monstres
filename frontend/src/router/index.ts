@@ -19,6 +19,11 @@ export const router = createRouter({
     { path: '/communaute', name: 'community', component: () => import('@/views/CommunityView.vue') },
     { path: '/mentions-legales', name: 'legal-notices', component: () => import('@/views/LegalView.vue') },
     { path: '/rgpd', name: 'legal-rgpd', component: () => import('@/views/RgpdView.vue') },
+    {
+      path: '/suppression-donnees',
+      name: 'data-deletion',
+      component: () => import('@/views/DataDeletionView.vue'),
+    },
     { path: '/connexion', name: 'login', component: () => import('@/views/LoginView.vue') },
     { path: '/inscription', name: 'register', component: () => import('@/views/RegisterView.vue') },
     {

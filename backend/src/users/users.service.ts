@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ImageService } from '../images/image.service';
 import type { User } from '../generated/prisma/client';
 
 export interface SafeUser {
@@ -38,7 +39,10 @@ export interface CommunityMember {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly imageService: ImageService,
+  ) {}
 
   /** Profil complet de l'utilisateur connecté (exclut password et tokens). */
   toSafeUser(user: User): SafeUser {
@@ -68,6 +72,22 @@ export class UsersService {
   async updatePreferences(id: string, emailNotifications: boolean): Promise<SafeUser> {
     const user = await this.prisma.user.update({ where: { id }, data: { emailNotifications } });
     return this.toSafeUser(user);
+  }
+
+  /**
+   * Suppression de compte en libre-service (§9 RGPD "droit à l'effacement",
+   * exigée aussi par la conformité Facebook Login "User Data Deletion").
+   * Même logique que la suppression admin (Phase 9) mais sur son propre
+   * compte, sans vérification de rôle : cascade DB (Monstres, réservations,
+   * votes, commentaires, notifications, abonnements…) + nettoyage des
+   * photos de ses Monstres sur disque.
+   */
+  async deleteSelf(id: string): Promise<void> {
+    const itemIds = (await this.prisma.item.findMany({ where: { userId: id }, select: { id: true } })).map(
+      (item) => item.id,
+    );
+    await this.prisma.user.delete({ where: { id } });
+    await Promise.all(itemIds.map((itemId) => this.imageService.deleteItemPhotos(itemId)));
   }
 
   /** Mise à jour de l'avatar (emoji ou URL). */

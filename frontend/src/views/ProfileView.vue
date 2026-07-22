@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { api, type ApiSuccess } from '@/services/api'
 import type { AuthUser } from '@/services/auth'
+
+const router = useRouter()
 
 const auth = useAuthStore()
 
@@ -18,6 +21,8 @@ const selectedAvatar = computed(() => auth.user?.avatar ?? null)
 const uploading = ref(false)
 const uploadError = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
 
 function selectAvatar(emoji: string) {
   auth.setAvatar(selectedAvatar.value === emoji ? null : emoji)
@@ -54,6 +59,20 @@ async function onFileSelected(event: Event) {
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
+
+async function onDeleteAccount() {
+  if (!confirm('Supprimer définitivement ton compte et toutes tes données ? Cette action est irréversible.')) return
+  deleting.value = true
+  deleteError.value = null
+  try {
+    await auth.deleteAccount()
+    router.push('/')
+  } catch (e: any) {
+    deleteError.value = e.response?.data?.error?.message ?? 'Impossible de supprimer le compte.'
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -65,7 +84,7 @@ function formatDate(date: string) {
       <div class="mt-4 flex flex-wrap gap-2">
         <RouterLink
           to="/communaute"
-          class="inline-flex items-center gap-2 rounded-xl bg-violet-100 px-4 py-2.5 text-sm font-semibold text-violet-700 transition-colors hover:bg-violet-200 dark:bg-violet-900 dark:text-violet-300 dark:hover:bg-violet-800"
+          class="inline-flex items-center gap-2 rounded-xl bg-brand-100 px-4 py-2.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-200 dark:bg-brand-900 dark:text-brand-300 dark:hover:bg-brand-800"
         >
           👥 Communauté
         </RouterLink>
@@ -83,7 +102,7 @@ function formatDate(date: string) {
         <div class="flex items-center gap-4">
           <div
             class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full text-3xl"
-            :class="selectedAvatar?.startsWith('/') ? '' : 'bg-violet-100 dark:bg-violet-900'"
+            :class="selectedAvatar?.startsWith('/') ? '' : 'bg-brand-100 dark:bg-brand-900'"
           >
             <img v-if="selectedAvatar?.startsWith('/')" :src="selectedAvatar" class="h-16 w-16 rounded-full object-cover" alt="" />
             <span v-else>{{ selectedAvatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
@@ -130,7 +149,7 @@ function formatDate(date: string) {
             type="button"
             class="flex h-10 w-10 items-center justify-center rounded-full text-xl transition-all"
             :class="selectedAvatar === emoji
-              ? 'bg-violet-600 ring-2 ring-violet-400'
+              ? 'bg-brand-600 ring-2 ring-brand-400'
               : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700'"
             @click="selectAvatar(emoji)"
           >
@@ -162,7 +181,7 @@ function formatDate(date: string) {
         <button
           type="button"
           class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-          :class="auth.user.emailNotifications ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-700'"
+          :class="auth.user.emailNotifications ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'"
           @click="auth.setEmailNotifications(!auth.user.emailNotifications)"
         >
           <span
@@ -186,6 +205,12 @@ function formatDate(date: string) {
         >
           Politique de confidentialité (RGPD)
         </RouterLink>
+        <RouterLink
+          to="/suppression-donnees"
+          class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
+        >
+          Suppression des données
+        </RouterLink>
       </div>
 
       <!-- Déconnexion -->
@@ -195,12 +220,23 @@ function formatDate(date: string) {
       >
         Se déconnecter
       </button>
+
+      <!-- Suppression de compte (§9 RGPD) -->
+      <button
+        type="button"
+        :disabled="deleting"
+        class="mt-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+        @click="onDeleteAccount"
+      >
+        {{ deleting ? 'Suppression…' : 'Supprimer mon compte' }}
+      </button>
+      <p v-if="deleteError" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ deleteError }}</p>
     </template>
 
     <div v-else class="mt-4 flex flex-col gap-2 text-sm text-gray-500 dark:text-gray-400">
       <p>Connecte-toi pour accéder à ton profil.</p>
-      <RouterLink to="/connexion" class="text-violet-600 dark:text-violet-400">Se connecter</RouterLink>
-      <RouterLink to="/inscription" class="text-violet-600 dark:text-violet-400">Créer un compte</RouterLink>
+      <RouterLink to="/connexion" class="text-brand-600 dark:text-brand-400">Se connecter</RouterLink>
+      <RouterLink to="/inscription" class="text-brand-600 dark:text-brand-400">Créer un compte</RouterLink>
     </div>
   </section>
 </template>

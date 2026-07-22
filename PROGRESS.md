@@ -7,8 +7,9 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.3 — re-correctif sécurité
-console SQL admin, régression d'une session parallèle)
+Dernière mise à jour : **2026-07-22** (v0.3.5 — mise en conformité
+soumission Facebook : icône 1024×1024, page suppression de données,
+identifiants OAuth Facebook vérifiés en local)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -1930,9 +1931,64 @@ l'app par Facebook pour la permission de login).
 ### Restant / reporté
 - [ ] `GOOGLE_CLIENT_SECRET` à renseigner par l'utilisateur (Google Cloud
       Console, même projet que `GOOGLE_CLIENT_ID`).
-- [ ] App Facebook à créer entièrement par l'utilisateur (aucun accès à
-      son compte développeur depuis cette session) — `FACEBOOK_CLIENT_ID`/
-      `FACEBOOK_CLIENT_SECRET` toujours vides.
+- [x] App Facebook créée par l'utilisateur — `FACEBOOK_CLIENT_ID`/
+      `FACEBOOK_CLIENT_SECRET` renseignés dans `backend/.env` **local**
+      uniquement et vérifiés (`GET /auth/facebook` redirige bien vers le
+      vrai dialogue de consentement Facebook avec le bon `client_id`).
+      **Pas encore reportés dans le `.env` de production** (Proxmox) — à
+      faire par l'utilisateur, puis redémarrer le conteneur backend.
+
+---
+
+## Mise en conformité soumission Facebook (icône, RGPD, suppression de données)
+
+Facebook a refusé la soumission de l'app pour 4 champs manquants : icône
+1024×1024, URL de politique de confidentialité, instructions de
+suppression des données utilisateur, catégorie.
+
+### Fait
+- [x] **Icône 1024×1024** générée depuis `icone app.jpg` (`sharp`, `trim()`
+      puis `resize({ fit: 'contain' })` sur fond blanc — un premier essai
+      avec `fit: 'cover'` sur un crop trop serré rognait les coins arrondis,
+      corrigé). Fichier `fb-app-icon-1024.png` à la racine, **non versionné**
+      (livrable ponctuel pour upload manuel sur le dashboard Facebook), à
+      uploader par l'utilisateur puis supprimable.
+- [x] **URL de politique de confidentialité** : page publique existante
+      `/rgpd` (créée par la session parallèle, contenu RGPD complet) réutilisée
+      telle quelle — accessible sans authentification, pas de garde de route.
+      URL à déclarer : `https://monstres.fbc.fr/rgpd`.
+- [x] **Suppression des données utilisateur** :
+  - Backend : `DELETE /users/me` (`UsersService.deleteSelf`) — supprime
+    l'utilisateur (cascade Prisma sur ses Monstres/réservations/etc.) puis
+    ses photos sur disque, efface le cookie de session. Testé de bout en
+    bout via un compte jetable (`curl` : login → `DELETE /users/me` → 200
+    `{"deleted":true}` → `GET /auth/me` suivant renvoie 404 "Utilisateur
+    introuvable", compte confirmé disparu de `dev.db`).
+  - Frontend : bouton "Supprimer mon compte" sur `/profil` (déjà en place,
+    session précédente) + nouvelle page publique **`/suppression-donnees`**
+    (`DataDeletionView.vue`) expliquant la marche à suivre (via le compte,
+    ou par email si le compte est inaccessible), destinée au champ Facebook
+    "URL des instructions de suppression des données". Lien ajouté depuis
+    `/profil`.
+  - URL à déclarer côté Facebook : `https://monstres.fbc.fr/suppression-donnees`.
+- [x] **Catégorie** : aucun code requis, simple menu déroulant côté
+      dashboard Facebook App Review — suggestion donnée à l'utilisateur en
+      chat (catégorie "Communauté" ou "Utilitaires et productivité" selon
+      les options disponibles dans son dashboard).
+- [x] Classes Tailwind `violet-*` oubliées corrigées en `brand-*` dans
+      `LegalView.vue` et `RgpdView.vue` (loupées par le rebrand initial car
+      créées après par la session parallèle).
+- [x] Build backend + frontend sans erreur, testé en navigateur (page
+      `/suppression-donnees` affichée, lien visible sur `/profil`,
+      formulaire d'inscription + boutons OAuth fonctionnels).
+
+### Restant
+- [ ] Ajouter `FACEBOOK_CLIENT_ID`/`FACEBOOK_CLIENT_SECRET`/
+      `GOOGLE_CLIENT_SECRET` dans le `.env` de **production** (Proxmox) —
+      accès local uniquement depuis cette session, l'utilisateur doit le
+      faire lui-même puis redémarrer le conteneur backend.
+- [ ] Soumettre l'app Facebook à la revue une fois les 4 champs + les
+      identifiants prod en place.
 
 ---
 

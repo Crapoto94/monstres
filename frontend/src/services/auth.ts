@@ -57,3 +57,7 @@ export async function updateAvatar(avatar: string | null) {
   const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/avatar', { avatar })
   return data.data
 }
+
+export async function deleteAccount() {
+  await api.delete('/users/me')
+}

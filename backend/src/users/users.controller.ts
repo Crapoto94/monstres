@@ -1,5 +1,20 @@
-import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
@@ -8,7 +23,6 @@ import { UpdateAvatarDto } from './dto/update-avatar.dto';
 import { UsersService } from './users.service';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { BadRequestException } from '@nestjs/common';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 Mo
 
@@ -18,6 +32,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly imageService: ImageService,
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
   @Patch('me/preferences')
@@ -51,6 +66,19 @@ export class UsersController {
 
     const avatarPath = await this.imageService.processAvatar(file.buffer, user.id);
     return this.usersService.updateAvatar(user.id, avatarPath);
+  }
+
+  /**
+   * Suppression de compte en libre-service (§9 RGPD, conformité Facebook
+   * Login "User Data Deletion"). Supprime le cookie de session dans la
+   * foulée : le compte n'existe plus, inutile de laisser un cookie valide.
+   */
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  async deleteSelf(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) res: Response) {
+    await this.usersService.deleteSelf(user.id);
+    res.clearCookie(this.config.get<string>('JWT_COOKIE_NAME', 'access_token'), { path: '/' });
+    return { deleted: true };
   }
 
   @Get()
