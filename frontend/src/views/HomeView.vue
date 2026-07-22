@@ -3,7 +3,10 @@ import { onMounted, ref, watch } from 'vue'
 import { fetchCategories, type Category } from '@/services/categories'
 import { fetchItems, type Item } from '@/services/items'
 import { formatRelativeTime } from '@/utils/time'
+import { useAuthStore } from '@/stores/auth'
 import heroImage from '@/assets/hero-monstres.jpg'
+
+const auth = useAuthStore()
 
 const appVersion = __APP_VERSION__
 
@@ -84,6 +87,21 @@ function coverPhoto(item: Item) {
         <h1 class="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Les Monstres</h1>
         <p class="text-sm text-brand-50/90">Repère, réserve, récupère — le réemploi près de chez toi.</p>
       </div>
+      <!-- Avatar utilisateur connecté -->
+      <RouterLink
+        v-if="auth.isAuthenticated && auth.user"
+        to="/profil"
+        class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/30 px-2.5 py-1 backdrop-blur-sm"
+      >
+        <div
+          class="flex h-7 w-7 items-center justify-center rounded-full text-sm"
+          :class="auth.user.avatar?.startsWith('/') ? '' : 'bg-white/20'"
+        >
+          <img v-if="auth.user.avatar?.startsWith('/')" :src="auth.user.avatar" class="h-7 w-7 rounded-full object-cover" alt="" />
+          <span v-else class="text-white">{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
+        </div>
+        <span class="max-w-[8rem] truncate text-xs font-medium text-white">{{ auth.user.name }}</span>
+      </RouterLink>
     </div>
 
     <div class="p-4">
@@ -121,6 +139,14 @@ function coverPhoto(item: Item) {
           >
             <div class="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
               <img v-if="coverPhoto(item)" :src="coverPhoto(item)!" class="h-full w-full object-cover" alt="" />
+              <!-- Avatar du déposant sur la photo -->
+              <div
+                class="absolute right-1 bottom-1 flex h-6 w-6 items-center justify-center rounded-full text-[11px] ring-2 ring-white dark:ring-gray-900"
+                :class="item.user.avatar?.startsWith('/') ? '' : 'bg-violet-600 text-white'"
+              >
+                <img v-if="item.user.avatar?.startsWith('/')" :src="item.user.avatar" class="h-6 w-6 rounded-full object-cover" alt="" />
+                <span v-else>{{ item.user.avatar ?? item.user.name.charAt(0).toUpperCase() }}</span>
+              </div>
             </div>
             <div class="min-w-0 flex-1">
               <p class="flex items-center gap-2">
@@ -143,12 +169,15 @@ function coverPhoto(item: Item) {
                 <span>★ {{ item.votesScore }} · </span>
                 <span>{{ formatRelativeTime(item.createdAt) }}</span>
               </p>
-              <span
-                v-if="item.category"
-                class="mt-1.5 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-900/60 dark:text-brand-200"
-              >
-                {{ item.category.name }}
-              </span>
+              <div class="mt-1.5 flex items-center gap-2">
+                <span
+                  v-if="item.category"
+                  class="inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-900/60 dark:text-brand-200"
+                >
+                  {{ item.category.name }}
+                </span>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500">par {{ item.user.name }}</span>
+              </div>
             </div>
           </RouterLink>
         </li>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { api } from '@/services/api'
+import { api, type ApiSuccess } from '@/services/api'
 
 const content = ref('')
 const loading = ref(true)
@@ -8,8 +8,8 @@ const error = ref('')
 
 onMounted(async () => {
   try {
-    const { data } = await api.get<{ content: string }>('/legal/rgpd')
-    content.value = data.content
+    const { data: res } = await api.get<ApiSuccess<{ content: string }>>('/legal/rgpd')
+    content.value = res.data.content
   } catch {
     error.value = 'Impossible de charger la politique de confidentialité.'
   } finally {

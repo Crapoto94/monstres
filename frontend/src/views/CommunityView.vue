@@ -13,6 +13,10 @@ onMounted(async () => {
 function formatJoinDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
+
+function isImageAvatar(avatar: string | null): boolean {
+  return !!avatar && /^(\/|https?:\/\/)/.test(avatar)
+}
 </script>
 
 <template>
@@ -30,8 +34,8 @@ function formatJoinDate(isoDate: string): string {
       >
         <div class="flex items-center gap-3">
           <img
-            v-if="member.avatar"
-            :src="member.avatar"
+            v-if="isImageAvatar(member.avatar)"
+            :src="member.avatar!"
             class="h-10 w-10 flex-shrink-0 rounded-full object-cover"
             alt=""
           />
@@ -39,7 +43,7 @@ function formatJoinDate(isoDate: string): string {
             v-else
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300"
           >
-            {{ member.name.charAt(0).toUpperCase() }}
+            {{ member.avatar ?? member.name.charAt(0).toUpperCase() }}
           </div>
           <div class="min-w-0 flex-1">
             <p class="truncate font-medium text-gray-900 dark:text-gray-100">{{ member.name }}</p>
