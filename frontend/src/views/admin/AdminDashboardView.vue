@@ -5,9 +5,12 @@ import { fetchDashboardStats, type DashboardStats } from '@/services/admin'
 const stats = ref<DashboardStats | null>(null)
 const loading = ref(true)
 
+const emit = defineEmits<{ (e: 'stats-loaded', stats: DashboardStats): void }>()
+
 onMounted(async () => {
   stats.value = await fetchDashboardStats()
   loading.value = false
+  if (stats.value) emit('stats-loaded', stats.value)
 })
 </script>
 
@@ -16,6 +19,25 @@ onMounted(async () => {
     <p v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
     <div v-else-if="stats" class="flex flex-col gap-4">
+      <!-- Pastilles résumé -->
+      <div class="flex flex-wrap gap-2">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1 text-sm font-semibold text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+          👤 {{ stats.users.total }} users
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+          🛋️ {{ stats.items.available }} actifs
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+          📦 {{ stats.items.reserved }} réservés
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-900 dark:text-green-300">
+          ✅ {{ stats.items.collected }} récupérés
+        </span>
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700 dark:bg-red-900 dark:text-red-300">
+          🚨 {{ stats.pendingReports }} signalements
+        </span>
+      </div>
+
       <div>
         <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Utilisateurs</h2>
         <div class="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
