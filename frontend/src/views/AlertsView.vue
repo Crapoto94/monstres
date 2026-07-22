@@ -33,6 +33,9 @@ const subMode = ref<'gps' | 'address'>('gps')
 const subAddress = ref('')
 const geocoding = ref(false)
 const geocodeError = ref<string | null>(null)
+const suggestions = ref<any[]>([])
+const showSuggestions = ref(false)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(async () => {
   if (auth.isAuthenticated) {
@@ -91,15 +94,59 @@ function locateMe() {
   )
 }
 
+function onAddressBlur() {
+  setTimeout(() => (showSuggestions.value = false), 200)
+}
+
+function simplifyAddress(displayName: string): string {
+  const parts = displayName.split(',').map((s) => s.trim())
+  if (parts.length <= 2) return displayName
+  return `${parts[0]}, ${parts[1]}`
+}
+
+function onAddressInput() {
+  geocodeError.value = null
+  if (debounceTimer) clearTimeout(debounceTimer)
+  const q = subAddress.value.trim()
+  if (q.length < 3) {
+    suggestions.value = []
+    showSuggestions.value = false
+    return
+  }
+  debounceTimer = setTimeout(async () => {
+    try {
+      const query = encodeURIComponent(q)
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&countrycodes=fr`,
+        { headers: { 'Accept-Language': 'fr' } },
+      )
+      suggestions.value = await res.json()
+      showSuggestions.value = suggestions.value.length > 0
+    } catch {
+      suggestions.value = []
+    }
+  }, 350)
+}
+
+function selectSuggestion(suggestion: any) {
+  subLat.value = parseFloat(suggestion.lat)
+  subLng.value = parseFloat(suggestion.lon)
+  subAddress.value = simplifyAddress(suggestion.display_name)
+  suggestions.value = []
+  showSuggestions.value = false
+}
+
 async function geocodeAddress() {
   if (!subAddress.value.trim()) return
+  if (subLat.value !== null && subLng.value !== null) return
   geocoding.value = true
   geocodeError.value = null
   try {
     const query = encodeURIComponent(subAddress.value.trim())
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
-      headers: { 'Accept-Language': 'fr' },
-    })
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=fr`,
+      { headers: { 'Accept-Language': 'fr' } },
+    )
     const results = await res.json()
     if (results.length === 0) {
       geocodeError.value = 'Adresse introuvable. Sois plus précis.'
@@ -107,7 +154,7 @@ async function geocodeAddress() {
     }
     subLat.value = parseFloat(results[0].lat)
     subLng.value = parseFloat(results[0].lon)
-    subAddress.value = results[0].display_name ?? subAddress.value.trim()
+    subAddress.value = simplifyAddress(results[0].display_name)
   } catch {
     geocodeError.value = 'Erreur lors de la recherche d\'adresse.'
   } finally {
@@ -124,6 +171,9 @@ function resetSubForm() {
   subRadiusKm.value = 1
   subMode.value = 'gps'
   subError.value = null
+  suggestions.value = []
+  showSuggestions.value = false
+  if (debounceTimer) clearTimeout(debounceTimer)
 }
 
 async function handleCreateSubscription() {
@@ -250,21 +300,38 @@ async function handleDeleteSubscription(id: string) {
           </button>
 
           <!-- Address mode -->
-          <div v-if="subMode === 'address'" class="flex gap-2">
+          <div v-if="subMode === 'address'" class="relative">
             <input
               v-model="subAddress"
               type="text"
               placeholder="Saisir une adresse…"
-              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              autocomplete="off"
+              @input="onAddressInput"
+              @focus="suggestions.length > 0 && (showSuggestions = true)"
+              @blur="onAddressBlur"
               @keyup.enter.prevent="geocodeAddress"
             />
-            <button
-              type="button"
-              :disabled="geocoding || !subAddress.trim()"
-              class="flex-shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-40"
-              @click="geocodeAddress"
+            <ul
+              v-if="showSuggestions && suggestions.length > 0"
+              class="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
             >
-              {{ geocoding ? '…' : '🔍' }}
+              <li
+                v-for="(s, i) in suggestions"
+                :key="i"
+                class="cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                @mousedown.prevent="selectSuggestion(s)"
+              >
+                {{ simplifyAddress(s.display_name) }}
+              </li>
+            </ul>
+            <button
+              v-if="subLat !== null && subLng !== null && !subAddress.trim()"
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              @click="subLat = null; subLng = null"
+            >
+              ✕
             </button>
           </div>
           <p v-if="geocodeError" class="text-xs text-red-600 dark:text-red-400">{{ geocodeError }}</p>
