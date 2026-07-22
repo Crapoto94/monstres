@@ -6,6 +6,37 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.12',
+    date: '23 juillet 2026',
+    changes: [
+      'Tri par défaut sur la distance ("Proches") au lieu du plus récent',
+      'Aperçu avec photo quand le lien d\'un Monstre est partagé sur Facebook/WhatsApp',
+      'Presse-papier de partage enrichi (nom, adresse, lien)',
+    ],
+  },
+  {
+    version: '0.4.11',
+    date: '23 juillet 2026',
+    changes: [
+      'Mentions légales, RGPD et suppression des données éditables depuis l\'admin',
+    ],
+  },
+  {
+    version: '0.4.10',
+    date: '23 juillet 2026',
+    changes: [
+      'Partage du Monstre dans le groupe Facebook à la publication',
+      'Fix des marges blanches autour du logo sur l\'accueil',
+    ],
+  },
+  {
+    version: '0.4.9',
+    date: '23 juillet 2026',
+    changes: [
+      'Adresse raccourcie sur la fiche Monstre (numéro, rue, ville)',
+    ],
+  },
+  {
     version: '0.4.8',
     date: '23 juillet 2026',
     changes: [
