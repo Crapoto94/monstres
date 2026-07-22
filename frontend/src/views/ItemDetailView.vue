@@ -254,24 +254,24 @@ async function handleDeleteComment(comment: Comment) {
       <p v-if="item.description" class="text-gray-700 dark:text-gray-300">{{ item.description }}</p>
 
       <p class="text-sm text-gray-600 dark:text-gray-300">
-        {{ item.address ?? `${item.latitude}, ${item.longitude}` }}
+        {{ item.address }}
       </p>
       <p v-if="!item.address" class="text-xs text-gray-400 dark:text-gray-500">
-        Connecte-toi pour voir l'adresse exacte.
+        Adresse non renseignée.
       </p>
 
       <p class="text-sm text-gray-500 dark:text-gray-400">Publié par {{ item.user.name }}</p>
 
       <!-- Signalement -->
       <div v-if="auth.isAuthenticated && !isMyItem" class="text-sm">
-        <p v-if="reported" class="text-gray-400 dark:text-gray-500">Signalement envoyé, merci.</p>
+        <p v-if="reported" class="text-sm text-gray-400 dark:text-gray-500">Signalement envoyé, merci.</p>
         <button
           v-else-if="!showReportForm"
           type="button"
-          class="text-gray-400 underline hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+          class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
           @click="showReportForm = true"
         >
-          Signaler ce Monstre
+          ⚠ Signaler ce Monstre
         </button>
 
         <form v-else class="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-800" @submit.prevent="handleReport">

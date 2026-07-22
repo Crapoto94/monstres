@@ -43,7 +43,7 @@ const oauthError = typeof route.query.error === 'string' ? OAUTH_ERROR_MESSAGES[
   <section class="flex-1 p-4">
     <div class="mx-auto max-w-sm">
       <div class="flex justify-center py-4">
-        <img :src="logo" alt="Les Monstres" class="h-12 rounded-lg bg-white p-2 shadow-sm" />
+        <img :src="logo" alt="Les Monstres" class="h-20 rounded-lg bg-white p-2 shadow-sm" />
       </div>
 
       <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">

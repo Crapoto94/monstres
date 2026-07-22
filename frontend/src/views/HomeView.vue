@@ -82,13 +82,14 @@ function coverPhoto(item: Item) {
     <!-- Header sticky : logo + profil/connexion -->
     <div class="sticky top-0 z-10 flex items-center justify-between bg-white/90 px-4 py-2 backdrop-blur-md dark:bg-gray-900/90">
       <RouterLink to="/" class="flex items-center">
-        <img :src="logo" alt="Les Monstres" class="h-20 w-20 object-contain" />
+        <img :src="logo" alt="Les Monstres" class="h-24 w-24 object-contain" />
       </RouterLink>
       <RouterLink
         v-if="auth.isAuthenticated && auth.user"
         to="/profil"
         class="flex items-center gap-2"
       >
+        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ auth.user.name }}</span>
         <div
           class="flex h-9 w-9 items-center justify-center rounded-full text-sm"
           :class="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"

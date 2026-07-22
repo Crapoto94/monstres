@@ -50,7 +50,8 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto, request?: Request): Promise<{ user: SafeUser; token: string }> {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictException('Un compte existe déjà avec cet email.');
     }
@@ -71,7 +72,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
-        email: dto.email,
+        email,
         password,
         emailVerificationToken,
         emailVerificationExpiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
@@ -95,7 +96,7 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Email ou mot de passe incorrect.');
     }
@@ -153,7 +154,8 @@ export class AuthService {
     let user = existingAccount?.user ?? null;
 
     if (!user && profile.email) {
-      const byEmail = await this.prisma.user.findUnique({ where: { email: profile.email } });
+      const normalizedEmail = profile.email.toLowerCase().trim();
+      const byEmail = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
       if (byEmail) {
         await this.prisma.socialAccount.create({
           data: { userId: byEmail.id, provider: profile.provider, providerId: profile.providerId },
@@ -163,7 +165,7 @@ export class AuthService {
     }
 
     if (!user) {
-      const email = profile.email ?? `${profile.provider}-${profile.providerId}@users.noreply.monstres.fbc.fr`;
+      const email = (profile.email ?? `${profile.provider}-${profile.providerId}@users.noreply.monstres.fbc.fr`).toLowerCase().trim();
       const randomPassword = await bcrypt.hash(randomBytes(32).toString('hex'), PASSWORD_SALT_ROUNDS);
       user = await this.prisma.user.create({
         data: {
@@ -208,7 +210,7 @@ export class AuthService {
 
   /** Ne révèle jamais si l'email existe ou non (anti-énumération). */
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (!user) return;
 
     const passwordResetToken = randomBytes(32).toString('hex');
@@ -229,16 +231,19 @@ export class AuthService {
     }
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<void> {
+  async resetPassword(token: string, password: string, confirmPassword: string): Promise<void> {
+    if (password !== confirmPassword) {
+      throw new BadRequestException('Les mots de passe ne correspondent pas.');
+    }
     const user = await this.prisma.user.findUnique({ where: { passwordResetToken: token } });
     if (!user || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
       throw new BadRequestException('Lien de réinitialisation invalide ou expiré.');
     }
 
-    const password = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
+    const hashedPassword = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { password, passwordResetToken: null, passwordResetExpiresAt: null },
+      data: { password: hashedPassword, passwordResetToken: null, passwordResetExpiresAt: null },
     });
   }
 

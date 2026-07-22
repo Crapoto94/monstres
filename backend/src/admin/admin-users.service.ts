@@ -1,8 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../generated/prisma/enums';
+import { resolveAvatarUrl } from '../common/avatar.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -14,6 +16,7 @@ export class AdminUsersService {
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly imageService: ImageService,
+    private readonly config: ConfigService,
   ) {}
 
   async findMany(query: { search?: string; page?: number; pageSize?: number }) {
@@ -55,7 +58,22 @@ export class AdminUsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    return { users, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+    // Compter les signalements SOUMIS par chaque utilisateur
+    const userIds = users.map((u) => u.id);
+    const submittedCounts = await this.prisma.report.groupBy({
+      by: ['userId'],
+      where: { userId: { in: userIds } },
+      _count: { id: true },
+    });
+    const submittedMap = new Map(submittedCounts.map((r) => [r.userId, r._count.id]));
+    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+    const usersWithSubmitted = users.map((u) => ({
+      ...u,
+      avatar: resolveAvatarUrl(u.avatar, imgBaseUrl),
+      reportsSubmitted: submittedMap.get(u.id) ?? 0,
+    }));
+
+    return { users: usersWithSubmitted, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
   }
 
   async findOne(id: string) {

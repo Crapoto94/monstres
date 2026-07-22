@@ -169,6 +169,10 @@ function formatDateTime(date: string) {
             <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ user.loginCount }}</p>
             <p class="text-[10px] text-gray-400">Connexions</p>
           </div>
+          <div class="text-center">
+            <p class="text-sm font-bold text-gray-900 dark:text-gray-100">{{ user.reportsSubmitted }}</p>
+            <p class="text-[10px] text-gray-400">Signalements</p>
+          </div>
         </div>
 
         <!-- Infos détaillées -->

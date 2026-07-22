@@ -20,6 +20,7 @@ export interface AdminUserSummary {
   registrationOs: string | null
   registrationBrowser: string | null
   loginCount: number
+  reportsSubmitted: number
   _count: { items: number; reports: number }
 }
 

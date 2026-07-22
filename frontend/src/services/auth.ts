@@ -45,7 +45,7 @@ export async function forgotPassword(email: string) {
   return data.data
 }
 
-export async function resetPassword(payload: { token: string; password: string }) {
+export async function resetPassword(payload: { token: string; password: string; confirmPassword: string }) {
   const { data } = await api.post<ApiSuccess<{ message: string }>>('/auth/reset-password', payload)
   return data.data
 }

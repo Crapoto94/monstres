@@ -9,14 +9,19 @@ const router = useRouter()
 
 const token = String(route.query.token ?? '')
 const password = ref('')
+const confirmPassword = ref('')
 const submitting = ref(false)
 const error = ref<string | null>(null)
 
 async function onSubmit() {
+  if (password.value !== confirmPassword.value) {
+    error.value = 'Les mots de passe ne correspondent pas.'
+    return
+  }
   submitting.value = true
   error.value = null
   try {
-    await resetPassword({ token, password: password.value })
+    await resetPassword({ token, password: password.value, confirmPassword: confirmPassword.value })
     router.push('/connexion')
   } catch (err) {
     error.value = isAxiosError(err)
@@ -39,6 +44,18 @@ async function onSubmit() {
         Nouveau mot de passe (8 caractères minimum)
         <input
           v-model="password"
+          type="password"
+          required
+          minlength="8"
+          autocomplete="new-password"
+          class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+        />
+      </label>
+
+      <label class="flex flex-col gap-1 text-sm text-gray-700 dark:text-gray-300">
+        Confirme le mot de passe
+        <input
+          v-model="confirmPassword"
           type="password"
           required
           minlength="8"

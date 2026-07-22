@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePwaInstall } from '@/composables/usePwaInstall'
@@ -30,6 +30,16 @@ const phoneDraft = ref(auth.user?.phoneNumber ?? '')
 const savingPhone = ref(false)
 const phoneError = ref<string | null>(null)
 
+// --- Crop state ---
+const showCrop = ref(false)
+const cropImg = ref<HTMLImageElement | null>(null)
+const cropZoom = ref(1)
+const cropX = ref(0)
+const cropY = ref(0)
+const cropDragging = ref(false)
+const cropDragStart = ref({ x: 0, y: 0, imgX: 0, imgY: 0 })
+const cropCanvas = ref<HTMLCanvasElement | null>(null)
+
 function selectAvatar(emoji: string) {
   auth.setAvatar(selectedAvatar.value === emoji ? null : emoji)
 }
@@ -38,11 +48,122 @@ function triggerUpload() {
   fileInput.value?.click()
 }
 
-async function onFileSelected(event: Event) {
+function onFileSelected(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
+  input.value = ''
 
+  const reader = new FileReader()
+  reader.onload = async () => {
+    const img = new Image()
+    img.onload = () => {
+      cropImg.value = img
+      cropZoom.value = 1
+      cropX.value = 0
+      cropY.value = 0
+      showCrop.value = true
+      nextTick(() => drawCrop())
+    }
+    img.src = reader.result as string
+  }
+  reader.readAsDataURL(file)
+}
+
+function onCropMouseDown(e: MouseEvent | TouchEvent) {
+  e.preventDefault()
+  cropDragging.value = true
+  const pos = 'touches' in e ? e.touches[0] : e
+  cropDragStart.value = { x: pos.clientX, y: pos.clientY, imgX: cropX.value, imgY: cropY.value }
+}
+
+function onCropMouseMove(e: MouseEvent | TouchEvent) {
+  if (!cropDragging.value) return
+  const pos = 'touches' in e ? e.touches[0] : e
+  const dx = pos.clientX - cropDragStart.value.x
+  const dy = pos.clientY - cropDragStart.value.y
+  cropX.value = cropDragStart.value.imgX + dx
+  cropY.value = cropDragStart.value.imgY + dy
+  drawCrop()
+}
+
+function onCropMouseUp() {
+  cropDragging.value = false
+}
+
+function onCropWheel(e: WheelEvent) {
+  e.preventDefault()
+  const delta = e.deltaY > 0 ? -0.1 : 0.1
+  cropZoom.value = Math.max(0.5, Math.min(3, cropZoom.value + delta))
+  drawCrop()
+}
+
+function onZoomInput() {
+  drawCrop()
+}
+
+function drawCrop() {
+  const canvas = cropCanvas.value
+  const img = cropImg.value
+  if (!canvas || !img) return
+
+  const size = 280
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  ctx.clearRect(0, 0, size, size)
+
+  const zoom = cropZoom.value
+  const drawW = img.naturalWidth * zoom
+  const drawH = img.naturalHeight * zoom
+  const drawX = (size - drawW) / 2 + cropX.value
+  const drawY = (size - drawH) / 2 + cropY.value
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.drawImage(img, drawX, drawY, drawW, drawH)
+  ctx.restore()
+
+  // Draw circle border
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'
+  ctx.lineWidth = 3
+  ctx.stroke()
+}
+
+async function confirmCrop() {
+  const canvas = cropCanvas.value
+  const img = cropImg.value
+  if (!canvas || !img) return
+
+  // Produce a 400x400 canvas
+  const outSize = 400
+  const out = document.createElement('canvas')
+  out.width = outSize
+  out.height = outSize
+  const ctx = out.getContext('2d')!
+  const zoom = cropZoom.value
+  const drawW = img.naturalWidth * zoom
+  const drawH = img.naturalHeight * zoom
+  const drawX = (outSize - drawW) / 2 + cropX.value * (outSize / 280)
+  const drawY = (outSize - drawH) / 2 + cropY.value * (outSize / 280)
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(outSize / 2, outSize / 2, outSize / 2, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.drawImage(img, drawX, drawY, drawW, drawH)
+  ctx.restore()
+
+  const blob = await new Promise<Blob>((resolve) => out.toBlob((b) => resolve(b!), 'image/webp', 0.9))
+  const file = new File([blob], 'avatar.webp', { type: 'image/webp' })
+
+  showCrop.value = false
   uploading.value = true
   uploadError.value = null
 
@@ -58,8 +179,12 @@ async function onFileSelected(event: Event) {
     uploadError.value = e.response?.data?.error?.message ?? "Erreur lors de l'upload."
   } finally {
     uploading.value = false
-    input.value = ''
   }
+}
+
+function cancelCrop() {
+  showCrop.value = false
+  cropImg.value = null
 }
 
 function formatDate(date: string) {
@@ -110,6 +235,12 @@ async function onDeleteAccount() {
           class="inline-flex items-center gap-2 rounded-xl bg-brand-100 px-4 py-2.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-200 dark:bg-brand-900 dark:text-brand-300 dark:hover:bg-brand-800"
         >
           👥 Communauté
+        </RouterLink>
+        <RouterLink
+          to="/tutoriel"
+          class="inline-flex items-center gap-2 rounded-xl bg-violet-100 px-4 py-2.5 text-sm font-semibold text-violet-700 transition-colors hover:bg-violet-200 dark:bg-violet-900 dark:text-violet-300 dark:hover:bg-violet-800"
+        >
+          📖 Tutoriel
         </RouterLink>
         <RouterLink
           v-if="auth.isModerator"
@@ -274,6 +405,12 @@ async function onDeleteAccount() {
       <!-- Liens légaux -->
       <div class="mt-6 flex flex-wrap gap-2">
         <RouterLink
+          to="/pourquoi"
+          class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
+        >
+          Pourquoi Les Monstres ?
+        </RouterLink>
+        <RouterLink
           to="/mentions-legales"
           class="text-xs text-gray-400 underline decoration-gray-300 transition-colors hover:text-gray-600 dark:decoration-gray-700 dark:hover:text-gray-300"
         >
@@ -319,4 +456,62 @@ async function onDeleteAccount() {
       <RouterLink to="/inscription" class="text-brand-600 dark:text-brand-400">Créer un compte</RouterLink>
     </div>
   </section>
+
+  <!-- Crop modal -->
+  <Teleport to="body">
+    <div
+      v-if="showCrop"
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4"
+      @mousemove="onCropMouseMove"
+      @mouseup="onCropMouseUp"
+      @touchmove.prevent="onCropMouseMove"
+      @touchend="onCropMouseUp"
+    >
+      <p class="mb-3 text-sm font-medium text-white">Recadre ta photo</p>
+
+      <div
+        class="relative rounded-full overflow-hidden cursor-grab active:cursor-grabbing"
+        style="width: 280px; height: 280px"
+        @mousedown.prevent="onCropMouseDown"
+        @touchstart.prevent="onCropMouseDown"
+        @wheel.prevent="onCropWheel"
+      >
+        <canvas ref="cropCanvas" width="280" height="280" class="block rounded-full" />
+        <!-- Semi-transparent overlay outside circle -->
+        <div class="pointer-events-none absolute inset-0 rounded-full ring-4 ring-white/30" />
+      </div>
+
+      <!-- Zoom slider -->
+      <div class="mt-4 flex items-center gap-3 w-64">
+        <span class="text-xs text-white/60">−</span>
+        <input
+          type="range"
+          :value="cropZoom"
+          min="0.5"
+          max="3"
+          step="0.05"
+          class="flex-1 accent-brand-500"
+          @input="cropZoom = Number(($event.target as HTMLInputElement).value); onZoomInput()"
+        />
+        <span class="text-xs text-white/60">+</span>
+      </div>
+
+      <div class="mt-4 flex gap-3">
+        <button
+          type="button"
+          class="rounded-xl bg-white/20 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-white/30"
+          @click="cancelCrop"
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          class="rounded-xl bg-brand-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+          @click="confirmCrop"
+        >
+          Utiliser cette photo
+        </button>
+      </div>
+    </div>
+  </Teleport>
 </template>

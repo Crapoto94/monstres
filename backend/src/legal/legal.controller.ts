@@ -16,4 +16,10 @@ export class LegalController {
     const content = await this.settingsService.getString('rgpd_content', '');
     return { content };
   }
+
+  @Get('mission')
+  async getMission() {
+    const content = await this.settingsService.getString('mission_content', '');
+    return { content };
+  }
 }
