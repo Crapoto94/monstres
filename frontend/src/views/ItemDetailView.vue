@@ -28,6 +28,103 @@ const lightboxSrc = ref<string | null>(null)
 const galleryEl = ref<HTMLElement | null>(null)
 const activePhoto = ref(0)
 
+// Zoom/pan dans la lightbox (molette sur desktop, pincement sur mobile via
+// Pointer Events — un seul jeu de handlers pour souris et tactile).
+const zoomScale = ref(1)
+const zoomX = ref(0)
+const zoomY = ref(0)
+const MIN_ZOOM = 1
+const MAX_ZOOM = 4
+const activePointers = new Map<number, { x: number; y: number }>()
+let pinchStartDistance = 0
+let pinchStartScale = 1
+let panStart = { x: 0, y: 0 }
+let panOrigin = { x: 0, y: 0 }
+
+function openLightbox(src: string) {
+  lightboxSrc.value = src
+  resetZoom()
+}
+
+function closeLightbox() {
+  lightboxSrc.value = null
+  resetZoom()
+}
+
+function resetZoom() {
+  zoomScale.value = 1
+  zoomX.value = 0
+  zoomY.value = 0
+  activePointers.clear()
+  pinchStartDistance = 0
+}
+
+function pointerDistance(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+function clampZoom(scale: number) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, scale))
+}
+
+function onWheelZoom(e: WheelEvent) {
+  e.preventDefault()
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+  const scale = clampZoom(zoomScale.value * factor)
+  zoomScale.value = scale
+  if (scale === MIN_ZOOM) {
+    zoomX.value = 0
+    zoomY.value = 0
+  }
+}
+
+function onLightboxPointerDown(e: PointerEvent) {
+  try {
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  } catch {
+    // certains pointeurs (notamment synthétiques) refusent la capture —
+    // le suivi manuel via activePointers suffit malgré tout
+  }
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+  if (activePointers.size === 2) {
+    const [a, b] = Array.from(activePointers.values())
+    pinchStartDistance = pointerDistance(a, b)
+    pinchStartScale = zoomScale.value
+  } else if (activePointers.size === 1) {
+    panStart = { x: e.clientX, y: e.clientY }
+    panOrigin = { x: zoomX.value, y: zoomY.value }
+  }
+}
+
+function onLightboxPointerMove(e: PointerEvent) {
+  if (!activePointers.has(e.pointerId)) return
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+  if (activePointers.size === 2 && pinchStartDistance > 0) {
+    const [a, b] = Array.from(activePointers.values())
+    const scale = clampZoom(pinchStartScale * (pointerDistance(a, b) / pinchStartDistance))
+    zoomScale.value = scale
+    if (scale === MIN_ZOOM) {
+      zoomX.value = 0
+      zoomY.value = 0
+    }
+  } else if (activePointers.size === 1 && zoomScale.value > MIN_ZOOM) {
+    zoomX.value = panOrigin.x + (e.clientX - panStart.x)
+    zoomY.value = panOrigin.y + (e.clientY - panStart.y)
+  }
+}
+
+function onLightboxPointerUp(e: PointerEvent) {
+  activePointers.delete(e.pointerId)
+  pinchStartDistance = 0
+  if (activePointers.size === 1) {
+    const [remaining] = activePointers.values()
+    panStart = { x: remaining.x, y: remaining.y }
+    panOrigin = { x: zoomX.value, y: zoomY.value }
+  }
+}
+
 const REPORT_TYPES: { value: ReportType; label: string }[] = [
   { value: 'ALREADY_COLLECTED', label: 'Déjà récupéré / plus disponible' },
   { value: 'FAKE', label: 'Faux Monstre (photo trompeuse / objet absent)' },
@@ -239,7 +336,7 @@ async function handleDeleteComment(comment: Comment) {
             class="w-full flex-shrink-0 cursor-zoom-in snap-center object-contain"
             style="max-height: 70vh;"
             alt=""
-            @click="lightboxSrc = photo.path"
+            @click="openLightbox(photo.path)"
           />
         </div>
 
@@ -321,7 +418,7 @@ async function handleDeleteComment(comment: Comment) {
               :src="photo.path"
               class="h-20 w-20 cursor-zoom-in rounded-lg object-cover"
               alt="Photo du lieu vide"
-              @click="lightboxSrc = photo.path"
+              @click="openLightbox(photo.path)"
             />
           </div>
         </div>
@@ -484,21 +581,35 @@ async function handleDeleteComment(comment: Comment) {
       </div>
     </div>
 
-    <!-- Lightbox : agrandir la photo -->
+    <!-- Lightbox : agrandir la photo, zoom molette (desktop) ou pincement (mobile) -->
     <Teleport to="body">
       <div
         v-if="lightboxSrc"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-        @click="lightboxSrc = null"
+        class="fixed inset-0 z-50 flex touch-none items-center justify-center overflow-hidden bg-black/90 p-4"
+        @click="closeLightbox"
       >
         <button
           type="button"
-          class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
-          @click="lightboxSrc = null"
+          class="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-white/20"
+          @click="closeLightbox"
         >
           ×
         </button>
-        <img :src="lightboxSrc" class="max-h-full max-w-full rounded-lg object-contain" alt="" @click.stop />
+        <img
+          :src="lightboxSrc"
+          class="max-h-full max-w-full touch-none select-none rounded-lg object-contain"
+          :style="{
+            transform: `translate(${zoomX}px, ${zoomY}px) scale(${zoomScale})`,
+            cursor: zoomScale > 1 ? 'grab' : 'zoom-in',
+          }"
+          alt=""
+          @click.stop
+          @wheel="onWheelZoom"
+          @pointerdown.stop="onLightboxPointerDown"
+          @pointermove.stop="onLightboxPointerMove"
+          @pointerup.stop="onLightboxPointerUp"
+          @pointercancel.stop="onLightboxPointerUp"
+        />
       </div>
     </Teleport>
   </section>
