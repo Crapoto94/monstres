@@ -239,7 +239,7 @@ async function handleDeleteComment(comment: Comment) {
           class="ml-auto flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium disabled:opacity-40"
           :class="
             voted
-              ? 'border-violet-400 bg-violet-50 text-violet-700 dark:border-violet-600 dark:bg-violet-950 dark:text-violet-300'
+              ? 'border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-600 dark:bg-brand-950 dark:text-brand-300'
               : 'border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'
           "
           @click="handleVote"
@@ -345,14 +345,14 @@ async function handleDeleteComment(comment: Comment) {
         v-if="item.status === 'AVAILABLE' && auth.isAuthenticated && !isMyItem"
         type="button"
         :disabled="reserving"
-        class="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-40"
+        class="rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
         @click="handleReserve"
       >
         {{ reserving ? 'Réservation…' : 'Réserver ce Monstre' }}
       </button>
 
       <p v-if="item.status === 'AVAILABLE' && !auth.isAuthenticated" class="text-sm text-gray-500 dark:text-gray-400">
-        <RouterLink to="/connexion" class="text-violet-600 underline dark:text-violet-400">Connecte-toi</RouterLink>
+        <RouterLink to="/connexion" class="text-brand-600 underline dark:text-brand-400">Connecte-toi</RouterLink>
         pour réserver ce Monstre.
       </p>
 
@@ -420,13 +420,13 @@ async function handleDeleteComment(comment: Comment) {
           <button
             type="submit"
             :disabled="postingComment || !commentContent.trim()"
-            class="rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             Envoyer
           </button>
         </form>
         <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-          <RouterLink to="/connexion" class="text-violet-600 underline dark:text-violet-400">Connecte-toi</RouterLink>
+          <RouterLink to="/connexion" class="text-brand-600 underline dark:text-brand-400">Connecte-toi</RouterLink>
           pour commenter.
         </p>
         <p v-if="commentError" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ commentError }}</p>

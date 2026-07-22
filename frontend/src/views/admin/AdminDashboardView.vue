@@ -41,9 +41,9 @@ onMounted(async () => {
             <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ stats.items.total }}</p>
             <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
           </div>
-          <div class="rounded-lg bg-violet-100 p-3 dark:bg-violet-950">
-            <p class="text-lg font-semibold text-violet-700 dark:text-violet-300">{{ stats.items.available }}</p>
-            <p class="text-xs text-violet-600 dark:text-violet-400">Disponibles</p>
+          <div class="rounded-lg bg-brand-100 p-3 dark:bg-brand-950">
+            <p class="text-lg font-semibold text-brand-700 dark:text-brand-300">{{ stats.items.available }}</p>
+            <p class="text-xs text-brand-600 dark:text-brand-400">Disponibles</p>
           </div>
           <div class="rounded-lg bg-amber-100 p-3 dark:bg-amber-950">
             <p class="text-lg font-semibold text-amber-700 dark:text-amber-300">{{ stats.items.reserved }}</p>

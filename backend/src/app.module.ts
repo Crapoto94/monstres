@@ -21,6 +21,8 @@ import { CommentsModule } from './comments/comments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { ReportsModule } from './reports/reports.module';
+import { TutorialModule } from './tutorial/tutorial.module';
+import { EmailTemplatesModule } from './email-templates/email-templates.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { ReportsModule } from './reports/reports.module';
     VotesModule,
     CommentsModule,
     ReportsModule,
+    TutorialModule,
+    EmailTemplatesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

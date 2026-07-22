@@ -19,7 +19,7 @@ function selectAvatar(emoji: string) {
 
     <RouterLink
       to="/communaute"
-      class="mt-3 inline-flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400"
+      class="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400"
     >
       Nous → voir les membres de la communauté
     </RouterLink>
@@ -27,7 +27,7 @@ function selectAvatar(emoji: string) {
     <RouterLink
       v-if="auth.isModerator"
       :to="auth.isAdmin ? '/admin' : '/admin/signalements'"
-      class="mt-2 flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400"
+      class="mt-2 flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400"
     >
       {{ auth.isAdmin ? 'Administration' : 'Modération' }}
     </RouterLink>
@@ -36,7 +36,7 @@ function selectAvatar(emoji: string) {
       <!-- Avatar -->
       <div class="flex items-center gap-3">
         <div
-          class="flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-3xl dark:bg-violet-950"
+          class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-3xl dark:bg-brand-950"
         >
           {{ selectedAvatar ?? auth.user.name.charAt(0).toUpperCase() }}
         </div>
@@ -56,7 +56,7 @@ function selectAvatar(emoji: string) {
             type="button"
             class="flex h-10 w-10 items-center justify-center rounded-full text-xl transition-all"
             :class="selectedAvatar === emoji
-              ? 'bg-violet-600 ring-2 ring-violet-400'
+              ? 'bg-brand-600 ring-2 ring-brand-400'
               : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700'"
             @click="selectAvatar(emoji)"
           >
@@ -81,8 +81,8 @@ function selectAvatar(emoji: string) {
 
     <div v-else class="mt-4 flex flex-col gap-2 text-sm text-gray-500 dark:text-gray-400">
       <p>Connecte-toi pour accéder à ton profil.</p>
-      <RouterLink to="/connexion" class="text-violet-600 dark:text-violet-400">Se connecter</RouterLink>
-      <RouterLink to="/inscription" class="text-violet-600 dark:text-violet-400">Créer un compte</RouterLink>
+      <RouterLink to="/connexion" class="text-brand-600 dark:text-brand-400">Se connecter</RouterLink>
+      <RouterLink to="/inscription" class="text-brand-600 dark:text-brand-400">Créer un compte</RouterLink>
     </div>
   </section>
 </template>

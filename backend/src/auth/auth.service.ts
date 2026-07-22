@@ -10,6 +10,7 @@ import { UsersService, SafeUser } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { JwtPayload } from './jwt.strategy';
+import type { OAuthProfile } from './google.strategy';
 import type { Request } from 'express';
 
 const PASSWORD_SALT_ROUNDS = 10;
@@ -129,6 +130,59 @@ export class AuthService {
       },
     });
 
+    return { user: this.usersService.toSafeUser(user), token };
+  }
+
+  /**
+   * §10/Phase 11 : connexion Google/Facebook. Retrouve le compte lié via
+   * `SocialAccount` ; à défaut, rattache le fournisseur à un compte existant
+   * du même email (évite un doublon) ; sinon crée un nouveau compte. L'email
+   * fourni par le fournisseur OAuth est considéré déjà vérifié — aucun envoi
+   * de vérification. Le mot de passe est un hash aléatoire inutilisable :
+   * ce compte ne se connecte qu'en repassant par le même fournisseur, sauf
+   * s'il utilise "mot de passe oublié" pour s'en définir un.
+   */
+  async loginWithOAuth(profile: OAuthProfile): Promise<{ user: SafeUser; token: string }> {
+    const existingAccount = await this.prisma.socialAccount.findUnique({
+      where: { provider_providerId: { provider: profile.provider, providerId: profile.providerId } },
+      include: { user: true },
+    });
+
+    let user = existingAccount?.user ?? null;
+
+    if (!user && profile.email) {
+      const byEmail = await this.prisma.user.findUnique({ where: { email: profile.email } });
+      if (byEmail) {
+        await this.prisma.socialAccount.create({
+          data: { userId: byEmail.id, provider: profile.provider, providerId: profile.providerId },
+        });
+        user = byEmail;
+      }
+    }
+
+    if (!user) {
+      const email = profile.email ?? `${profile.provider}-${profile.providerId}@users.noreply.monstres.fbc.fr`;
+      const randomPassword = await bcrypt.hash(randomBytes(32).toString('hex'), PASSWORD_SALT_ROUNDS);
+      user = await this.prisma.user.create({
+        data: {
+          name: profile.name,
+          email,
+          password: randomPassword,
+          avatar: profile.avatar,
+          emailVerifiedAt: new Date(),
+          socialAccounts: {
+            create: { provider: profile.provider, providerId: profile.providerId },
+          },
+        },
+      });
+    }
+
+    if (user.bannedAt) throw new ForbiddenException('Ce compte a été banni.');
+    if (user.suspendedAt) throw new ForbiddenException('Ce compte est temporairement suspendu.');
+
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
+    const token = this.issueToken(user.id, user.email, user.role);
     return { user: this.usersService.toSafeUser(user), token };
   }
 

@@ -35,12 +35,14 @@ export const router = createRouter({
       component: () => import('@/views/VerifyEmailView.vue'),
     },
     {
+      path: '/tutoriel',
+      name: 'tutorial',
+      component: () => import('@/views/TutorialView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/admin',
       component: () => import('@/views/admin/AdminLayout.vue'),
-      // Porte d'entrée large (MODERATOR/ADMIN/SUPER_ADMIN) : les sous-routes
-      // réservées ADMIN/SUPER_ADMIN ajoutent `requiresAdmin` en plus (§5 —
-      // le Modérateur ne gère que les signalements, pas utilisateurs/
-      // Monstres/catégories/paramètres).
       meta: { requiresModerator: true },
       children: [
         {
@@ -74,6 +76,18 @@ export const router = createRouter({
           meta: { requiresAdmin: true },
         },
         {
+          path: 'tutoriel',
+          name: 'admin-tutorial',
+          component: () => import('@/views/admin/AdminTutorialView.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
+          path: 'mails',
+          name: 'admin-emails',
+          component: () => import('@/views/admin/AdminEmailTemplatesView.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
           path: 'signalements',
           name: 'admin-reports',
           component: () => import('@/views/admin/AdminReportsView.vue'),
@@ -91,7 +105,6 @@ export const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
-  // Restaure la session (cookie httpOnly) une seule fois, avant la première navigation.
   if (!auth.initialized) await auth.init()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
@@ -105,6 +118,10 @@ router.beforeEach(async (to) => {
   }
   if (to.meta.requiresSuperAdmin && auth.user?.role !== 'SUPER_ADMIN') {
     return { path: '/admin' }
+  }
+  // Redirect to tutorial after login if onboarding not completed
+  if (auth.isAuthenticated && !auth.user?.onboardingCompletedAt && to.name !== 'tutorial') {
+    return { path: '/tutoriel' }
   }
   return true
 })

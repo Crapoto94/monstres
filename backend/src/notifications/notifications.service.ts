@@ -47,7 +47,7 @@ export class NotificationsService {
     if (!user || !user.emailNotifications) return;
 
     try {
-      const { subject, htmlContent } = this.buildEmail(type, data);
+      const { subject, htmlContent } = await this.buildEmail(type, data);
       await this.emailService.send({ to: user.email, subject, htmlContent });
     } catch (error) {
       this.logger.error(`Échec envoi email de notification (${type}) à ${user.email}`, error as Error);
@@ -71,45 +71,113 @@ export class NotificationsService {
     return { read: true };
   }
 
-  private buildEmail(type: NotificationType, data: unknown): { subject: string; htmlContent: string } {
+  private async buildEmail(type: NotificationType, data: unknown): Promise<{ subject: string; htmlContent: string }> {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+
     switch (type) {
       case NotificationType.RESERVATION_CREATED: {
         const d = data as NotificationData['RESERVATION_CREATED'];
-        return {
+        const vars = {
+          user_name: '',
+          item_title: d.itemTitle,
+          item_url: `${frontendUrl}/monstres/${d.itemId}`,
+          reserver_name: d.reserverName,
+          collector_name: '',
+          badge_name: '',
+          verification_url: '',
+          reset_url: '',
+          item_photo_url: '',
+        };
+        return this.renderWithFallback('reservation_created', vars, {
           subject: `${d.reserverName} a réservé ton Monstre — Les Monstres`,
           htmlContent: `<p>Ton Monstre « ${escapeHtml(d.itemTitle)} » vient d'être réservé par ${escapeHtml(d.reserverName)}.</p>`,
-        };
+        });
       }
       case NotificationType.ITEM_COLLECTED: {
         const d = data as NotificationData['ITEM_COLLECTED'];
-        return {
+        const vars = {
+          user_name: '',
+          item_title: d.itemTitle,
+          item_url: `${frontendUrl}/monstres/${d.itemId}`,
+          reserver_name: '',
+          collector_name: d.collectorName,
+          badge_name: '',
+          verification_url: '',
+          reset_url: '',
+          item_photo_url: '',
+        };
+        return this.renderWithFallback('item_collected', vars, {
           subject: `Ton Monstre a été récupéré — Les Monstres`,
           htmlContent: `<p>Ton Monstre « ${escapeHtml(d.itemTitle)} » a été récupéré par ${escapeHtml(d.collectorName)}. Merci d'avoir participé au réemploi !</p>`,
-        };
+        });
       }
       case NotificationType.NEW_ITEM_NEARBY: {
         const d = data as NotificationData['NEW_ITEM_NEARBY'];
-        const itemUrl = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/monstres/${d.itemId}`;
-        const photoHtml = d.itemPhotoUrl
-          ? `<p><a href="${itemUrl}"><img src="${d.itemPhotoUrl}" alt="${escapeHtml(d.itemTitle)}" style="max-width:300px;border-radius:8px;" /></a></p>`
-          : '';
-        return {
+        const itemUrl = `${frontendUrl}/monstres/${d.itemId}`;
+        const vars = {
+          user_name: '',
+          item_title: d.itemTitle,
+          item_url: itemUrl,
+          reserver_name: '',
+          collector_name: '',
+          badge_name: '',
+          verification_url: '',
+          reset_url: '',
+          item_photo_url: d.itemPhotoUrl ?? '',
+        };
+        return this.renderWithFallback('new_item_nearby', vars, {
           subject: `Nouveau Monstre près de chez toi — Les Monstres`,
           htmlContent: `
             <p>Un nouveau Monstre « ${escapeHtml(d.itemTitle)} » est apparu près d'une de tes zones surveillées.</p>
-            ${photoHtml}
+            ${d.itemPhotoUrl ? `<p><a href="${itemUrl}"><img src="${d.itemPhotoUrl}" alt="${escapeHtml(d.itemTitle)}" style="max-width:300px;border-radius:8px;" /></a></p>` : ''}
             <p><a href="${itemUrl}">Voir ce Monstre</a></p>
           `,
-        };
+        });
       }
       case NotificationType.BADGE_UNLOCKED: {
         const d = data as NotificationData['BADGE_UNLOCKED'];
-        return {
+        const vars = {
+          user_name: '',
+          item_title: '',
+          item_url: '',
+          reserver_name: '',
+          collector_name: '',
+          badge_name: d.badgeName,
+          verification_url: '',
+          reset_url: '',
+          item_photo_url: '',
+        };
+        return this.renderWithFallback('badge_unlocked', vars, {
           subject: `Badge débloqué : ${d.badgeName} — Les Monstres`,
           htmlContent: `<p>Bravo, tu as débloqué le badge « ${escapeHtml(d.badgeName)} » !</p>`,
-        };
+        });
       }
     }
+  }
+
+  private async renderWithFallback(
+    key: string,
+    vars: Record<string, string>,
+    fallback: { subject: string; htmlContent: string },
+  ): Promise<{ subject: string; htmlContent: string }> {
+    try {
+      const template = await this.prisma.emailTemplate.findUnique({ where: { key } });
+      if (!template) return fallback;
+      return {
+        subject: this.replaceVars(template.subject, vars),
+        htmlContent: this.replaceVars(template.htmlContent, vars),
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  private replaceVars(text: string, vars: Record<string, string>): string {
+    let result = text;
+    for (const [key, value] of Object.entries(vars)) {
+      result = result.replaceAll(`{{${key}}}`, escapeHtml(value));
+    }
+    return result;
   }
 }
 

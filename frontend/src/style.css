@@ -1,4 +1,32 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/plus-jakarta-sans';
+
+/* Palette de marque — extraite de LOGO.jpg / icone app.jpg (voir PROGRESS.md
+   pour le détail de l'échantillonnage des couleurs). "brand" = teal du
+   monstre-mascotte, "accent" = orange de ses taches. */
+@theme {
+  --color-brand-50: #eef7f6;
+  --color-brand-100: #d7edeb;
+  --color-brand-200: #b0dbd7;
+  --color-brand-300: #82c2bd;
+  --color-brand-400: #56b2b1;
+  --color-brand-500: #3d9695;
+  --color-brand-600: #2a7877;
+  --color-brand-700: #1f5d5c;
+  --color-brand-800: #163f41;
+  --color-brand-900: #0a2e31;
+
+  --color-accent-50: #fdf3ea;
+  --color-accent-100: #fbe4d0;
+  --color-accent-200: #f6c89d;
+  --color-accent-300: #f0ac72;
+  --color-accent-400: #e9974f;
+  --color-accent-500: #e38e49;
+  --color-accent-600: #c97535;
+  --color-accent-700: #a25d29;
+
+  --font-sans: 'Plus Jakarta Sans Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+}
 
 :root {
   color-scheme: light dark;
@@ -6,7 +34,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

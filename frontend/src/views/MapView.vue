@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
   RESERVED: '#f59e0b', // amber-500
   COLLECTED: '#22c55e', // green-500
 }
-const DEFAULT_COLOR = '#7c3aed' // violet-600 (AVAILABLE)
+const DEFAULT_COLOR = '#2a7877' // brand-600 (AVAILABLE)
 
 function statusIcon(status: string): L.DivIcon {
   const color = STATUS_COLORS[status] ?? DEFAULT_COLOR
@@ -78,9 +78,9 @@ onMounted(async () => {
       for (const subscription of subscriptions) {
         L.circle([subscription.latitude, subscription.longitude], {
           radius: subscription.radius,
-          color: '#7c3aed',
+          color: '#2a7877',
           weight: 2,
-          fillColor: '#7c3aed',
+          fillColor: '#2a7877',
           fillOpacity: 0.1,
         })
           .addTo(map!)

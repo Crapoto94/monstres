@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Body, HttpCode, HttpStatus, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -7,7 +8,10 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { FacebookAuthGuard } from './guards/facebook-auth.guard';
 import type { AuthenticatedUser } from './jwt.strategy';
+import type { OAuthProfile } from './google.strategy';
 import { UsersService } from '../users/users.service';
 
 @Controller('auth')
@@ -15,6 +19,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly config: ConfigService,
   ) {}
 
   @Post('register')
@@ -62,6 +67,41 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.usersService.findSafeById(currentUser.id);
+  }
+
+  /** Déclenche la redirection vers l'écran de consentement Google. */
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  googleLogin() {}
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  async googleCallback(@Req() req: Request, @Res() res: Response) {
+    await this.handleOAuthCallback(req, res);
+  }
+
+  /** Déclenche la redirection vers l'écran de consentement Facebook. */
+  @Get('facebook')
+  @UseGuards(FacebookAuthGuard)
+  facebookLogin() {}
+
+  @Get('facebook/callback')
+  @UseGuards(FacebookAuthGuard)
+  async facebookCallback(@Req() req: Request, @Res() res: Response) {
+    await this.handleOAuthCallback(req, res);
+  }
+
+  private async handleOAuthCallback(req: Request, res: Response) {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+    const redirectPath = typeof req.query.state === 'string' ? req.query.state : '/profil';
+
+    try {
+      const { token } = await this.authService.loginWithOAuth(req.user as OAuthProfile);
+      this.setAuthCookie(res, token);
+      res.redirect(`${frontendUrl}${redirectPath}`);
+    } catch {
+      res.redirect(`${frontendUrl}/connexion?error=oauth_failed`);
+    }
   }
 
   private setAuthCookie(res: Response, token: string) {

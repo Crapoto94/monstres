@@ -11,6 +11,7 @@ export interface AuthUser {
   emailVerifiedAt: string | null
   emailNotifications: boolean
   createdAt: string
+  onboardingCompletedAt: string | null
 }
 
 export async function register(payload: { name: string; email: string; password: string; confirmPassword: string }) {

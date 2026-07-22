@@ -7,12 +7,14 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.2.1 — durcissement sécurité de la
-console SQL admin, lecture seule réellement appliquée par SQLite)
+Dernière mise à jour : **2026-07-22** (v0.3.0 — refonte graphique de marque
++ connexion Google/Facebook, Phase 11 terminée)
 
-**Statut : Phases 0 à 10 terminées et validées.** Prochaine étape :
-**Phase 11 — Facebook** (voir détail plus bas ; à ne construire qu'après
-validation explicite, cf. décision Google/Facebook reportés). Le projet est
+**Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
+charges (§17) est désormais entièrement construit ; il ne reste que les
+tâches "reportées" documentées au fil des sections ci-dessous (sanctions à
+paliers, ajustement automatique de trustScore, badges, tests automatisés).
+Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
@@ -1639,18 +1641,197 @@ supprimer la console / la durcir / la laisser telle quelle) — réponse :
 
 ---
 
-## Phases suivantes (non commencées)
+## Correctifs de compilation post-v0.2.0 (session parallèle)
 
-Voir §17 du cahier des charges pour le détail complet de chaque phase. Ordre
-et contenu résumé :
+En reprenant la main après le commit v0.2.0 (tutoriel d'onboarding, éditeur
+de templates email, métadonnées utilisateur — fait par une autre session/
+outil IA en parallèle sur ce dépôt), le backend ne compilait plus : deux
+nouveaux contrôleurs avaient des chemins d'import incorrects.
 
-- [ ] **Phase 11 — Facebook.** Après validation du cœur applicatif
-      uniquement. Ne jamais bloquer la création d'un Monstre si Facebook
-      échoue.
+- **`backend/src/admin/admin-tutorial.controller.ts`** et
+  **`admin-email-templates.controller.ts`** utilisaient `../../auth/...`
+  alors qu'ils sont placés directement dans `src/admin/` (même profondeur
+  que les autres contrôleurs admin) — corrigé en `../auth/...`.
+- **`admin-email-templates.controller.ts`** importait aussi
+  `./email-templates.service` (fichier inexistant à cet endroit) au lieu de
+  `../email-templates/email-templates.service`.
+- Côté frontend, **`AdminEmailTemplatesView.vue`** et **`AdminTutorialView.vue`**
+  importaient `api`/`ApiSuccess` depuis `@/services/admin` (qui ne les
+  ré-exporte pas) au lieu de `@/services/api` — corrigé.
 
-Rappel méthode (§0) : chaque phase doit produire une **version fonctionnelle
-et testée** avant de passer à la suivante — ne pas paralléliser plusieurs
-phases à la fois.
+Aucun changement fonctionnel, uniquement des chemins d'import cassés qui
+empêchaient `nest build`/`vue-tsc` de passer. Signalé ici pour qu'une
+session future ne perde pas de temps si ça se reproduit avec d'autres
+fichiers ajoutés en parallèle.
+
+---
+
+## Phase 11 — Facebook (+ Google) : terminée et validée, refonte graphique complète
+
+Demande utilisateur (un seul message, deux volets) : refaire entièrement
+l'expérience visuelle avec un graphisme "moderne et élégant" en utilisant
+les 3 images fournies à la racine du dépôt (`monstres.jpg` en image
+d'accueil, `LOGO.jpg` et `icone app.jpg` comme logo/icônes d'application),
+**puis** construire la connexion Google et Facebook et continuer le plan
+(Phase 11 du cahier des charges, jusque-là explicitement mise en attente
+d'une confirmation explicite — donnée dans ce message).
+
+### Décisions — identité visuelle
+- **Palette de marque extraite par échantillonnage de pixels** des 3 images
+  fournies (script Node + `sharp`, lecture de buffers raw à des coordonnées
+  précises) plutôt que choisie à l'œil : teal `#56b2b1` (fond de l'icône) →
+  `brand-400`, encre foncée `#0a2e31` (texte du logo) → `brand-900`, orange
+  `#e38e49` (taches du monstre) → `accent-500`. Rampe 50–900 complète
+  définie via `@theme` dans `style.css` (Tailwind v4, CSS-first). **Tout le
+  frontend est passé de `violet-*` à `brand-*`** par remplacement mécanique
+  (`sed`) sur les 20 fichiers concernés, plus les couleurs hexadécimales en
+  dur dans `MapView.vue` (marqueurs Leaflet).
+- **Police** : `Plus Jakarta Sans` (variable, via `@fontsource-variable`)
+  — moderne, lisible, un peu plus chaleureuse qu'`Inter` sans tomber dans le
+  puéril, cohérent avec "élégant" plutôt que "ludique" malgré la mascotte.
+- **Assets générés depuis les images sources** (`backend/scripts/generate-
+  brand-assets.js`, ponctuel, pas un script npm) :
+  - Icônes PWA/favicon depuis `icone app.jpg` : recadrage du carré arrondi
+    (`trim` + rognage supplémentaire pour éliminer le liseré blanc résiduel
+    de l'anti-aliasing JPEG), déclinées en 32/180/192/512 + une version
+    "maskable" 512×512 sur fond teal plein (zone de sécurité ~80%, aucun
+    détail coupé par le masque circulaire/arrondi d'un OS).
+  - Logo à fond transparent depuis `LOGO.jpg` (fond blanc pur à l'origine) :
+    chroma-key manuel par manipulation de buffer raw RGBA (alpha = fonction
+    de `255 - min(R,G,B)`, pas de librairie dédiée) — utilisé sur les pages
+    Connexion/Inscription, posé sur une pastille blanche pour rester lisible
+    même en dark mode plutôt que de chasser un fondu parfait sur fond
+    sombre.
+  - `favicon.svg` (placeholder violet "M") supprimé, remplacé par les PNG
+    générés ; `vite.config.ts` (manifest PWA) et `index.html` mis à jour en
+    conséquence.
+- **`BottomNav.vue` refaite avec des icônes SVG line-art** (à la main, pas de
+  librairie d'icônes ajoutée) au lieu des emoji — plus conforme à "élégant".
+  Le bouton "Ajouter" devient un FAB circulaire surélevé au-dessus de la
+  barre (`ring-4 ring-white`, ombre teintée `brand-600/30`), pattern courant
+  d'app mobile moderne pour l'action principale.
+- **`HomeView.vue`** : bandeau hero `monstres.jpg` en pleine largeur (`object-
+  cover`, dégradé `brand-900` vers transparent en overlay, coins arrondis en
+  bas), cartes de Monstres remontées en `rounded-2xl` + ombre légère +
+  pastille de catégorie colorée. Reste des pages (Profil, Communauté, détail
+  Monstre, vues admin) : rebrand de couleur uniquement, pas de refonte de
+  mise en page bespoke — proportionné au temps disponible, la cohérence de
+  palette suffit à donner un rendu homogène "moderne et élégant" à
+  l'ensemble sans réécrire chaque vue en profondeur.
+- **`LoginView.vue`/`RegisterView.vue` réécrites** : logo en tête, carte
+  blanche arrondie centrée (`max-w-sm`), séparateur "ou" avant les boutons
+  Google/Facebook.
+
+### Décisions — connexion Google/Facebook
+- **`passport-google-oauth20` + `passport-facebook`**, une stratégie par
+  fournisseur (`google.strategy.ts`/`facebook.strategy.ts`), qui normalisent
+  le profil OAuth en un type commun `OAuthProfile` (provider, providerId,
+  email, name, avatar).
+- **Les stratégies se construisent même sans credentials configurées**
+  (fallback `'not-configured'` sur `clientID`/`clientSecret`) — sinon
+  `passport-google-oauth20`/`passport-facebook` lèvent une exception
+  **synchrone au démarrage** du provider Nest, ce qui aurait planté tout le
+  backend tant que l'utilisateur n'a pas créé ses apps OAuth. La vraie garde
+  est `GoogleAuthGuard`/`FacebookAuthGuard` : si `CLIENT_ID`/`CLIENT_SECRET`
+  manquent, le guard redirige directement vers
+  `/connexion?error=google_unavailable` (ou `facebook_unavailable`) **avant**
+  d'invoquer `passport.authenticate()`, plutôt que de laisser l'utilisateur
+  atterrir sur une erreur OAuth confuse côté Google/Facebook.
+- **`AuthService.loginWithOAuth(profile)`** : cherche un `SocialAccount`
+  existant (clé composite `provider_providerId`) ; à défaut, cherche un
+  `User` par email pour **rattacher** le fournisseur à un compte existant
+  (évite un doublon si quelqu'un s'inscrit d'abord par email puis se
+  connecte ensuite via Google avec la même adresse) ; sinon crée un nouveau
+  compte avec un mot de passe aléatoire inutilisable (bcrypt d'un
+  `randomBytes(32)`) — ce compte ne se connecte qu'en repassant par le même
+  fournisseur, sauf s'il utilise "mot de passe oublié" pour s'en définir un.
+  `emailVerifiedAt` posé immédiatement (l'email est déjà vérifié par le
+  fournisseur OAuth, pas de second envoi de vérification). Même contrôle
+  banni/suspendu que la connexion classique.
+- **Paramètre `redirect` transmis via `state` OAuth** (pas de session
+  serveur) : `GoogleAuthGuard`/`FacebookAuthGuard` surchargent
+  `getAuthenticateOptions()` pour lire `?redirect=` sur la requête initiale
+  et le renvoyer en `state`, récupéré côté callback (`req.query.state`) pour
+  rediriger l'utilisateur vers la bonne page après connexion (ex. revenir
+  sur `/ajouter` s'il a été redirigé vers `/connexion` depuis là).
+- **Email Facebook potentiellement absent** (utilisateur qui refuse la
+  permission) : email de repli synthétique
+  `{provider}-{providerId}@users.noreply.monstres.fbc.fr` — le compte reste
+  utilisable, juste toujours via ce même fournisseur (pas de mot de passe
+  oublié possible sur une fausse adresse).
+- **`.env.example` (racine + `backend/`) documentés** avec les URI de
+  redirection exactes à déclarer côté Google Cloud Console / Facebook
+  Developers. `GOOGLE_CLIENT_SECRET`/`FACEBOOK_CLIENT_ID`/
+  `FACEBOOK_CLIENT_SECRET` restent vides — **l'utilisateur doit créer ses
+  propres apps OAuth** pour activer réellement ces boutons ; en attendant,
+  ils échouent proprement (message clair, reste de l'app non affecté).
+
+### Fait
+- [x] `frontend/src/style.css` : palette `brand-*`/`accent-*` (`@theme`),
+      police `Plus Jakarta Sans Variable`.
+- [x] `backend/scripts/generate-brand-assets.js` : génération des icônes
+      PWA/favicon + logo transparent depuis les 3 images fournies.
+- [x] `frontend/index.html`, `vite.config.ts` : favicon/manifest PWA mis à
+      jour avec les nouvelles icônes, `theme_color` aligné sur `brand-600`.
+- [x] Rebrand `violet-*` → `brand-*` sur 20 fichiers Vue + hex codes de
+      `MapView.vue`.
+- [x] `BottomNav.vue` réécrit (icônes SVG, FAB "Ajouter" surélevé).
+- [x] `HomeView.vue` réécrite (hero `monstres.jpg`, cartes modernisées).
+- [x] `LoginView.vue`/`RegisterView.vue` réécrites (logo, carte, boutons
+      OAuth, affichage d'erreur `?error=...`).
+- [x] Backend : `google.strategy.ts`, `facebook.strategy.ts`,
+      `guards/google-auth.guard.ts`, `guards/facebook-auth.guard.ts`,
+      `AuthService.loginWithOAuth()`, routes `GET /auth/google`,
+      `/auth/google/callback`, `/auth/facebook`, `/auth/facebook/callback`.
+- [x] `.env.example` (racine + `backend/`) : instructions de configuration
+      OAuth (URI de redirection).
+- [x] Testé de bout en bout : guards vérifiés en conditions réelles (sans
+      credentials configurées → redirection propre
+      `/connexion?error=..._unavailable`, vérifié par `curl -i` et dans le
+      navigateur avec le message affiché) ; logique
+      `loginWithOAuth`/`SocialAccount` testée directement contre `dev.db`
+      (création d'un nouveau compte, réutilisation au 2e appel avec le même
+      profil, **rattachement correct à un compte existant** quand un
+      second fournisseur partage le même email) — les 3 scénarios
+      confirmés corrects, compte de test nettoyé après coup. Impossible de
+      tester le flux complet jusqu'au consentement Google/Facebook réel
+      sans que l'utilisateur crée ses apps OAuth (voir `.env.example`).
+      Redesign vérifié visuellement dans le navigateur : accueil, connexion/
+      inscription, communauté, profil, détail d'un Monstre.
+- [x] Build backend et frontend sans erreur.
+
+### Restant / reporté
+- [ ] **Connexion Google/Facebook non fonctionnelle tant que l'utilisateur
+      n'a pas créé ses propres apps OAuth** (Google Cloud Console /
+      Facebook Developers) et renseigné `GOOGLE_CLIENT_SECRET`,
+      `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` — voir `.env.example`
+      pour les URI de redirection exactes à déclarer.
+- [ ] Refonte visuelle bespoke des vues admin (au-delà du rebrand de
+      couleur) — non demandée explicitement, jugée hors scope vu le temps
+      disponible.
+- [ ] Icône maskable : un très léger liseré plus clair reste visible au zoom
+      sur les bords arrondis (artefact JPEG résiduel) — acceptable en usage
+      normal, pourrait être retouché avec une source vectorielle si besoin.
+
+---
+
+## Phases suivantes
+
+Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
+entièrement construit. Les tâches restantes sont des reports explicites
+documentés au fil des sections ci-dessus plutôt que des phases planifiées :
+
+- [ ] Système de sanctions à paliers (avertissement → limitation →
+      bannissement temporaire → définitif) — Phase 10.
+- [ ] Ajustement automatique de `trustScore` — Phase 10.
+- [ ] Création de badges configurables — Phase 9/10 (aucune logique de
+      déblocage n'existe encore).
+- [ ] File de statistiques avancées (carte de chaleur, villes actives) —
+      §14, non demandée explicitement.
+- [ ] Tests automatisés (Jest) — validation manuelle uniquement jusqu'ici.
+- [ ] Migration PostgreSQL (prévue de longue date, cf. CLAUDE.md) — aucune
+      fonctionnalité SQLite-spécifique utilisée à ce jour, migration reste
+      possible sans réécriture.
 
 ---
 
@@ -1666,14 +1847,14 @@ phases à la fois.
    - `frontend/` : `npm install` puis `npm run dev`, ouvrir
      `http://localhost:5173`. Tester une inscription sur `/inscription`
      pour confirmer que l'auth fonctionne toujours de bout en bout.
-4. Les Phases 0 à 10 sont terminées. Continuer sur la première case non
-   cochée de **Phase 11 — Facebook** (section « Phases suivantes »
-   ci-dessus) **seulement après confirmation explicite de l'utilisateur**
-   (connexion + publication automatique, sujet sensible qui touche à des
-   identifiants externes). Ne pas paralléliser plusieurs phases à la fois
-   (§0). Pour toute nouvelle migration Prisma en session non interactive,
-   voir le workaround documenté dans `backend/README.md` (section Base de
-   données).
+4. Les Phases 0 à 11 sont terminées — le plan §17 du cahier des charges est
+   entièrement construit. Il ne reste que les tâches "reportées"
+   explicitement listées en section « Phases suivantes » ci-dessus
+   (sanctions à paliers, trustScore automatique, badges, statistiques
+   avancées, tests, migration PostgreSQL) — demander à l'utilisateur ce
+   qu'il souhaite prioriser plutôt que d'enchaîner automatiquement. Pour
+   toute nouvelle migration Prisma en session non interactive, voir le
+   workaround documenté dans `backend/README.md` (section Base de données).
 5. Pour tester en local sans repasser par l'inscription : se connecter avec
    `marc@fbc.fr` ou `admin@monstres.local` (mot de passe demandé à
    l'utilisateur si besoin), ou promouvoir un nouveau compte via

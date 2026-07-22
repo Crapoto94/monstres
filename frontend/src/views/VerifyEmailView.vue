@@ -33,7 +33,7 @@ onMounted(async () => {
       Lien de vérification invalide ou expiré.
     </p>
 
-    <RouterLink to="/profil" class="mt-4 inline-block text-violet-600 dark:text-violet-400">
+    <RouterLink to="/profil" class="mt-4 inline-block text-brand-600 dark:text-brand-400">
       Retour au profil
     </RouterLink>
   </section>

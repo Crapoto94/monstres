@@ -71,7 +71,7 @@ function selectTable(name: string) {
       <button
         type="button"
         :disabled="executing || !sql.trim()"
-        class="mt-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        class="mt-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         @click="onExecute"
       >
         {{ executing ? 'Exécution…' : 'Exécuter' }}

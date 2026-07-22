@@ -114,7 +114,7 @@ async function onClearAll() {
         />
         <button
           type="button"
-          class="rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white"
+          class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white"
           @click="onSearch"
         >
           Chercher

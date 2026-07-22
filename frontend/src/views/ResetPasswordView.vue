@@ -52,7 +52,7 @@ async function onSubmit() {
       <button
         type="submit"
         :disabled="submitting"
-        class="rounded-lg bg-violet-600 py-2 font-medium text-white disabled:opacity-50"
+        class="rounded-lg bg-brand-600 py-2 font-medium text-white disabled:opacity-50"
       >
         {{ submitting ? 'Enregistrement…' : 'Réinitialiser le mot de passe' }}
       </button>

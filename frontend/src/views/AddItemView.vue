@@ -226,7 +226,7 @@ function resetAndGoHome() {
 
     <div v-if="publishedItem" class="mt-6 flex flex-col gap-3">
       <p class="text-green-600 dark:text-green-400">Ton Monstre « {{ publishedItem.title }} » est publié !</p>
-      <button class="self-start rounded-lg bg-violet-600 px-4 py-2 text-sm text-white" @click="resetAndGoHome">
+      <button class="self-start rounded-lg bg-brand-600 px-4 py-2 text-sm text-white" @click="resetAndGoHome">
         Retour à l'accueil
       </button>
     </div>
@@ -257,7 +257,7 @@ function resetAndGoHome() {
           <!-- Bouton principal : appareil photo -->
           <label
             v-if="photos.length < MAX_PHOTOS"
-            class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-violet-400 bg-violet-50 text-sm font-medium text-violet-600 dark:bg-violet-950 dark:text-violet-400"
+            class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-brand-400 bg-brand-50 text-sm font-medium text-brand-600 dark:bg-brand-950 dark:text-brand-400"
           >
             📷 Photo
             <input
@@ -295,7 +295,7 @@ function resetAndGoHome() {
 
         <button
           type="button"
-          class="self-start text-sm text-violet-600 dark:text-violet-400"
+          class="self-start text-sm text-brand-600 dark:text-brand-400"
           :disabled="locating"
           @click="locateMe"
         >
@@ -396,7 +396,7 @@ function resetAndGoHome() {
         <button
           type="button"
           :disabled="submitting"
-          class="rounded-lg bg-violet-600 py-2 font-medium text-white disabled:opacity-50"
+          class="rounded-lg bg-brand-600 py-2 font-medium text-white disabled:opacity-50"
           @click="publish"
         >
           {{ submitting ? 'Publication…' : 'Publier' }}
@@ -418,7 +418,7 @@ function resetAndGoHome() {
           v-if="step < 4"
           type="button"
           :disabled="!canGoNext"
-          class="rounded-lg bg-violet-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+          class="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white disabled:opacity-50"
           @click="next"
         >
           Suivant

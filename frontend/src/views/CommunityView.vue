@@ -37,7 +37,7 @@ function formatJoinDate(isoDate: string): string {
           />
           <div
             v-else
-            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300"
           >
             {{ member.name.charAt(0).toUpperCase() }}
           </div>
@@ -60,7 +60,7 @@ function formatJoinDate(isoDate: string): string {
           <span class="rounded-full bg-green-100 px-2 py-0.5 font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
             {{ member.itemsCollected }} récupéré{{ member.itemsCollected > 1 ? 's' : '' }}
           </span>
-          <span class="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+          <span class="rounded-full bg-brand-100 px-2 py-0.5 font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300">
             ★ {{ member.votesReceived }} vote{{ member.votesReceived > 1 ? 's' : '' }} reçu{{ member.votesReceived > 1 ? 's' : '' }}
           </span>
         </div>

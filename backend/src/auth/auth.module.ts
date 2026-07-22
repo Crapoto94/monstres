@@ -6,6 +6,10 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { GoogleStrategy } from './google.strategy';
+import { FacebookStrategy } from './facebook.strategy';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { FacebookAuthGuard } from './guards/facebook-auth.guard';
 
 @Module({
   imports: [
@@ -23,7 +27,7 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, FacebookStrategy, GoogleAuthGuard, FacebookAuthGuard],
   exports: [AuthService],
 })
 export class AuthModule {}

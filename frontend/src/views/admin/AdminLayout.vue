@@ -11,6 +11,8 @@ const tabs = computed(() => [
         { to: '/admin/utilisateurs', label: 'Utilisateurs' },
         { to: '/admin/monstres', label: 'Monstres' },
         { to: '/admin/categories', label: 'Catégories' },
+        { to: '/admin/tutoriel', label: 'Tutoriel' },
+        { to: '/admin/mails', label: 'Mails' },
         { to: '/admin/parametres', label: 'Paramètres' },
       ]
     : []),

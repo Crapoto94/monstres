@@ -13,6 +13,7 @@ export interface SafeUser {
   emailVerifiedAt: Date | null;
   emailNotifications: boolean;
   createdAt: Date;
+  onboardingCompletedAt: Date | null;
 }
 
 export interface PublicProfile {
@@ -52,6 +53,7 @@ export class UsersService {
       emailVerifiedAt: user.emailVerifiedAt,
       emailNotifications: user.emailNotifications,
       createdAt: user.createdAt,
+      onboardingCompletedAt: user.onboardingCompletedAt,
     };
   }
 

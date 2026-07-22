@@ -61,7 +61,7 @@ async function onSave(setting: AdminSetting) {
           <button
             type="button"
             :disabled="busyKey === setting.key || drafts[setting.key] === setting.value"
-            class="rounded-lg bg-violet-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-40"
+            class="rounded-lg bg-brand-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-40"
             @click="onSave(setting)"
           >
             {{ busyKey === setting.key ? '…' : 'Sauver' }}

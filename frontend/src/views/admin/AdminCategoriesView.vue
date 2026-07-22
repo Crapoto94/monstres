@@ -79,7 +79,7 @@ async function onDelete(category: AdminCategory) {
   <div>
     <div class="flex items-center justify-between">
       <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Catégories</h2>
-      <button type="button" class="text-sm text-violet-600 dark:text-violet-400" @click="showForm = !showForm">
+      <button type="button" class="text-sm text-brand-600 dark:text-brand-400" @click="showForm = !showForm">
         {{ showForm ? 'Annuler' : '+ Ajouter' }}
       </button>
     </div>
@@ -101,7 +101,7 @@ async function onDelete(category: AdminCategory) {
       <button
         type="submit"
         :disabled="creating || !name.trim()"
-        class="self-start rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+        class="self-start rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
       >
         {{ creating ? 'Création…' : 'Créer' }}
       </button>

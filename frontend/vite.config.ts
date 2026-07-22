@@ -22,17 +22,14 @@ export default defineConfig({
         short_name: 'Monstres',
         description:
           'Repérer, partager et récupérer les objets encombrants abandonnés dans la rue.',
-        theme_color: '#16171d',
+        theme_color: '#2a7877',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
-        // TODO Phase 2/branding : remplacer par de vraies icônes PNG (192/512, maskable).
         icons: [
-          {
-            src: '/favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-          },
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),

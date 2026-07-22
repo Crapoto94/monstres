@@ -117,7 +117,7 @@ async function handleDeleteSubscription(id: string) {
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Alertes</h1>
 
     <div v-if="!auth.isAuthenticated" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-      <RouterLink to="/connexion" class="text-violet-600 underline dark:text-violet-400">Connecte-toi</RouterLink>
+      <RouterLink to="/connexion" class="text-brand-600 underline dark:text-brand-400">Connecte-toi</RouterLink>
       pour voir tes notifications et zones surveillées.
     </div>
 
@@ -141,7 +141,7 @@ async function handleDeleteSubscription(id: string) {
           <button
             v-if="canAddSubscription"
             type="button"
-            class="text-sm text-violet-600 dark:text-violet-400"
+            class="text-sm text-brand-600 dark:text-brand-400"
             @click="showSubForm = !showSubForm"
           >
             {{ showSubForm ? 'Annuler' : '+ Ajouter' }}
@@ -180,7 +180,7 @@ async function handleDeleteSubscription(id: string) {
 
           <button
             type="button"
-            class="self-start text-sm text-violet-600 dark:text-violet-400"
+            class="self-start text-sm text-brand-600 dark:text-brand-400"
             :disabled="locating"
             @click="locateMe"
           >
@@ -197,7 +197,7 @@ async function handleDeleteSubscription(id: string) {
           <button
             type="submit"
             :disabled="creatingSub || !subName.trim() || subLat === null"
-            class="self-start rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            class="self-start rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             {{ creatingSub ? 'Ajout…' : 'Ajouter cette zone' }}
           </button>
@@ -225,7 +225,7 @@ async function handleDeleteSubscription(id: string) {
             :class="
               notification.readAt
                 ? 'border-gray-200 text-gray-500 dark:border-gray-800 dark:text-gray-400'
-                : 'border-violet-300 bg-violet-50 font-medium text-gray-900 dark:border-violet-700 dark:bg-violet-950 dark:text-gray-100'
+                : 'border-brand-300 bg-brand-50 font-medium text-gray-900 dark:border-brand-700 dark:bg-brand-950 dark:text-gray-100'
             "
           >
             <RouterLink
