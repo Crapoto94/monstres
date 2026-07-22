@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePwaInstall } from '@/composables/usePwaInstall'
 import { api, type ApiSuccess } from '@/services/api'
 import type { AuthUser } from '@/services/auth'
 
 const router = useRouter()
+const { canInstall, installed, install } = usePwaInstall()
 
 const auth = useAuthStore()
 
@@ -191,6 +193,19 @@ async function onDeleteAccount() {
           />
         </button>
       </div>
+
+      <!-- Installer l'app -->
+      <button
+        v-if="canInstall && !installed"
+        type="button"
+        class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+        @click="install"
+      >
+        📲 Installer Les Monstres sur mon téléphone
+      </button>
+      <p v-if="installed" class="mt-4 text-sm text-green-600 dark:text-green-400">
+        ✓ L'application a été installée !
+      </p>
 
       <!-- Liens légaux -->
       <div class="mt-6 flex flex-wrap gap-2">

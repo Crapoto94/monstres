@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePwaInstall } from '@/composables/usePwaInstall'
 import { api, type ApiSuccess } from '@/services/api'
 
 interface TutorialPage {
@@ -15,6 +16,7 @@ interface TutorialPage {
 
 const router = useRouter()
 const auth = useAuthStore()
+const { canInstall, installed, install } = usePwaInstall()
 
 const pages = ref<TutorialPage[]>([])
 const currentIndex = ref(0)
@@ -102,6 +104,15 @@ onMounted(async () => {
 
       <!-- Navigation -->
       <div class="mt-10 flex w-full max-w-md flex-col items-center gap-3">
+        <button
+          v-if="isLast() && canInstall && !installed"
+          type="button"
+          class="w-full rounded-xl border-2 border-violet-300 bg-white px-6 py-3 text-sm font-semibold text-violet-700 transition-colors hover:bg-violet-50 dark:border-violet-700 dark:bg-gray-900 dark:text-violet-300 dark:hover:bg-gray-800"
+          @click="install"
+        >
+          📲 Installer l'application sur mon téléphone
+        </button>
+
         <button
           type="button"
           :disabled="completing"
