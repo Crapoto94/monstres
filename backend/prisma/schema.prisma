@@ -93,6 +93,10 @@ model User {
   trustScore      Int      @default(100)
   // Consentement notifications email (§9 RGPD : "notifications (email oui/non)").
   emailNotifications Boolean @default(true)
+  // Notifications WhatsApp (opt-in explicite, désactivé tant qu'aucun numéro
+  // n'est renseigné) via l'API WhatsApp Cloud de Meta.
+  phoneNumber           String?
+  whatsappNotifications Boolean @default(false)
   // Modération de compte (§14, Phase 9) : suspension temporaire vs bannissement
   // définitif, appliqués par un admin. Un login est refusé si l'un des deux est renseigné.
   suspendedAt     DateTime?

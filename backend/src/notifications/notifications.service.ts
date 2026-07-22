@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '../generated/prisma/enums';
 
@@ -23,16 +24,17 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly whatsappService: WhatsAppService,
     private readonly config: ConfigService,
   ) {}
 
   /**
-   * Enregistre la notification en base (historique, toujours conservé) et
-   * envoie l'email correspondant si l'utilisateur n'a pas désactivé les
-   * notifications email (§9 RGPD : consentement "notifications email
-   * oui/non"). Un échec d'envoi d'email ne fait jamais échouer l'action
-   * déclenchante (réservation, récupération…) — même esprit que §11 pour
-   * Facebook : on log et on continue.
+   * Enregistre la notification en base (historique, toujours conservé) puis
+   * envoie sur chaque canal que l'utilisateur a activé (§9 RGPD :
+   * consentement "notifications email oui/non", pareil pour WhatsApp).
+   * Un échec d'envoi sur un canal n'empêche jamais l'autre ni ne fait
+   * échouer l'action déclenchante (réservation, récupération…) — même
+   * esprit que §11 pour Facebook : on log et on continue.
    */
   async notify<T extends NotificationType>(
     userId: string,
@@ -44,13 +46,24 @@ export class NotificationsService {
     });
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.emailNotifications) return;
+    if (!user) return;
 
-    try {
-      const { subject, htmlContent } = await this.buildEmail(type, data);
-      await this.emailService.send({ to: user.email, subject, htmlContent });
-    } catch (error) {
-      this.logger.error(`Échec envoi email de notification (${type}) à ${user.email}`, error as Error);
+    if (user.emailNotifications) {
+      try {
+        const { subject, htmlContent } = await this.buildEmail(type, data);
+        await this.emailService.send({ to: user.email, subject, htmlContent });
+      } catch (error) {
+        this.logger.error(`Échec envoi email de notification (${type}) à ${user.email}`, error as Error);
+      }
+    }
+
+    if (user.whatsappNotifications && user.phoneNumber) {
+      try {
+        const message = this.buildWhatsAppMessage(type, data);
+        await this.whatsappService.sendNotification(user.phoneNumber, message);
+      } catch (error) {
+        this.logger.error(`Échec envoi WhatsApp de notification (${type}) à ${user.phoneNumber}`, error as Error);
+      }
     }
   }
 
@@ -151,6 +164,30 @@ export class NotificationsService {
           subject: `Badge débloqué : ${d.badgeName} — Les Monstres`,
           htmlContent: `<p>Bravo, tu as débloqué le badge « ${escapeHtml(d.badgeName)} » !</p>`,
         });
+      }
+    }
+  }
+
+  /** Version texte brut (WhatsApp n'affiche pas de HTML) du même contenu que `buildEmail`. */
+  private buildWhatsAppMessage(type: NotificationType, data: unknown): string {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+
+    switch (type) {
+      case NotificationType.RESERVATION_CREATED: {
+        const d = data as NotificationData['RESERVATION_CREATED'];
+        return `${d.reserverName} a réservé ton Monstre « ${d.itemTitle} » — ${frontendUrl}/monstres/${d.itemId}`;
+      }
+      case NotificationType.ITEM_COLLECTED: {
+        const d = data as NotificationData['ITEM_COLLECTED'];
+        return `Ton Monstre « ${d.itemTitle} » a été récupéré par ${d.collectorName}. Merci d'avoir participé au réemploi !`;
+      }
+      case NotificationType.NEW_ITEM_NEARBY: {
+        const d = data as NotificationData['NEW_ITEM_NEARBY'];
+        return `Nouveau Monstre près de chez toi : « ${d.itemTitle} » — ${frontendUrl}/monstres/${d.itemId}`;
+      }
+      case NotificationType.BADGE_UNLOCKED: {
+        const d = data as NotificationData['BADGE_UNLOCKED'];
+        return `Bravo, tu as débloqué le badge « ${d.badgeName} » sur Les Monstres !`;
       }
     }
   }

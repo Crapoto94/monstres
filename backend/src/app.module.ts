@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { SettingsModule } from './settings/settings.module';
 import { EmailModule } from './email/email.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
@@ -34,6 +35,7 @@ import { LegalModule } from './legal/legal.module';
     PrismaModule,
     SettingsModule,
     EmailModule,
+    WhatsAppModule,
     ImageModule,
     ScoringModule,
     NotificationsModule,

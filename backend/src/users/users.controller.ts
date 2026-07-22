@@ -39,7 +39,7 @@ export class UsersController {
   @Patch('me/preferences')
   @UseGuards(JwtAuthGuard)
   updatePreferences(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdatePreferencesDto) {
-    return this.usersService.updatePreferences(user.id, dto.emailNotifications);
+    return this.usersService.updatePreferences(user.id, dto);
   }
 
   @Patch('me/avatar')

@@ -10,6 +10,8 @@ export interface AuthUser {
   trustScore: number
   emailVerifiedAt: string | null
   emailNotifications: boolean
+  phoneNumber: string | null
+  whatsappNotifications: boolean
   createdAt: string
   onboardingCompletedAt: string | null
 }
@@ -48,8 +50,12 @@ export async function resetPassword(payload: { token: string; password: string }
   return data.data
 }
 
-export async function updateEmailNotifications(emailNotifications: boolean) {
-  const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/preferences', { emailNotifications })
+export async function updatePreferences(updates: {
+  emailNotifications?: boolean
+  whatsappNotifications?: boolean
+  phoneNumber?: string | null
+}) {
+  const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/preferences', updates)
   return data.data
 }
 

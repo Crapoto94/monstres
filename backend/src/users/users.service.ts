@@ -15,6 +15,8 @@ export interface SafeUser {
   trustScore: number;
   emailVerifiedAt: Date | null;
   emailNotifications: boolean;
+  phoneNumber: string | null;
+  whatsappNotifications: boolean;
   createdAt: Date;
   onboardingCompletedAt: Date | null;
 }
@@ -64,6 +66,8 @@ export class UsersService {
       trustScore: user.trustScore,
       emailVerifiedAt: user.emailVerifiedAt,
       emailNotifications: user.emailNotifications,
+      phoneNumber: user.phoneNumber,
+      whatsappNotifications: user.whatsappNotifications,
       createdAt: user.createdAt,
       onboardingCompletedAt: user.onboardingCompletedAt,
     };
@@ -76,9 +80,31 @@ export class UsersService {
     return this.toSafeUser(user);
   }
 
-  /** Consentement notifications email (§9 RGPD). */
-  async updatePreferences(id: string, emailNotifications: boolean): Promise<SafeUser> {
-    const user = await this.prisma.user.update({ where: { id }, data: { emailNotifications } });
+  /**
+   * Consentement notifications email/WhatsApp (§9 RGPD). Le numéro de
+   * téléphone est requis pour activer WhatsApp — le retirer désactive
+   * automatiquement les notifications WhatsApp plutôt que de laisser un
+   * état incohérent (activé sans numéro à qui envoyer).
+   */
+  async updatePreferences(
+    id: string,
+    updates: { emailNotifications?: boolean; whatsappNotifications?: boolean; phoneNumber?: string | null },
+  ): Promise<SafeUser> {
+    const current = await this.prisma.user.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Utilisateur introuvable.');
+
+    const phoneNumber = updates.phoneNumber !== undefined ? updates.phoneNumber : current.phoneNumber;
+    const whatsappNotifications =
+      phoneNumber === null ? false : (updates.whatsappNotifications ?? current.whatsappNotifications);
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        emailNotifications: updates.emailNotifications ?? current.emailNotifications,
+        phoneNumber,
+        whatsappNotifications,
+      },
+    });
     return this.toSafeUser(user);
   }
 
