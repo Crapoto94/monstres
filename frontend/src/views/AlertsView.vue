@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { fetchNotifications, markNotificationAsRead, type AppNotification } from '@/services/notifications'
 import {
@@ -36,6 +36,8 @@ const geocodeError = ref<string | null>(null)
 const suggestions = ref<any[]>([])
 const showSuggestions = ref(false)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const NOMINATIM_HEADERS = { 'Accept-Language': 'fr' }
 
 onMounted(async () => {
   if (auth.isAuthenticated) {
@@ -104,29 +106,35 @@ function simplifyAddress(displayName: string): string {
   return `${parts[0]}, ${parts[1]}`
 }
 
-function onAddressInput() {
+async function searchAddresses(q: string) {
+  try {
+    const query = encodeURIComponent(q)
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&countrycodes=fr`,
+      { headers: NOMINATIM_HEADERS },
+    )
+    const results = await res.json()
+    suggestions.value = results
+    showSuggestions.value = results.length > 0
+  } catch {
+    suggestions.value = []
+    showSuggestions.value = false
+  }
+}
+
+watch(subAddress, (val) => {
   geocodeError.value = null
+  subLat.value = null
+  subLng.value = null
   if (debounceTimer) clearTimeout(debounceTimer)
-  const q = subAddress.value.trim()
+  const q = val.trim()
   if (q.length < 3) {
     suggestions.value = []
     showSuggestions.value = false
     return
   }
-  debounceTimer = setTimeout(async () => {
-    try {
-      const query = encodeURIComponent(q)
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&countrycodes=fr`,
-        { headers: { 'Accept-Language': 'fr' } },
-      )
-      suggestions.value = await res.json()
-      showSuggestions.value = suggestions.value.length > 0
-    } catch {
-      suggestions.value = []
-    }
-  }, 350)
-}
+  debounceTimer = setTimeout(() => searchAddresses(q), 350)
+})
 
 function selectSuggestion(suggestion: any) {
   subLat.value = parseFloat(suggestion.lat)
@@ -145,7 +153,7 @@ async function geocodeAddress() {
     const query = encodeURIComponent(subAddress.value.trim())
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=fr`,
-      { headers: { 'Accept-Language': 'fr' } },
+      { headers: NOMINATIM_HEADERS },
     )
     const results = await res.json()
     if (results.length === 0) {
@@ -307,7 +315,6 @@ async function handleDeleteSubscription(id: string) {
               placeholder="Saisir une adresse…"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
               autocomplete="off"
-              @input="onAddressInput"
               @focus="suggestions.length > 0 && (showSuggestions = true)"
               @blur="onAddressBlur"
               @keyup.enter.prevent="geocodeAddress"
@@ -325,14 +332,6 @@ async function handleDeleteSubscription(id: string) {
                 {{ simplifyAddress(s.display_name) }}
               </li>
             </ul>
-            <button
-              v-if="subLat !== null && subLng !== null && !subAddress.trim()"
-              type="button"
-              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              @click="subLat = null; subLng = null"
-            >
-              ✕
-            </button>
           </div>
           <p v-if="geocodeError" class="text-xs text-red-600 dark:text-red-400">{{ geocodeError }}</p>
 

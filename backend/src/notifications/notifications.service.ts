@@ -45,6 +45,10 @@ export class NotificationsService {
       data: { userId, type, data: JSON.stringify(data) },
     });
 
+    // §6.11 : pas d'email/WhatsApp pour les signaux d'intérêt — c'est
+    // une info cumulative, pas un événement nécessitant une alerte.
+    if (type === NotificationType.RESERVATION_CREATED) return;
+
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
 
