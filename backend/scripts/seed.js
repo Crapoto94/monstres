@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = [
   { key: 'ranking_weight_popularity', value: '0.25', type: 'FLOAT' },
   { key: 'ranking_weight_recency', value: '0.15', type: 'FLOAT' },
   { key: 'ranking_weight_trust', value: '0.1', type: 'FLOAT' },
+  { key: 'pwa_enabled', value: 'true', type: 'BOOLEAN' },
 ];
 
 const DEFAULT_CATEGORIES = [

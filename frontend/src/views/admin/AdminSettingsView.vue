@@ -51,8 +51,21 @@ async function onSave(setting: AdminSetting) {
         class="rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
       >
         <p class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ setting.key }}</p>
-        <div class="mt-1 flex gap-2">
+        <div class="mt-1 flex items-center gap-2">
+          <label
+            v-if="setting.type === 'BOOLEAN'"
+            class="flex flex-1 items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+          >
+            <input
+              type="checkbox"
+              :checked="drafts[setting.key] === 'true'"
+              class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700"
+              @change="drafts[setting.key] = ($event.target as HTMLInputElement).checked ? 'true' : 'false'"
+            />
+            {{ drafts[setting.key] === 'true' ? 'Activé' : 'Désactivé' }}
+          </label>
           <input
+            v-else
             v-model="drafts[setting.key]"
             type="text"
             class="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"

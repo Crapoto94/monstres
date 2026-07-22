@@ -5,6 +5,7 @@ import { fetchItems, type Item } from '@/services/items'
 import { formatRelativeTime } from '@/utils/time'
 import { useAuthStore } from '@/stores/auth'
 import heroImage from '@/assets/hero-monstres.jpg'
+import logo from '@/assets/logo-transparent.png'
 
 const auth = useAuthStore()
 
@@ -79,32 +80,35 @@ function coverPhoto(item: Item) {
 
 <template>
   <section class="flex-1">
-    <!-- Hero -->
-    <div class="relative h-44 w-full overflow-hidden rounded-b-3xl shadow-md">
-      <img :src="heroImage" alt="" class="h-full w-full object-cover object-[center_25%]" />
-      <div class="absolute inset-0 bg-gradient-to-t from-brand-900/85 via-brand-900/20 to-transparent"></div>
-      <div class="absolute inset-x-0 bottom-0 p-4">
-        <h1 class="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Les Monstres</h1>
-        <p class="text-sm text-brand-50/90">Repère, réserve, récupère — le réemploi près de chez toi.</p>
+    <!-- Header fixe : logo + profil/connexion -->
+    <div class="sticky top-0 z-10 flex items-center justify-between bg-white/90 px-4 py-3 backdrop-blur dark:bg-gray-900/90">
+      <div class="flex items-center gap-2">
+        <img :src="logo" alt="Les Monstres" class="h-8 w-8 object-contain" />
+        <h1 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100">Les Monstres</h1>
       </div>
-      <!-- Avatar utilisateur connecté -->
       <RouterLink
         v-if="auth.isAuthenticated && auth.user"
         to="/profil"
-        class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/30 px-2.5 py-1 backdrop-blur-sm"
+        class="flex items-center gap-2"
       >
         <div
-          class="flex h-7 w-7 items-center justify-center rounded-full text-sm"
-          :class="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http')) ? '' : 'bg-white/20'"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-sm"
+          :class="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"
         >
-          <img v-if="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http'))" :src="auth.user.avatar" class="h-7 w-7 rounded-full object-cover" alt="" />
-          <span v-else class="text-white">{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
+          <img v-if="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http'))" :src="auth.user.avatar" class="h-8 w-8 rounded-full object-cover" alt="" />
+          <span v-else>{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
         </div>
-        <span class="max-w-[8rem] truncate text-xs font-medium text-white">{{ auth.user.name }}</span>
+      </RouterLink>
+      <RouterLink
+        v-else
+        to="/connexion"
+        class="rounded-full bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700"
+      >
+        Se connecter
       </RouterLink>
     </div>
 
-    <div class="p-4">
+    <div class="px-4 pt-3">
       <div class="flex items-center justify-between gap-2">
         <select
           v-model="categoryId"
@@ -204,8 +208,16 @@ function coverPhoto(item: Item) {
           Suivant
         </button>
       </div>
+    </div>
 
-      <p class="mt-8 text-center text-xs text-gray-300 dark:text-gray-700">Les Monstres v{{ appVersion }}</p>
+    <!-- Photo hero en bas de page -->
+    <div class="relative mt-6 h-48 w-full overflow-hidden rounded-t-3xl">
+      <img :src="heroImage" alt="" class="h-full w-full object-cover object-[center_25%]" />
+      <div class="absolute inset-0 bg-gradient-to-b from-brand-900/40 via-transparent to-brand-900/80"></div>
+      <div class="absolute inset-x-0 bottom-0 p-4 text-center">
+        <p class="text-xs text-brand-50/80">Repère, réserve, récupère — le réemploi près de chez toi.</p>
+        <p class="mt-1 text-[10px] text-brand-100/50">Les Monstres v{{ appVersion }}</p>
+      </div>
     </div>
   </section>
 </template>
