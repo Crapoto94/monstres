@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
+import { resolveAvatarUrl } from '../common/avatar.util';
 import type { User } from '../generated/prisma/client';
 
 export interface SafeUser {
@@ -46,22 +47,9 @@ export class UsersService {
     private readonly config: ConfigService,
   ) {}
 
-  /**
-   * Résout la valeur brute stockée en base vers ce que le frontend doit
-   * afficher : un emoji reste tel quel, une URL absolue (avatar Google/
-   * Facebook) reste telle quelle, un chemin relatif d'upload local
-   * (`avatars/{userId}/{fichier}`, cf. `ImageService.processAvatar`) est
-   * préfixé par `IMG_BASE_URL` — même logique que les photos de Monstres
-   * dans `ItemsService`.
-   */
   private resolveAvatar(avatar: string | null): string | null {
-    if (!avatar) return null;
-    if (/^https?:\/\//.test(avatar)) return avatar;
-    if (avatar.startsWith('avatars/')) {
-      const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
-      return `${imgBaseUrl}/${avatar}`;
-    }
-    return avatar;
+    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+    return resolveAvatarUrl(avatar, imgBaseUrl);
   }
 
   /** Profil complet de l'utilisateur connecté (exclut password et tokens). */

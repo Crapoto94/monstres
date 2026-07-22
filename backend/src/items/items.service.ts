@@ -12,6 +12,7 @@ import { ScoringService, ScoringEventType } from '../scoring/scoring.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { haversineKm } from '../common/geo.util';
+import { resolveAvatarUrl } from '../common/avatar.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ReservationStatus, VoteType, NotificationType, UserRole } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -367,7 +368,12 @@ export class ItemsService {
     );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { trustScore: _, ...userWithoutTrust } = item.user;
-    const activeReservation = item.reservations?.[0] ?? null;
+    const activeReservation = item.reservations?.[0]
+      ? {
+          ...item.reservations[0],
+          user: { ...item.reservations[0].user, avatar: resolveAvatarUrl(item.reservations[0].user.avatar, imgBaseUrl) },
+        }
+      : null;
 
     return {
       ...item,
@@ -377,7 +383,7 @@ export class ItemsService {
       distance: distanceKm,
       hasVoted,
       hasReported,
-      user: userWithoutTrust,
+      user: { ...userWithoutTrust, avatar: resolveAvatarUrl(userWithoutTrust.avatar, imgBaseUrl) },
       activeReservation,
       photos: item.photos.map((photo) => ({
         ...photo,

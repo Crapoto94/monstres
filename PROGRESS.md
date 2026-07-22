@@ -7,9 +7,9 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.6 — 3 correctifs après premier
-test réel de connexion Facebook : scope `email` manquant, avatar OAuth/
-upload local affiché en texte brut au lieu d'une image)
+Dernière mise à jour : **2026-07-22** (v0.3.7 — avatar emoji cassé sur
+`/communaute`, et PWA qui restait bloquée sur un ancien build en
+production après déploiement)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -2055,6 +2055,84 @@ Deux bugs distincts empilés :
   `image/webp` confirmé), et affichage vérifié en navigateur (cercle avatar
   au lieu du texte brut). Compte de test supprimé après vérification.
 - [x] Build backend + frontend sans erreur après les 2 correctifs.
+
+---
+
+## Avatar emoji cassé sur /communaute, et PWA bloquée sur un ancien build (v0.3.7)
+
+L'utilisateur a demandé d'améliorer graphiquement les boutons Google/
+Facebook de `/connexion` ("boutons et pas des simples liens"), puis a
+remonté que les avatars ne s'affichaient plus du tout sur
+`https://monstres.fbc.fr/communaute` (seules les photos personnelles ou
+Facebook fonctionnaient).
+
+### 1. Avatar emoji cassé sur la page Communauté
+Même bug que celui déjà corrigé sur `/profil` en v0.3.6, mais oublié dans
+`CommunityView.vue` : `<img v-if="member.avatar" :src="member.avatar">`
+traite n'importe quelle valeur non nulle comme une URL d'image, y compris
+un emoji (`"🦊"`) choisi via le sélecteur d'avatar — `<img src="🦊">` est
+une image cassée. Seuls les avatars qui sont *réellement* des URLs (upload
+local résolu par `UsersService.resolveAvatar()`, ou photo Google/Facebook)
+s'affichaient correctement, d'où l'observation de l'utilisateur.
+- **Correctif** : nouvelle fonction `isImageAvatar()` (même regex
+  `/^(\/|https?:\/\/)/` que `ProfileView.vue`) pour distinguer une URL
+  d'un emoji ; repli sur l'affichage de l'emoji (au lieu des seules
+  initiales) si l'avatar n'est pas une image.
+- **Testé** : compte de test avec avatar emoji 🦊 créé via API, confirmé
+  affiché correctement sur `/communaute` en navigateur, compte supprimé
+  après vérification.
+
+### 2. La demande initiale ("boutons pas assez visibles") était en fait un problème de cache PWA
+En comparant le rendu local (`localhost:5173/connexion` : logo, bouton
+teal, bouton Google bordé, bouton Facebook bleu — déjà correctement
+stylés depuis la Phase 11) avec la production (`monstres.fbc.fr/connexion`
+via le navigateur intégré) : **la production affichait l'ancienne page
+violette sans logo ni boutons Google/Facebook**, alors que le
+`index.html` livré (favicon, `theme-color: #2a7877`) correspondait bien
+au tout dernier design. Diagnostic : un **service worker actif restait
+bloqué sur l'ancien bundle précaché** et ne se mettait jamais à jour tout
+seul — après `navigator.serviceWorker.getRegistrations()[0].unregister()`
++ vidage des caches + rechargement, la page affichait immédiatement le
+design à jour (boutons compris). Donc **le code de style était déjà bon
+depuis le début** — ce n'était pas un bug graphique mais un bug de mise à
+jour de la PWA qui peut affecter n'importe quel visiteur ayant déjà ouvert
+le site avant un déploiement.
+- **Cause** : `registerType: 'autoUpdate'` était configuré dans
+  `vite.config.ts`, mais **le helper `virtual:pwa-register` n'était jamais
+  importé/appelé nulle part dans le code** (`frontend/src/main.ts` ne
+  faisait qu'un `app.mount('#app')`). Sans cet appel, le navigateur
+  enregistre bien le service worker (script auto-injecté par défaut), et
+  le nouveau SW s'active bien en tâche de fond (skipWaiting/clientsClaim
+  activés par `autoUpdate`), mais **rien ne recharge la page pour que
+  l'onglet déjà ouvert prenne la nouvelle version** — un onglet resté
+  ouvert (ou une PWA installée jamais fermée) peut rester indéfiniment sur
+  l'ancien bundle après un déploiement.
+- **Correctif** : `frontend/src/main.ts` appelle maintenant
+  `registerSW({ immediate: true, onNeedRefresh() { updateSW(true) } })`
+  (import `virtual:pwa-register`) — dès qu'une nouvelle version est
+  détectée, elle est activée et la page se recharge automatiquement, sans
+  attendre une fermeture manuelle de l'onglet. Déclaration de type ajoutée
+  (`/// <reference types="vite-plugin-pwa/client" />` dans
+  `vite-env.d.ts`) pour que `vue-tsc` résolve le module virtuel.
+- **Testé** : build de production servi en local (`vite preview`),
+  service worker enregistré sans erreur console, présence confirmée du
+  chunk `workbox-window` dans le build (preuve que `registerSW()` est bien
+  utilisé). Impossible de simuler un vrai cycle "ancien SW → nouveau SW"
+  en local sans deux déploiements distincts — la garantie vient de la
+  logique standard de `registerSW`/`workbox-window`, largement éprouvée.
+- **Nginx déjà correct** (`frontend/nginx.conf`) : `sw.js` est bien servi
+  en `Cache-Control: no-cache` — ce n'était donc pas un problème de cache
+  HTTP côté reverse-proxy, seulement l'absence de rechargement côté client
+  une fois la nouvelle version détectée.
+- [x] Build backend + frontend sans erreur.
+
+### À surveiller après ce déploiement
+Ce correctif ne s'applique qu'aux **futurs** déploiements : la version
+actuellement en production doit encore être mise à jour une première fois
+"à l'ancienne" (redéploiement normal) pour que les visiteurs récupèrent
+enfin ce nouveau service worker auto-actualisant. Une fois ce déploiement
+fait, les suivants ne devraient plus jamais laisser un visiteur bloqué sur
+une ancienne version.
 
 ---
 

@@ -95,9 +95,9 @@ function coverPhoto(item: Item) {
       >
         <div
           class="flex h-7 w-7 items-center justify-center rounded-full text-sm"
-          :class="auth.user.avatar?.startsWith('/') ? '' : 'bg-white/20'"
+          :class="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http')) ? '' : 'bg-white/20'"
         >
-          <img v-if="auth.user.avatar?.startsWith('/')" :src="auth.user.avatar" class="h-7 w-7 rounded-full object-cover" alt="" />
+          <img v-if="auth.user.avatar && (auth.user.avatar.startsWith('/') || auth.user.avatar.startsWith('http'))" :src="auth.user.avatar" class="h-7 w-7 rounded-full object-cover" alt="" />
           <span v-else class="text-white">{{ auth.user.avatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
         </div>
         <span class="max-w-[8rem] truncate text-xs font-medium text-white">{{ auth.user.name }}</span>
@@ -139,14 +139,6 @@ function coverPhoto(item: Item) {
           >
             <div class="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
               <img v-if="coverPhoto(item)" :src="coverPhoto(item)!" class="h-full w-full object-cover" alt="" />
-              <!-- Avatar du déposant sur la photo -->
-              <div
-                class="absolute right-1 bottom-1 flex h-6 w-6 items-center justify-center rounded-full text-[11px] ring-2 ring-white dark:ring-gray-900"
-                :class="item.user.avatar?.startsWith('/') ? '' : 'bg-violet-600 text-white'"
-              >
-                <img v-if="item.user.avatar?.startsWith('/')" :src="item.user.avatar" class="h-6 w-6 rounded-full object-cover" alt="" />
-                <span v-else>{{ item.user.avatar ?? item.user.name.charAt(0).toUpperCase() }}</span>
-              </div>
             </div>
             <div class="min-w-0 flex-1">
               <p class="flex items-center gap-2">
@@ -177,6 +169,16 @@ function coverPhoto(item: Item) {
                   {{ item.category.name }}
                 </span>
                 <span class="text-[11px] text-gray-400 dark:text-gray-500">par {{ item.user.name }}</span>
+              </div>
+            </div>
+            <!-- Avatar déposant -->
+            <div class="flex flex-shrink-0 flex-col items-center justify-center gap-1 self-center">
+              <div
+                class="flex h-8 w-8 items-center justify-center rounded-full text-xs"
+                :class="item.user.avatar && (item.user.avatar.startsWith('/') || item.user.avatar.startsWith('http')) ? '' : 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'"
+              >
+                <img v-if="item.user.avatar && (item.user.avatar.startsWith('/') || item.user.avatar.startsWith('http'))" :src="item.user.avatar" class="h-8 w-8 rounded-full object-cover" alt="" />
+                <span v-else>{{ item.user.avatar ?? item.user.name.charAt(0).toUpperCase() }}</span>
               </div>
             </div>
           </RouterLink>
