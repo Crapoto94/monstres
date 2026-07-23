@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.22',
+    date: '23 juillet 2026',
+    changes: [
+      'Fix : le service worker des notifications push pouvait rester bloqué sur une ancienne version',
+    ],
+  },
+  {
     version: '0.4.21',
     date: '23 juillet 2026',
     changes: [

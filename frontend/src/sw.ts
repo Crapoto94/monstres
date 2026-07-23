@@ -1,8 +1,19 @@
 /// <reference lib="webworker" />
+import { clientsClaim } from 'workbox-core'
 import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare const self: ServiceWorkerGlobalScope
+
+// Avec generateSW (avant l'ajout du push), Workbox injectait automatiquement
+// skipWaiting()/clientsClaim() pour registerType 'autoUpdate'. En écrivant le
+// service worker à la main (injectManifest), c'est à nous de le faire — sans
+// ça, un nouveau service worker reste bloqué en "waiting" tant qu'un ancien
+// onglet/instance de la PWA tourne encore (fréquent sur Android, où fermer
+// l'appli ne la termine pas forcément), et rien ne semble jamais se mettre à
+// jour même après avoir fermé/rouvert l'appli.
+self.skipWaiting()
+clientsClaim()
 
 const manifestEntries = self.__WB_MANIFEST
 precacheAndRoute(manifestEntries)

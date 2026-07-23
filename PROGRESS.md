@@ -3094,6 +3094,37 @@ l'activer sans un geste explicite de l'utilisateur (opt-in, cf. RGPD).
   sans ces variables, le toggle logge simplement l'envoi au lieu d'y
   procéder (même esprit que les autres canaux sans clé configurée).
 
+### Correctif : toggle bloqué en "grisé" sur Android après déploiement (v0.4.22)
+Après ajout des vraies clés VAPID en prod (backend confirmé opérationnel :
+`GET /push/public-key` renvoie bien la clé), le toggle restait grisé/inerte
+sur téléphone Android (Chrome et Samsung Internet), permission acceptée,
+aucun message d'erreur affiché, comportement inchangé après avoir fermé et
+rouvert l'appli.
+
+**Bug identifié** : `generateSW` (utilisé avant l'ajout du push) injecte
+automatiquement `self.skipWaiting()`/`clientsClaim()` quand
+`registerType: 'autoUpdate'` est utilisé. En passant à `injectManifest`
+(service worker écrit à la main, nécessaire pour les listeners
+`push`/`notificationclick`), cet ajout automatique disparaît — sans lui,
+un nouveau service worker reste bloqué en "waiting" tant qu'une instance de
+l'ancien tourne encore quelque part, ce qui sur Android peut persister même
+après avoir "fermé" l'appli (souvent juste mise en arrière-plan, pas
+réellement terminée). `sw.ts` appelle maintenant `self.skipWaiting()` et
+`clientsClaim()` en tête de fichier pour forcer la prise de contrôle
+immédiate par la nouvelle version, conformément à l'esprit `autoUpdate`.
+- **Testé** : build de production propre, `precache 48 entries` généré
+  normalement (le fix n'affecte que l'ordre d'activation, pas le contenu du
+  cache). Non re-testé sur l'appareil Android réel de l'utilisateur au
+  moment d'écrire ceci (nécessite son retour après déploiement).
+- **Piste alternative si le problème persiste après ce correctif** :
+  vérifier le réglage Android (pas navigateur) Réglages → Applications →
+  Chrome / Samsung Internet → Notifications → doit être activé. Depuis
+  Android 13, c'est une permission système séparée de celle demandée par
+  le site via `Notification.requestPermission()` — si elle est refusée au
+  niveau de l'appli, `pushManager.subscribe()` peut rester bloqué sans
+  jamais rejeter la promesse côté JS, ce qui donnerait exactement ce
+  symptôme (toggle bloqué en chargement silencieux, sans message d'erreur).
+
 ---
 
 ## Phases suivantes
