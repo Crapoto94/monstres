@@ -2802,6 +2802,26 @@ obtenus), tout en gardant un moyen pour l'utilisateur de tester lui-même.
 
 ---
 
+## Notifications WhatsApp masquées pour les utilisateurs (ADMIN/SUPER_ADMIN seulement)
+
+Même logique que la connexion Facebook masquée ([[Connexion Facebook masquée
+au public]] plus haut) : l'app WhatsApp Business n'est pas encore validée
+par Meta, donc le bloc "Notifications WhatsApp" du profil (numéro de
+téléphone + activation) est réservé aux comptes `ADMIN`/`SUPER_ADMIN`
+(`auth.isAdmin`) pour permettre les tests, remplacé par un encart
+"Bientôt disponible" pour les utilisateurs normaux — même style que le
+placeholder Facebook.
+- **`ProfileView.vue`** uniquement modifié (frontend) : `v-if="auth.isAdmin"`
+  sur le bloc fonctionnel, `v-else` pour le placeholder. Aucun changement
+  backend — `WhatsAppService`/réglage `whatsapp_test_mode` restent
+  inchangés, un utilisateur ne peut de toute façon pas activer WhatsApp
+  sans passer par cette UI.
+- **Testé** : compte jetable normal → encart grisé "Bientôt disponible" ;
+  même compte promu `ADMIN` → bloc complet (champ téléphone, toggle,
+  bouton Sauver) visible normalement.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.16',
+    date: '23 juillet 2026',
+    changes: [
+      'Notifications WhatsApp réservées aux comptes admin le temps de la validation Meta',
+    ],
+  },
+  {
     version: '0.4.15',
     date: '23 juillet 2026',
     changes: [
