@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 /** Template de secours fourni par défaut par Meta — toujours pré-approuvé, sans variable. */
 const TEST_TEMPLATE_NAME = 'hello_world';
@@ -34,20 +35,22 @@ export class WhatsAppService {
   constructor(
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async sendNotification(to: string, message: string): Promise<void> {
     const accessToken = this.config.get<string>('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+    const testMode = await this.settings.getBoolean('whatsapp_test_mode', false);
 
     if (!accessToken || !phoneNumberId) {
       this.logger.warn(
         `WHATSAPP_ACCESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID absent — message WhatsApp non envoyé (loggé pour le dev).\nÀ: ${to}\n${message}`,
       );
+      await this.logMessage({ to, message, templateName: TEST_TEMPLATE_NAME, testMode, status: 'SKIPPED' });
       return;
     }
 
-    const testMode = await this.settings.getBoolean('whatsapp_test_mode', false);
     const templateName = testMode
       ? TEST_TEMPLATE_NAME
       : this.config.get<string>('WHATSAPP_TEMPLATE_NAME', 'monstres_notification');
@@ -59,28 +62,53 @@ export class WhatsAppService {
       this.logger.warn(`whatsapp_test_mode actif — envoi de "hello_world" au lieu du vrai contenu à ${to}.`);
     }
 
-    const response = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: to.replace(/^\+/, ''),
-        type: 'template',
-        template: {
-          name: templateName,
-          language: { code: languageCode },
-          ...(testMode ? {} : { components: [{ type: 'body', parameters: [{ type: 'text', text: message }] }] }),
+    try {
+      const response = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: to.replace(/^\+/, ''),
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: languageCode },
+            ...(testMode ? {} : { components: [{ type: 'body', parameters: [{ type: 'text', text: message }] }] }),
+          },
+        }),
+      });
 
-    if (!response.ok) {
-      const body = await response.text();
-      this.logger.error(`Échec envoi WhatsApp (${response.status}): ${body}`);
-      throw new Error('WHATSAPP_SEND_FAILED');
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.error(`Échec envoi WhatsApp (${response.status}): ${body}`);
+        await this.logMessage({ to, message, templateName, testMode, status: 'FAILED', error: `HTTP ${response.status}: ${body}` });
+        throw new Error('WHATSAPP_SEND_FAILED');
+      }
+
+      await this.logMessage({ to, message, templateName, testMode, status: 'SENT' });
+    } catch (error) {
+      if ((error as Error).message !== 'WHATSAPP_SEND_FAILED') {
+        await this.logMessage({ to, message, templateName, testMode, status: 'FAILED', error: (error as Error).message });
+      }
+      throw error;
+    }
+  }
+
+  private async logMessage(entry: {
+    to: string;
+    message: string;
+    templateName: string;
+    testMode: boolean;
+    status: 'SENT' | 'FAILED' | 'SKIPPED';
+    error?: string;
+  }): Promise<void> {
+    try {
+      await this.prisma.whatsAppLog.create({ data: entry });
+    } catch (error) {
+      this.logger.error("Échec écriture du journal WhatsApp", error as Error);
     }
   }
 }

@@ -83,6 +83,12 @@ enum EmailLogStatus {
   SKIPPED
 }
 
+enum WhatsAppLogStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Modèles
 // ─────────────────────────────────────────────────────────────────────────
@@ -400,6 +406,26 @@ model EmailLog {
   @@index([status])
   @@index([createdAt])
   @@map("email_logs")
+}
+
+// Journal des messages WhatsApp envoyés (ou tentés) via WhatsAppService,
+// réservé aux SUPER_ADMIN. Inclut aussi les envois en `whatsapp_test_mode`
+// (template `hello_world`, tant que le vrai template n'est pas encore
+// approuvé par Meta) — `testMode` permet de les distinguer des envois réels.
+model WhatsAppLog {
+  id           String            @id @default(cuid())
+  to           String
+  message      String
+  templateName String
+  testMode     Boolean           @default(false)
+  status       WhatsAppLogStatus
+  error        String?
+  createdAt    DateTime          @default(now())
+
+  @@index([to])
+  @@index([status])
+  @@index([createdAt])
+  @@map("whatsapp_logs")
 }
 
 model TutorialPage {

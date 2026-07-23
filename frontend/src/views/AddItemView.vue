@@ -272,64 +272,93 @@ function resetAndGoHome() {
 </script>
 
 <template>
-  <section class="flex flex-1 flex-col p-4">
+  <section class="flex flex-1 flex-col p-4 pb-24">
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Ajouter un Monstre</h1>
 
-    <div v-if="publishedItem" class="mt-6 flex flex-col gap-3">
-      <p class="text-green-600 dark:text-green-400">Ton Monstre « {{ publishedItem.title }} » est publié !</p>
+    <div v-if="publishedItem" class="mt-6 flex flex-col gap-4">
+      <div class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
+        <p class="text-sm font-medium text-green-700 dark:text-green-300">
+          ✓ Ton Monstre « {{ publishedItem.title }} » est publié !
+        </p>
+      </div>
 
       <template v-if="shareOnFacebook && facebookShareAvailable">
         <button
           v-if="!facebookShareTriggered"
           type="button"
-          class="self-start rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 dark:border-brand-700 dark:text-brand-300"
+          class="self-start rounded-xl border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
           @click="shareToFacebookGroup(publishedItem)"
         >
           📘 Partager dans le groupe Facebook
         </button>
         <p v-else class="text-sm text-gray-600 dark:text-gray-300">
-          📘 Nom, adresse et lien copiés dans le presse-papier — colle-les (Ctrl/Cmd+V) dans la zone de publication du groupe Facebook.
+          📘 Nom, adresse et lien copiés — colle-les (Ctrl/Cmd+V) dans le groupe.
           <a :href="facebookGroupUrl" target="_blank" rel="noopener" class="font-medium text-brand-600 underline dark:text-brand-400">
-            Ouvrir le groupe Facebook
+            Ouvrir le groupe
           </a>
-          si l'onglet ne s'est pas ouvert automatiquement.
         </p>
       </template>
 
-      <button class="self-start rounded-lg bg-brand-600 px-4 py-2 text-sm text-white" @click="resetAndGoHome">
+      <button class="self-start rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-700" @click="resetAndGoHome">
         Retour à l'accueil
       </button>
     </div>
 
     <template v-else>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Étape {{ step }} / 4</p>
+      <!-- Stepper -->
+      <nav class="mt-5 flex items-center gap-1" aria-label="Étapes">
+        <template v-for="(s, i) in [
+          { n: 1, label: 'Photo', icon: '📷' },
+          { n: 2, label: 'Position', icon: '📍' },
+          { n: 3, label: 'Infos', icon: '✏️' },
+          { n: 4, label: 'Publier', icon: '🚀' },
+        ]" :key="s.n">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all"
+            :class="
+              step === s.n
+                ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30'
+                : step > s.n
+                  ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+            "
+            @click="s.n < step ? (step = s.n) : undefined"
+          >
+            <span v-if="step > s.n" class="text-[10px]">✓</span>
+            <span v-else>{{ s.icon }}</span>
+            <span class="hidden sm:inline">{{ s.label }}</span>
+          </button>
+          <span v-if="i < 3" class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>
+        </template>
+      </nav>
 
       <!-- Étape 1 : Photos -->
-      <div v-if="step === 1" class="mt-4 flex flex-col gap-3">
-        <p class="text-sm text-gray-600 dark:text-gray-300">1 à {{ MAX_PHOTOS }} photos.</p>
+      <div v-if="step === 1" class="mt-5 flex flex-col gap-4">
+        <p class="text-sm text-gray-500 dark:text-gray-400">1 à {{ MAX_PHOTOS }} photos du Monstre.</p>
 
         <div class="flex flex-wrap gap-3">
           <div
             v-for="(preview, index) in photoPreviews"
             :key="preview"
-            class="relative h-24 w-24 overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700"
+            class="relative h-28 w-28 overflow-hidden rounded-xl border border-gray-200 shadow-sm dark:border-gray-700"
           >
             <img :src="preview" class="h-full w-full object-cover" alt="" />
             <button
               type="button"
-              class="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white"
+              class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white transition-colors hover:bg-black/80"
               @click="removePhoto(index)"
             >
               ✕
             </button>
           </div>
 
-          <!-- Bouton principal : appareil photo -->
           <label
             v-if="photos.length < MAX_PHOTOS"
-            class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-brand-400 bg-brand-50 text-sm font-medium text-brand-600 dark:bg-brand-950 dark:text-brand-400"
+            class="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 text-sm font-medium text-brand-600 transition-colors hover:border-brand-400 hover:bg-brand-100 dark:border-brand-700 dark:bg-brand-950 dark:text-brand-400"
           >
-            📷 Photo
+            <span class="text-2xl">📷</span>
+            <span class="text-xs">Photo</span>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -340,12 +369,12 @@ function resetAndGoHome() {
             />
           </label>
 
-          <!-- Option galerie (sans capture) -->
           <label
             v-if="photos.length < MAX_PHOTOS"
-            class="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-400 text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400"
+            class="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-300 text-sm text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:bg-gray-800"
           >
-            🖼️ Galerie
+            <span class="text-2xl">🖼️</span>
+            <span class="text-xs">Galerie</span>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -360,16 +389,16 @@ function resetAndGoHome() {
       </div>
 
       <!-- Étape 2 : Position -->
-      <div v-else-if="step === 2" class="mt-4 flex flex-col gap-3">
-        <div ref="mapContainer" class="h-64 w-full rounded-lg border border-gray-300 dark:border-gray-700"></div>
+      <div v-else-if="step === 2" class="mt-5 flex flex-col gap-3">
+        <div ref="mapContainer" class="h-64 w-full rounded-xl border border-gray-200 shadow-sm dark:border-gray-700"></div>
 
         <button
           type="button"
-          class="self-start text-sm text-brand-600 dark:text-brand-400"
+          class="self-start rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-100 dark:bg-brand-950 dark:text-brand-400 dark:hover:bg-brand-900"
           :disabled="locating"
           @click="locateMe"
         >
-          {{ locating ? 'Localisation…' : 'Utiliser ma position actuelle' }}
+          {{ locating ? '⏳ Localisation…' : '📍 Utiliser ma position' }}
         </button>
 
         <div class="relative">
@@ -377,16 +406,16 @@ function resetAndGoHome() {
             v-model="addressQuery"
             type="text"
             placeholder="Rechercher une adresse…"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+            class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm shadow-sm transition-colors focus:border-brand-400 focus:ring-1 focus:ring-brand-400 dark:border-gray-700 dark:bg-gray-900"
           />
           <ul
             v-if="addressResults.length"
-            class="absolute z-10 mt-1 w-full rounded-lg border border-gray-300 bg-white text-sm shadow-lg dark:border-gray-700 dark:bg-gray-900"
+            class="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
           >
             <li
               v-for="result in addressResults"
               :key="result.display_name"
-              class="cursor-pointer px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              class="cursor-pointer px-4 py-2.5 text-sm transition-colors hover:bg-brand-50 dark:hover:bg-gray-800"
               @click="selectAddress(result)"
             >
               {{ result.display_name }}
@@ -395,40 +424,41 @@ function resetAndGoHome() {
         </div>
 
         <p v-if="address" class="text-xs text-gray-500 dark:text-gray-400">
-          Adresse détectée : {{ address }}
+          📍 {{ address }}
         </p>
-        <p v-else class="text-xs text-gray-500 dark:text-gray-400">
-          Déplace le marqueur pour ajuster la position exacte.
+        <p v-else class="text-xs text-gray-400 dark:text-gray-500">
+          Déplace le marqueur ou recherche une adresse.
         </p>
       </div>
 
       <!-- Étape 3 : Informations -->
-      <div v-else-if="step === 3" class="mt-4 flex flex-col gap-4">
-        <label class="flex flex-col gap-1 text-sm text-gray-700 dark:text-gray-300">
-          Nom du Monstre
+      <div v-else-if="step === 3" class="mt-5 flex flex-col gap-4">
+        <label class="flex flex-col gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+          <span class="font-medium">Nom du Monstre</span>
           <input
             v-model="title"
             type="text"
             placeholder="Ex. Canapé gris 3 places"
             required
-            class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm shadow-sm transition-colors focus:border-brand-400 focus:ring-1 focus:ring-brand-400 dark:border-gray-700 dark:bg-gray-900"
           />
         </label>
 
-        <label class="flex flex-col gap-1 text-sm text-gray-700 dark:text-gray-300">
-          Description (optionnelle)
+        <label class="flex flex-col gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+          <span class="font-medium">Description <span class="text-gray-400 dark:text-gray-500">(optionnel)</span></span>
           <textarea
             v-model="description"
             rows="3"
-            class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            placeholder="État, taille, particularités…"
+            class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm shadow-sm transition-colors focus:border-brand-400 focus:ring-1 focus:ring-brand-400 dark:border-gray-700 dark:bg-gray-900"
           ></textarea>
         </label>
 
-        <label class="flex flex-col gap-1 text-sm text-gray-700 dark:text-gray-300">
-          Catégorie (optionnelle)
+        <label class="flex flex-col gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+          <span class="font-medium">Catégorie <span class="text-gray-400 dark:text-gray-500">(optionnel)</span></span>
           <select
             v-model="categoryId"
-            class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm shadow-sm transition-colors focus:border-brand-400 focus:ring-1 focus:ring-brand-400 dark:border-gray-700 dark:bg-gray-900"
           >
             <option value="">—</option>
             <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -439,35 +469,39 @@ function resetAndGoHome() {
       </div>
 
       <!-- Étape 4 : Publication -->
-      <div v-else class="mt-4 flex flex-col gap-3">
-        <div class="flex gap-2">
-          <img
-            v-for="preview in photoPreviews"
-            :key="preview"
-            :src="preview"
-            class="h-16 w-16 rounded-lg object-cover"
-            alt=""
-          />
+      <div v-else class="mt-5 flex flex-col gap-4">
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+          <div class="flex gap-2">
+            <img
+              v-for="preview in photoPreviews"
+              :key="preview"
+              :src="preview"
+              class="h-16 w-16 rounded-lg object-cover shadow-sm"
+              alt=""
+            />
+          </div>
+          <p class="mt-2 font-semibold text-gray-900 dark:text-gray-100">{{ title }}</p>
+          <p v-if="description" class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ description }}</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <span v-if="selectedCategoryName" class="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+              {{ selectedCategoryName }}
+            </span>
+            <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              📍 {{ latitude.toFixed(4) }}, {{ longitude.toFixed(4) }}
+            </span>
+          </div>
+          <p v-if="address" class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+            {{ address }}
+          </p>
         </div>
-        <p class="text-gray-900 dark:text-gray-100">{{ title }}</p>
-        <p v-if="description" class="text-sm text-gray-600 dark:text-gray-300">{{ description }}</p>
-        <p v-if="selectedCategoryName" class="text-sm text-gray-500 dark:text-gray-400">
-          Catégorie : {{ selectedCategoryName }}
-        </p>
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          Position : {{ latitude.toFixed(5) }}, {{ longitude.toFixed(5) }}
-        </p>
-        <p v-if="address" class="text-xs text-gray-400 dark:text-gray-500">
-          {{ address }}
-        </p>
 
-        <div v-if="facebookShareAvailable" class="flex flex-col gap-1">
-          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <div v-if="facebookShareAvailable" class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <label class="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-300">
             <input v-model="shareOnFacebook" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700" />
-            Partager aussi dans le groupe Facebook
+            Partager dans le groupe Facebook
           </label>
-          <p v-if="shareOnFacebook" class="pl-6 text-xs text-gray-400 dark:text-gray-500">
-            Après publication, un bouton copiera le nom, l'adresse et le lien du Monstre — il faudra les coller (Ctrl/Cmd+V) dans la zone de publication du groupe Facebook qui s'ouvrira.
+          <p v-if="shareOnFacebook" class="mt-1 pl-6 text-xs text-gray-400 dark:text-gray-500">
+            Un bouton copiera le texte après publication — il faudra le coller dans le groupe.
           </p>
         </div>
 
@@ -476,21 +510,22 @@ function resetAndGoHome() {
         <button
           type="button"
           :disabled="submitting"
-          class="rounded-lg bg-brand-600 py-2 font-medium text-white disabled:opacity-50"
+          class="rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/30 transition-colors hover:bg-brand-700 disabled:opacity-50"
           @click="publish"
         >
-          {{ submitting ? 'Publication…' : 'Publier' }}
+          {{ submitting ? '⏳ Publication…' : '🚀 Publier' }}
         </button>
       </div>
 
-      <div class="mt-6 flex justify-between">
+      <!-- Navigation bas -->
+      <div class="mt-6 flex items-center justify-between">
         <button
           v-if="step > 1"
           type="button"
-          class="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700"
+          class="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           @click="back"
         >
-          Retour
+          ← Retour
         </button>
         <span v-else></span>
 
@@ -498,10 +533,10 @@ function resetAndGoHome() {
           v-if="step < 4"
           type="button"
           :disabled="!canGoNext"
-          class="rounded-lg bg-brand-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+          class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/30 transition-colors hover:bg-brand-700 disabled:opacity-40"
           @click="next"
         >
-          Suivant
+          Suivant →
         </button>
       </div>
     </template>
