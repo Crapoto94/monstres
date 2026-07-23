@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.18',
+    date: '23 juillet 2026',
+    changes: [
+      'Fix : page d\'erreur brute lors d\'un échec de connexion Google/Facebook (surtout mobile)',
+    ],
+  },
+  {
     version: '0.4.17',
     date: '23 juillet 2026',
     changes: [

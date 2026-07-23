@@ -2861,6 +2861,53 @@ automatique, à la place d'un tiret simple dans le jeton.
 
 ---
 
+## Correctif : page d'erreur brute lors de la connexion Google sur mobile
+
+Signalé par l'utilisateur : connexion Google fonctionne sur PC mais affiche
+un JSON brut sur fond noir (`{"success":false,"error":{"code":
+"INTERNAL_ERROR",...}}`) sur smartphone. Précision cruciale de
+l'utilisateur : en rechargeant/renavigant ensuite vers l'appli sur le même
+téléphone, il est bien connecté — le flux OAuth réussit donc réellement
+quelque part, l'erreur n'empêche pas la connexion elle-même.
+
+**Diagnostic** : `GoogleAuthGuard.canActivate()`/`FacebookAuthGuard.canActivate()`
+ne géraient l'absence de config (`google_unavailable`) qu'en amont, mais
+laissaient `super.canActivate()` (l'échange OAuth réel avec Google/Facebook,
+exécuté par Passport sur la route de callback) sans aucun `try/catch` — un
+rejet de cette promesse remontait donc en exception non gérée jusqu'au
+`HttpExceptionFilter` global, produisant le JSON `INTERNAL_ERROR` brut au
+lieu d'une redirection propre (le `try/catch` existant dans
+`AuthController.handleOAuthCallback()` ne couvre que ce qui se passe
+*après* que la garde a laissé passer la requête — trop tard).
+Explication la plus probable de la connexion malgré l'erreur, et du "PC
+oui, mobile non" : certains navigateurs mobiles rejouent/dupliquent la
+requête sur l'URL de callback OAuth (préchargement, retour réseau,
+double-tap...) — la première requête réussit et pose le cookie, la
+seconde réutilise le même `code` d'autorisation Google (à usage unique),
+que Google rejette, provoquant l'exception non gérée sur cette deuxième
+requête seulement. Précision de l'utilisateur qui confirme cette piste :
+le souci apparaît sur **Chrome Android**, pas sur **Samsung Internet** sur
+le même téléphone — cohérent avec le préchargement de liens agressif de
+Chrome (speculation rules / prerendering), qui peut déclencher une requête
+vers `redirect_uri` avant même l'action réelle de l'utilisateur et ainsi
+"griller" le code à usage unique.
+- **`GoogleAuthGuard`/`FacebookAuthGuard`** : `super.canActivate()`
+  désormais enveloppé dans un `try/catch` (méthode `tryActivate()`),
+  loggant l'erreur réelle côté serveur puis redirigeant vers
+  `/connexion?error=oauth_failed` — même pattern déjà utilisé pour
+  `google_unavailable`/`facebook_unavailable` juste au-dessus, et déjà
+  affiché proprement par `LoginView.vue` (`OAUTH_ERROR_MESSAGES`).
+- **Testé** : build backend propre ; callback appelé avec un `code`
+  invalide en local → redirection propre (pas de crash) — n'a redirigé
+  vers `google_unavailable` plutôt que `oauth_failed` faute de
+  `GOOGLE_CLIENT_SECRET` en dev local (branche différente, mais confirme
+  que le chemin de redirection fonctionne). **Non testé en conditions
+  réelles** : le scénario exact de double requête sur mobile n'est
+  reproductible qu'en production avec de vrais identifiants Google — à
+  confirmer par l'utilisateur que l'écran d'erreur brut a disparu.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
