@@ -403,6 +403,15 @@ async function handleDeleteComment(comment: Comment) {
           <span class="mt-0.5">📍</span>
           <span v-if="shortAddress" class="text-gray-700 dark:text-gray-300">{{ shortAddress }}</span>
           <span v-else class="text-gray-400 dark:text-gray-500">Adresse non renseignée.</span>
+          <a
+            v-if="item.latitude && item.longitude"
+            :href="`geo:${item.latitude},${item.longitude}?q=${item.latitude},${item.longitude}`"
+            target="_blank"
+            rel="noopener"
+            class="ml-auto flex-shrink-0 rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
+          >
+            🧭 Y aller
+          </a>
         </div>
 
         <!-- Récupération validée -->
