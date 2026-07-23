@@ -17,14 +17,18 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      workbox: {
-        // Sans ceci, le service worker intercepte TOUTES les navigations
-        // (mode "navigate") de l'origine, y compris les redirections OAuth
-        // du backend (ex. /api/v1/auth/facebook/callback) — il leur sert le
-        // shell SPA en cache au lieu de les laisser atteindre le vrai
-        // endpoint backend, qui ne pose alors jamais le cookie de session
-        // ni ne redirige : page blanche après connexion Facebook/Google.
-        navigateFallbackDenylist: [/^\/api\//],
+      // injectManifest (service worker écrit à la main, src/sw.ts) au lieu du
+      // generateSW par défaut : nécessaire pour ajouter les listeners `push`
+      // et `notificationclick` des notifications push (opt-in profil), que
+      // Workbox ne génère pas lui-même. Le fallback de navigation SPA
+      // (denylist /api/ pour ne pas casser les redirections OAuth) est donc
+      // maintenant défini directement dans src/sw.ts.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      devOptions: {
+        enabled: true,
+        type: 'module',
       },
       manifest: {
         name: 'Les Monstres',

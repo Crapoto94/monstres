@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.21',
+    date: '23 juillet 2026',
+    changes: [
+      'Notifications push : opt-in dans le profil, reçues même appli fermée',
+    ],
+  },
+  {
     version: '0.4.20',
     date: '23 juillet 2026',
     changes: [

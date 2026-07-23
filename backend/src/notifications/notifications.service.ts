@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { PushService } from '../push/push.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '../generated/prisma/enums';
 
@@ -25,6 +26,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
+    private readonly pushService: PushService,
     private readonly config: ConfigService,
   ) {}
 
@@ -68,6 +70,16 @@ export class NotificationsService {
       } catch (error) {
         this.logger.error(`Échec envoi WhatsApp de notification (${type}) à ${user.phoneNumber}`, error as Error);
       }
+    }
+
+    // Pas de préférence séparée à vérifier : l'abonnement (opt-in explicite
+    // depuis le profil) est lui-même la préférence — sendToUser ne fait
+    // rien si l'utilisateur n'a aucun abonnement actif.
+    try {
+      const payload = this.buildPushPayload(type, data);
+      await this.pushService.sendToUser(userId, payload);
+    } catch (error) {
+      this.logger.error(`Échec envoi push de notification (${type}) à ${userId}`, error as Error);
     }
   }
 
@@ -196,6 +208,46 @@ export class NotificationsService {
       case NotificationType.BADGE_UNLOCKED: {
         const d = data as NotificationData['BADGE_UNLOCKED'];
         return `Bravo, tu as débloqué le badge « ${d.badgeName} » sur Les Monstres !`;
+      }
+    }
+  }
+
+  /** Titre + corps + lien pour la notification système (Web Push) — même contenu que `buildWhatsAppMessage`. */
+  private buildPushPayload(type: NotificationType, data: unknown): { title: string; body: string; url: string } {
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+
+    switch (type) {
+      case NotificationType.RESERVATION_CREATED: {
+        const d = data as NotificationData['RESERVATION_CREATED'];
+        return {
+          title: 'Monstre réservé',
+          body: `${d.reserverName} a réservé ton Monstre « ${d.itemTitle} ».`,
+          url: `${frontendUrl}/monstres/${d.itemId}`,
+        };
+      }
+      case NotificationType.ITEM_COLLECTED: {
+        const d = data as NotificationData['ITEM_COLLECTED'];
+        return {
+          title: 'Monstre récupéré',
+          body: `Ton Monstre « ${d.itemTitle} » a été récupéré par ${d.collectorName}. Merci !`,
+          url: `${frontendUrl}/monstres/${d.itemId}`,
+        };
+      }
+      case NotificationType.NEW_ITEM_NEARBY: {
+        const d = data as NotificationData['NEW_ITEM_NEARBY'];
+        return {
+          title: 'Nouveau Monstre près de chez toi',
+          body: d.itemTitle,
+          url: `${frontendUrl}/monstres/${d.itemId}`,
+        };
+      }
+      case NotificationType.BADGE_UNLOCKED: {
+        const d = data as NotificationData['BADGE_UNLOCKED'];
+        return {
+          title: 'Badge débloqué',
+          body: `Bravo, tu as débloqué le badge « ${d.badgeName} » !`,
+          url: `${frontendUrl}/profil`,
+        };
       }
     }
   }

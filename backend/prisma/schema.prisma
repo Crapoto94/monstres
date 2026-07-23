@@ -151,6 +151,7 @@ model User {
   scoringEvents   ScoringEvent[]
   reports         Report[]
   auditLogs       AuditLog[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -426,6 +427,26 @@ model WhatsAppLog {
   @@index([status])
   @@index([createdAt])
   @@map("whatsapp_logs")
+}
+
+// Abonnement Web Push (opt-in explicite depuis le profil, §"Notifications
+// push"). Un utilisateur peut avoir plusieurs abonnements (un par
+// navigateur/appareil) ; `endpoint` est unique côté navigateur, donc sert
+// de clé pour retrouver/supprimer un abonnement précis. Supprimé
+// automatiquement si l'envoi échoue avec un statut "expiré" (410/404).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 model TutorialPage {

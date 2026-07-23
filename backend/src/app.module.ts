@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { SettingsModule } from './settings/settings.module';
 import { EmailModule } from './email/email.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
+import { PushModule } from './push/push.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
@@ -37,6 +38,7 @@ import { ShareModule } from './share/share.module';
     SettingsModule,
     EmailModule,
     WhatsAppModule,
+    PushModule,
     ImageModule,
     ScoringModule,
     NotificationsModule,

@@ -6,6 +6,7 @@ import { usePwaInstall } from '@/composables/usePwaInstall'
 import { api, type ApiSuccess } from '@/services/api'
 import type { AuthUser } from '@/services/auth'
 import { fetchMyItems, type MyItems, type Item } from '@/services/items'
+import { getCurrentSubscription, isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/services/push'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,6 +30,11 @@ const currentMyItemsList = computed<Item[]>(() => {
   return myItems.value[myItemsTab.value]
 })
 
+const pushSupported = isPushSupported()
+const pushEnabled = ref(false)
+const pushLoading = ref(false)
+const pushError = ref<string | null>(null)
+
 onMounted(async () => {
   if (!auth.isAuthenticated) return
   myItemsLoading.value = true
@@ -39,7 +45,33 @@ onMounted(async () => {
   } finally {
     myItemsLoading.value = false
   }
+
+  if (pushSupported) {
+    try {
+      pushEnabled.value = (await getCurrentSubscription()) !== null
+    } catch {
+      // silencieux — le toggle restera simplement décoché
+    }
+  }
 })
+
+async function onTogglePush() {
+  pushLoading.value = true
+  pushError.value = null
+  try {
+    if (pushEnabled.value) {
+      await unsubscribeFromPush()
+      pushEnabled.value = false
+    } else {
+      await subscribeToPush()
+      pushEnabled.value = true
+    }
+  } catch (e: any) {
+    pushError.value = e.message ?? 'Impossible de modifier les notifications push.'
+  } finally {
+    pushLoading.value = false
+  }
+}
 
 const AVATARS = [
   '😺', '🐶', '🦊', '🐻', '🐼', '🐨', '🦁', '🐮', '🐷', '🐸',
@@ -387,6 +419,31 @@ async function onDeleteAccount() {
             :class="auth.user.emailNotifications ? 'translate-x-6' : 'translate-x-1'"
           />
         </button>
+      </div>
+
+      <!-- Notifications push : opt-in explicite (aucun moyen technique de
+           l'activer sans un clic de l'utilisateur), fonctionne même
+           app/navigateur fermé une fois activées. -->
+      <div v-if="pushSupported" class="mt-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Notifications push</p>
+            <p class="text-xs text-gray-400">Alertes reçues même appli fermée</p>
+          </div>
+          <button
+            type="button"
+            :disabled="pushLoading"
+            class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-40"
+            :class="pushEnabled ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'"
+            @click="onTogglePush"
+          >
+            <span
+              class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+              :class="pushEnabled ? 'translate-x-6' : 'translate-x-1'"
+            />
+          </button>
+        </div>
+        <p v-if="pushError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ pushError }}</p>
       </div>
 
       <!-- Notifications WhatsApp : réservées ADMIN/SUPER_ADMIN tant que l'app

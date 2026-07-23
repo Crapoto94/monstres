@@ -3008,6 +3008,94 @@ sa propre largeur interne (certaines ont déjà leur `max-w-2xl`, etc.).
 
 ---
 
+## Notifications push (Web Push, opt-in explicite)
+
+Première évolution *fonctionnelle* demandée après la clôture de la Phase 11
+(le reste de la session portait sur des correctifs). Objectif : alerter les
+utilisateurs des mêmes événements qu'email/WhatsApp (nouveau Monstre à
+proximité, réservation, récupération, badge), mais via une vraie
+notification système — reçue même appli/onglet fermé — sans jamais
+l'activer sans un geste explicite de l'utilisateur (opt-in, cf. RGPD).
+
+### Décisions
+- **Web Push standard** (Push API + Service Worker), pas de service tiers
+  (Firebase, OneSignal…) — cohérent avec le principe de ne pas coupler à un
+  fournisseur externe évitable, et suffisant pour ce volume.
+- **VAPID** : paire de clés générée une fois (`npx web-push generate-vapid-keys`),
+  stockée en `.env` (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`)
+  — un secret technique, pas une règle métier, donc pas dans `settings`
+  (même traitement que `WHATSAPP_ACCESS_TOKEN`). La clé publique est
+  exposée via `GET /api/v1/push/public-key` : le frontend n'a pas besoin de
+  la connaître au build, donc ça fonctionne pareil sur tous les domaines
+  qui pointent vers ce serveur (monstres.fbc.fr, monstres.app).
+- **Pas de préférence booléenne séparée sur `User`** (contrairement à
+  `emailNotifications`/`whatsappNotifications`) : l'abonnement
+  (`PushSubscription`, un par navigateur/appareil) EST la préférence.
+  Désactiver le toggle désabonne réellement l'appareil ; `sendToUser` ne
+  fait rien si l'utilisateur n'a aucun abonnement actif. Un utilisateur
+  peut être abonné depuis plusieurs appareils à la fois.
+- **Nettoyage automatique** : un envoi qui échoue avec 404/410 (abonnement
+  expiré ou révoqué côté navigateur) supprime la ligne `PushSubscription`
+  correspondante — évite d'accumuler des abonnements morts.
+- **Service worker réécrit à la main** (`frontend/src/sw.ts`, stratégie
+  `injectManifest` de `vite-plugin-pwa` au lieu du `generateSW` par défaut)
+  car Workbox ne génère pas de listeners `push`/`notificationclick` — il
+  fallait pouvoir les ajouter nous-mêmes. Le fallback de navigation SPA
+  (denylist `/api/` pour ne pas casser les redirections OAuth, cf.
+  correctif « page blanche après connexion Google » plus haut) est donc
+  passé du `workbox.navigateFallbackDenylist` généré automatiquement à une
+  `NavigationRoute` explicite dans `sw.ts`.
+
+### Fait
+- **Backend** : modèle `PushSubscription` (userId, endpoint unique, p256dh,
+  auth, userAgent) + migration ; module `push` (`PushController`/`PushService`,
+  `@Global()` comme les autres canaux de notif) avec `GET /push/public-key`,
+  `POST /push/subscribe`, `DELETE /push/subscribe?endpoint=...` ;
+  `NotificationsService.notify()` envoie maintenant sur 3 canaux (email,
+  WhatsApp, push) avec le même principe qu'avant : un échec sur un canal
+  n'empêche jamais les autres ni l'action déclenchante.
+- **Frontend** : `src/sw.ts` (service worker `injectManifest`, listeners
+  `push` → `showNotification` + `notificationclick` → focus/ouverture de
+  l'URL ciblée) ; `src/services/push.ts` (détection de support, opt-in via
+  `Notification.requestPermission()` — ne peut être déclenché que par un
+  clic utilisateur, aucun moyen technique de l'activer silencieusement —
+  puis `pushManager.subscribe()` + enregistrement côté serveur) ; toggle
+  "Notifications push" dans `ProfileView.vue`, visible à tous les
+  utilisateurs (contrairement au toggle WhatsApp réservé aux admins),
+  affiche un message clair si la permission est refusée.
+- **Testé** : build backend + typecheck frontend propres. En local :
+  service worker enregistré et actif (après correctif ci-dessous),
+  abonnement réel créé via l'API avec un `endpoint` factice, `PushService.sendToUser`
+  exécuté directement contre cet abonnement → tentative d'envoi réelle vers
+  le service push de Google (FCM), réponse `410 Gone` (comportement attendu
+  pour un endpoint factice), et confirmation que la ligne `PushSubscription`
+  est bien supprimée automatiquement suite à ce 410 — le pipeline complet
+  (VAPID → web-push → nettoyage) fonctionne. Le clic sur le toggle avec la
+  permission navigateur refusée affiche bien le message d'erreur attendu
+  ("Permission refusée — active les notifications depuis les réglages du
+  navigateur pour réessayer.") plutôt qu'un échec silencieux.
+- **Bug trouvé et corrigé pendant le test** : en dev (`vite dev`), le
+  service worker `injectManifest` a un manifeste de précache vide (l'étape
+  d'injection ne tourne qu'au build) — `createHandlerBoundToURL('/index.html')`
+  exige que l'URL soit précachée et lève une exception synchrone sinon,
+  faisant échouer l'évaluation entière du script du service worker
+  (`ServiceWorker script evaluation failed`, sans détail exploitable côté
+  page). `sw.ts` saute maintenant l'enregistrement de ce fallback de
+  navigation quand le manifeste est vide — sans impact en production où le
+  manifeste est toujours rempli.
+
+### Restant (nécessite une vraie interaction utilisateur, hors de portée des tests automatisés)
+- Validation sur un vrai appareil (permission accordée pour de vrai, pas
+  seulement le chemin d'erreur) — en particulier sur iOS, qui exige que la
+  PWA soit ajoutée à l'écran d'accueil pour que les notifications push
+  fonctionnent (Safari seul, onglet navigateur, ne les supporte pas).
+- Ajouter `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` au `.env`
+  de production sur le Proxmox (déjà documenté dans `.env.example`) —
+  sans ces variables, le toggle logge simplement l'envoi au lieu d'y
+  procéder (même esprit que les autres canaux sans clé configurée).
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
