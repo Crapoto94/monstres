@@ -25,6 +25,7 @@ const actionError = ref<string | null>(null)
 const form = ref({ key: '', name: '', subject: '', htmlContent: '' })
 
 const VARIABLES_BY_TEMPLATE: Record<string, string[]> = {
+  master_template: ['{{content}}', '{{logo_url}}', '{{frontend_url}}'],
   email_verification: ['{{user_name}}', '{{verification_url}}'],
   password_reset: ['{{user_name}}', '{{reset_url}}'],
   new_item_nearby: ['{{item_title}}', '{{item_url}}', '{{item_photo_url}}'],
@@ -263,11 +264,24 @@ async function loadPreview() {
       <div
         v-for="template in templates"
         :key="template.id"
-        class="group rounded-lg border border-gray-200 p-4 transition-colors hover:border-violet-300 dark:border-gray-800 dark:hover:border-violet-700"
+        :class="[
+          template.key === 'master_template'
+            ? 'ring-2 ring-violet-400 dark:ring-violet-600 bg-violet-50/50 dark:bg-violet-950/20'
+            : 'hover:border-violet-300 dark:hover:border-violet-700',
+          'group rounded-lg border border-gray-200 p-4 transition-colors dark:border-gray-800',
+        ]"
       >
         <div class="flex items-start justify-between">
           <div>
-            <p class="font-medium text-gray-900 dark:text-gray-100">{{ template.name }}</p>
+            <div class="flex items-center gap-1.5">
+              <p class="font-medium text-gray-900 dark:text-gray-100">{{ template.name }}</p>
+              <span
+                v-if="template.key === 'master_template'"
+                class="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-900 dark:text-violet-300"
+              >
+                WRAPPER
+              </span>
+            </div>
             <p class="mt-0.5 font-mono text-xs text-gray-400">{{ template.key }}</p>
           </div>
           <div class="flex gap-1">
@@ -289,6 +303,12 @@ async function loadPreview() {
           </div>
         </div>
         <p class="mt-2 line-clamp-2 text-xs text-gray-500 italic dark:text-gray-400">{{ template.subject }}</p>
+        <p
+          v-if="template.key === 'master_template'"
+          class="mt-2 text-[11px] text-violet-600 dark:text-violet-400"
+        >
+          Enveloppe tous les emails sortants. Le contenu de chaque modèle est inséré dans <code>&#123;&#123;content&#125;&#125;</code>.
+        </p>
       </div>
     </div>
   </div>

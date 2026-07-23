@@ -389,8 +389,10 @@ async function onDeleteAccount() {
         </button>
       </div>
 
-      <!-- Notifications WhatsApp -->
-      <div class="mt-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+      <!-- Notifications WhatsApp : réservées ADMIN/SUPER_ADMIN tant que l'app
+           WhatsApp Business n'est pas validée par Meta (App Review) — même
+           logique que la connexion Facebook, comptes admin pour les tests. -->
+      <div v-if="auth.isAdmin" class="mt-3 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Notifications WhatsApp</p>
@@ -431,6 +433,18 @@ async function onDeleteAccount() {
         </div>
         <p class="mt-1 text-xs text-gray-400">Format international, ex. +33612345678.</p>
         <p v-if="phoneError" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ phoneError }}</p>
+      </div>
+      <div
+        v-else
+        class="mt-3 flex items-center justify-between rounded-xl border border-gray-200 p-4 dark:border-gray-800"
+      >
+        <div>
+          <p class="text-sm font-semibold text-gray-400 dark:text-gray-500">Notifications WhatsApp</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">Bientôt disponible</p>
+        </div>
+        <span class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-not-allowed items-center rounded-full bg-gray-200 dark:bg-gray-800">
+          <span class="inline-block h-4 w-4 translate-x-1 transform rounded-full bg-white" />
+        </span>
       </div>
 
       <!-- Mes Monstres -->

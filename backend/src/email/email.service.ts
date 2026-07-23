@@ -90,7 +90,7 @@ export class EmailService {
   async sendEmailVerification(to: string, name: string, token: string): Promise<void> {
     const url = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/verifier-email?token=${token}`;
     const vars = { user_name: name, verification_url: url };
-    const { subject, htmlContent } = await this.renderTemplate('email_verification', vars, {
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate('email_verification', vars, {
       subject: 'Confirme ton adresse email — Les Monstres',
       htmlContent: `
         <p>Bonjour ${escapeHtml(name)},</p>
@@ -99,13 +99,14 @@ export class EmailService {
         <p>Ce lien expire dans quelques heures.</p>
       `,
     });
+    const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
     await this.send({ to, subject, htmlContent, templateKey: 'email_verification' });
   }
 
   async sendPasswordReset(to: string, name: string, token: string): Promise<void> {
     const url = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/reinitialiser-mot-de-passe?token=${token}`;
     const vars = { user_name: name, reset_url: url };
-    const { subject, htmlContent } = await this.renderTemplate('password_reset', vars, {
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate('password_reset', vars, {
       subject: 'Réinitialise ton mot de passe — Les Monstres',
       htmlContent: `
         <p>Bonjour ${escapeHtml(name)},</p>
@@ -114,6 +115,7 @@ export class EmailService {
         <p>Si tu n'es pas à l'origine de cette demande, ignore cet email.</p>
       `,
     });
+    const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
     await this.send({ to, subject, htmlContent, templateKey: 'password_reset' });
   }
 
@@ -131,6 +133,21 @@ export class EmailService {
       };
     } catch {
       return fallback;
+    }
+  }
+
+  private async wrapWithMasterTemplate(htmlContent: string): Promise<string> {
+    try {
+      const master = await this.prisma.emailTemplate.findUnique({ where: { key: 'master_template' } });
+      if (!master) return htmlContent;
+      const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+      const logoUrl = `${frontendUrl}/logo-email.png`;
+      return master.htmlContent
+        .replace(/\{\{content\}\}/g, htmlContent)
+        .replace(/\{\{logo_url\}\}/g, logoUrl)
+        .replace(/\{\{frontend_url\}\}/g, frontendUrl);
+    } catch {
+      return htmlContent;
     }
   }
 

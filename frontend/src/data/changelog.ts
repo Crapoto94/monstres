@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.15',
+    date: '23 juillet 2026',
+    changes: [
+      'Modèle maître pour tous les emails : logo + en-tête + pied de page sur chaque email sortant',
+      'Admin email : le template maître est mis en avant avec badge "WRAPPER"',
+    ],
+  },
+  {
     version: '0.4.14',
     date: '23 juillet 2026',
     changes: [

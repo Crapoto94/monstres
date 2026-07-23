@@ -105,10 +105,11 @@ export class NotificationsService {
           reset_url: '',
           item_photo_url: '',
         };
-        return this.renderWithFallback('reservation_created', vars, {
+        const rendered = await this.renderWithFallback('reservation_created', vars, {
           subject: `${d.reserverName} a réservé ton Monstre — Les Monstres`,
           htmlContent: `<p>Ton Monstre « ${escapeHtml(d.itemTitle)} » vient d'être réservé par ${escapeHtml(d.reserverName)}.</p>`,
         });
+        return { ...rendered, htmlContent: await this.wrapWithMasterTemplate(rendered.htmlContent) };
       }
       case NotificationType.ITEM_COLLECTED: {
         const d = data as NotificationData['ITEM_COLLECTED'];
@@ -123,10 +124,11 @@ export class NotificationsService {
           reset_url: '',
           item_photo_url: '',
         };
-        return this.renderWithFallback('item_collected', vars, {
+        const rendered = await this.renderWithFallback('item_collected', vars, {
           subject: `Ton Monstre a été récupéré — Les Monstres`,
           htmlContent: `<p>Ton Monstre « ${escapeHtml(d.itemTitle)} » a été récupéré par ${escapeHtml(d.collectorName)}. Merci d'avoir participé au réemploi !</p>`,
         });
+        return { ...rendered, htmlContent: await this.wrapWithMasterTemplate(rendered.htmlContent) };
       }
       case NotificationType.NEW_ITEM_NEARBY: {
         const d = data as NotificationData['NEW_ITEM_NEARBY'];
@@ -142,7 +144,7 @@ export class NotificationsService {
           reset_url: '',
           item_photo_url: d.itemPhotoUrl ?? '',
         };
-        return this.renderWithFallback('new_item_nearby', vars, {
+        const rendered = await this.renderWithFallback('new_item_nearby', vars, {
           subject: `Nouveau Monstre près de chez toi — Les Monstres`,
           htmlContent: `
             <p>Un nouveau Monstre « ${escapeHtml(d.itemTitle)} » est apparu près d'une de tes zones surveillées.</p>
@@ -150,6 +152,7 @@ export class NotificationsService {
             <p><a href="${itemUrl}">Voir ce Monstre</a></p>
           `,
         });
+        return { ...rendered, htmlContent: await this.wrapWithMasterTemplate(rendered.htmlContent) };
       }
       case NotificationType.BADGE_UNLOCKED: {
         const d = data as NotificationData['BADGE_UNLOCKED'];
@@ -164,10 +167,11 @@ export class NotificationsService {
           reset_url: '',
           item_photo_url: '',
         };
-        return this.renderWithFallback('badge_unlocked', vars, {
+        const rendered = await this.renderWithFallback('badge_unlocked', vars, {
           subject: `Badge débloqué : ${d.badgeName} — Les Monstres`,
           htmlContent: `<p>Bravo, tu as débloqué le badge « ${escapeHtml(d.badgeName)} » !</p>`,
         });
+        return { ...rendered, htmlContent: await this.wrapWithMasterTemplate(rendered.htmlContent) };
       }
     }
   }
@@ -210,6 +214,21 @@ export class NotificationsService {
       };
     } catch {
       return fallback;
+    }
+  }
+
+  private async wrapWithMasterTemplate(htmlContent: string): Promise<string> {
+    try {
+      const master = await this.prisma.emailTemplate.findUnique({ where: { key: 'master_template' } });
+      if (!master) return htmlContent;
+      const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+      const logoUrl = `${frontendUrl}/logo-email.png`;
+      return master.htmlContent
+        .replace(/\{\{content\}\}/g, htmlContent)
+        .replace(/\{\{logo_url\}\}/g, logoUrl)
+        .replace(/\{\{frontend_url\}\}/g, frontendUrl);
+    } catch {
+      return htmlContent;
     }
   }
 

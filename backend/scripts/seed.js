@@ -77,6 +77,28 @@ const DEFAULT_TUTORIAL_PAGES = [
 
 const DEFAULT_EMAIL_TEMPLATES = [
   {
+    key: 'master_template',
+    name: '🏗️ Template maître (tous les emails)',
+    subject: '',
+    isSystem: true,
+    htmlContent: `<div style="font-family:Arial,sans-serif;background-color:#f9fafb;padding:20px 10px;">
+  <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+    <div style="text-align:center;padding:24px 20px 16px;border-bottom:1px solid #f0f0f0;">
+      <a href="{{frontend_url}}" style="text-decoration:none;">
+        <img src="{{logo_url}}" alt="Les Monstres" style="height:64px;width:auto;" />
+      </a>
+    </div>
+    <div style="padding:24px 20px;color:#374151;font-size:15px;line-height:1.6;">
+      {{content}}
+    </div>
+    <div style="text-align:center;padding:16px 20px;border-top:1px solid #f0f0f0;color:#9ca3af;font-size:12px;">
+      <p style="margin:0 0 4px;">Les Monstres — réemploi d'objets encombrants</p>
+      <p style="margin:0;"><a href="{{frontend_url}}" style="color:#7c3aed;text-decoration:none;">monstres.fbc.fr</a></p>
+    </div>
+  </div>
+</div>`,
+  },
+  {
     key: 'email_verification',
     name: 'Vérification d\'email',
     subject: 'Confirme ton adresse email — Les Monstres',
