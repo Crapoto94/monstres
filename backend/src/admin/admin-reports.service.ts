@@ -60,6 +60,11 @@ export class AdminReportsService {
     const resolved = items.map((item) => ({
       ...item,
       user: { ...item.user, avatar: resolveAvatarUrl(item.user.avatar, imgBaseUrl) },
+      photos: item.photos.map((p) => ({
+        ...p,
+        path: `${imgBaseUrl}/${p.path}`,
+        thumbnailPath: p.thumbnailPath ? `${imgBaseUrl}/${p.thumbnailPath}` : null,
+      })),
       reports: item.reports.map((r) => ({
         ...r,
         user: { ...r.user, avatar: resolveAvatarUrl(r.user.avatar, imgBaseUrl) },

@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.20',
+    date: '23 juillet 2026',
+    changes: [
+      'Fix : photo manquante dans la file de signalements admin',
+      'Admin en pleine largeur sur desktop (vue mobile inchangée)',
+    ],
+  },
+  {
     version: '0.4.19',
     date: '23 juillet 2026',
     changes: [

@@ -2972,6 +2972,42 @@ chose de différent :
 
 ---
 
+## Correctif : photo manquante dans les signalements + admin pleine largeur sur desktop
+
+Suite du déploiement multi-domaine ci-dessus. Deux retours après premier
+vrai test sur `monstres.app`.
+
+### 1. Photo absente dans `/admin/signalements`
+Bug **indépendant du multi-domaine**, révélé au passage : contrairement à
+`admin-items.service.ts` (qui a un `serializePhotos()` dédié), et comme
+les avatars juste à côté dans la même méthode, `AdminReportsService.findQueue()`
+oubliait de préfixer `photos[].path`/`thumbnailPath` avec `IMG_BASE_URL` —
+le frontend recevait un chemin brut (`items/xxx/yyy.webp`) au lieu d'une
+URL absolue, donc une image cassée. Corrigé en appliquant le même
+préfixage que pour les avatars.
+- **Testé** : signalement de test créé sur un Monstre existant, vérifié en
+  admin que `photos[0].path` renvoyé par l'API est bien une URL absolue
+  résolvable (`http://localhost:3000/uploads/items/.../....webp` en
+  local), signalement de test nettoyé après vérification.
+
+### 2. Marges excessives sur `/admin/*` en desktop
+L'appli entière est enveloppée dans un conteneur `max-w-lg` (512px,
+centré) dans `App.vue` — cohérent avec le design mobile-first partout
+ailleurs, mais gaspille l'espace sur un écran large pour les pages admin
+(tableaux, listes de cartes). `App.vue` calcule maintenant la classe de
+largeur selon la route : `max-w-lg` partout, sauf `max-w-lg lg:max-w-none`
+(plafond levé uniquement à partir du breakpoint desktop `lg:`) pour toute
+route sous `/admin` — la vue mobile de l'admin est donc strictement
+inchangée, seul le desktop en profite. Chaque vue admin garde la main sur
+sa propre largeur interne (certaines ont déjà leur `max-w-2xl`, etc.).
+- **Testé** : `/admin/signalements` en 1280×800 → conteneur racine mesuré
+  à 1280px (pleine largeur) avec les classes `max-w-lg lg:max-w-none` ;
+  même page en 375×812 (mobile) → 375px inchangé ; `/profil` (page non
+  admin) en 1280×800 → toujours plafonné à 512px comme avant. Aucune
+  régression sur le reste de l'appli.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant
