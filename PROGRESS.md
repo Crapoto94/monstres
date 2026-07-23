@@ -2738,6 +2738,53 @@ HTML générique de `index.html`, pas les données du Monstre.
 
 ---
 
+## Journal WhatsApp + masquage de la connexion Facebook pour le public
+
+Deux demandes indépendantes de cette session.
+
+### 1. Journal WhatsApp (réservé SUPER_ADMIN)
+Même besoin que le journal des emails ([[Journal d'activité global + journal
+des emails]] plus haut) mais pour WhatsApp : « connaître les WhatsApp
+envoyés, y compris ceux de test tant que je ne suis pas validé par Meta ».
+- **`WhatsAppLog`** (nouveau modèle, même schéma que `EmailLog`) :
+  destinataire, message, `templateName`, `testMode` (distingue les envois
+  réels des envois `hello_world` pendant que `whatsapp_test_mode` est
+  actif), statut `SENT`/`FAILED`/`SKIPPED`, erreur. Migration
+  `add_whatsapp_log`.
+- **`WhatsAppService.sendNotification()`** : journalise systématiquement
+  chaque tentative, y compris en mode test — c'était explicitement demandé
+  (« y compris ceux de test ») puisque c'est la seule façon de vérifier
+  que la chaîne d'envoi fonctionne tant que le vrai template Meta n'est
+  pas approuvé.
+- **`GET /admin/whatsapp-log`** (`@Roles('SUPER_ADMIN')`, même pattern que
+  `admin-email-log`) + nouvel onglet « Journal WhatsApp » dans `/admin`,
+  liste paginée avec recherche/filtre par statut et badge « Test » distinct
+  pour les envois en `whatsapp_test_mode`.
+- **Testé** : build backend propre, lignes insérées directement en base
+  (contournant l'envoi réel, pas de compte WhatsApp Business actif en dev)
+  pour vérifier le rendu — statut + badge Test corrects, contenu du
+  message visible en dépliant la ligne, lignes de test nettoyées après
+  vérification.
+
+### 2. Connexion Facebook masquée au public (IDs pas encore définitifs)
+Demande : indiquer que la connexion Facebook n'est pas encore disponible
+pour les utilisateurs (retiré une fois les IDs définitifs de l'app Meta
+obtenus), tout en gardant un moyen pour l'utilisateur de tester lui-même.
+- **`LoginView.vue` / `RegisterView.vue`** : le bouton Facebook cliquable
+  est remplacé par un encart grisé « Facebook — bientôt disponible » (avec
+  tooltip) pour tout le monde par défaut.
+- **Accès de test** : ajouter `?fbtest=1` à l'URL de `/connexion` ou
+  `/inscription` réaffiche le vrai bouton cliquable — purement côté
+  frontend (`computed` sur `route.query.fbtest`), aucun changement côté
+  route OAuth backend (`/auth/facebook` reste pleinement fonctionnel,
+  seule sa visibilité dans l'UI change). À retirer une fois l'app Facebook
+  passée en mode "Live" avec les vrais identifiants de production.
+- **Testé** : `/connexion` sans paramètre → encart grisé non cliquable ;
+  `/connexion?fbtest=1` → bouton "Continuer avec Facebook" fonctionnel
+  identique à avant.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

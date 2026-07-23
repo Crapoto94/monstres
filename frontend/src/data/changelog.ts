@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.13',
+    date: '23 juillet 2026',
+    changes: [
+      'Journal des messages WhatsApp envoyés, y compris les tests (SUPER_ADMIN)',
+      'Connexion Facebook masquée le temps de la validation Meta',
+    ],
+  },
+  {
     version: '0.4.12',
     date: '23 juillet 2026',
     changes: [
