@@ -2785,6 +2785,23 @@ obtenus), tout en gardant un moyen pour l'utilisateur de tester lui-même.
 
 ---
 
+## Redirection /profil non connecté + bouton S'inscrire plus visible
+
+- **`/profil` redirige vers `/connexion`** quand non connecté : ajout de
+  `meta: { requiresAuth: true }` sur la route (`router/index.ts`) — le
+  garde global existant s'en charge, avec `?redirect=/profil` conservé
+  pour revenir au profil après connexion. `ProfileView.vue` n'a pas eu
+  besoin d'être modifié : le garde agit avant même le montage du composant.
+- **Bouton "S'inscrire" plus visible sur `/connexion`** : remplacé le
+  simple lien texte noyé dans "Pas encore de compte ? S'inscrire" par un
+  vrai bouton pleine largeur, bordure épaisse `border-2 border-brand-600`,
+  texte gras — séparé de "Mot de passe oublié ?" qui reste un lien discret
+  en dessous.
+- **Testé** : `/profil` sans session → redirige bien vers
+  `/connexion?redirect=/profil` ; bouton "S'inscrire" au bon style.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

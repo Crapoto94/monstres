@@ -125,14 +125,17 @@ const facebookTestMode = computed(() => route.query.fbtest === '1')
           </div>
         </div>
 
-        <div class="mt-5 flex flex-col gap-1 text-center text-sm text-gray-500 dark:text-gray-400">
-          <RouterLink to="/mot-de-passe-oublie" class="text-brand-600 dark:text-brand-400">
+        <RouterLink
+          to="/inscription"
+          class="mt-5 flex items-center justify-center gap-2 rounded-xl border-2 border-brand-600 py-2.5 text-sm font-bold text-brand-600 transition-colors hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950"
+        >
+          Pas encore de compte ? S'inscrire
+        </RouterLink>
+
+        <div class="mt-4 text-center text-sm">
+          <RouterLink to="/mot-de-passe-oublie" class="text-gray-500 dark:text-gray-400">
             Mot de passe oublié ?
           </RouterLink>
-          <span>
-            Pas encore de compte ?
-            <RouterLink to="/inscription" class="font-medium text-brand-600 dark:text-brand-400">S'inscrire</RouterLink>
-          </span>
         </div>
       </div>
     </div>

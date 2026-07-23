@@ -15,7 +15,12 @@ export const router = createRouter({
       meta: { requiresAuth: true, requiresVerifiedEmail: true },
     },
     { path: '/alertes', name: 'alerts', component: () => import('@/views/AlertsView.vue') },
-    { path: '/profil', name: 'profile', component: () => import('@/views/ProfileView.vue') },
+    {
+      path: '/profil',
+      name: 'profile',
+      component: () => import('@/views/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
     { path: '/communaute', name: 'community', component: () => import('@/views/CommunityView.vue') },
     { path: '/mentions-legales', name: 'legal-notices', component: () => import('@/views/LegalView.vue') },
     { path: '/rgpd', name: 'legal-rgpd', component: () => import('@/views/RgpdView.vue') },

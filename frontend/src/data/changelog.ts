@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.14',
+    date: '23 juillet 2026',
+    changes: [
+      '/profil redirige vers la connexion si non connecté',
+      'Bouton "S\'inscrire" plus visible sur la page de connexion',
+    ],
+  },
+  {
     version: '0.4.13',
     date: '23 juillet 2026',
     changes: [
