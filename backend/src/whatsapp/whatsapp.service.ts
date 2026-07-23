@@ -63,6 +63,9 @@ export class WhatsAppService {
     }
 
     try {
+      this.assertHeaderSafe(accessToken, 'WHATSAPP_ACCESS_TOKEN');
+      this.assertHeaderSafe(phoneNumberId, 'WHATSAPP_PHONE_NUMBER_ID');
+
       const response = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: {
@@ -94,6 +97,28 @@ export class WhatsAppService {
         await this.logMessage({ to, message, templateName, testMode, status: 'FAILED', error: (error as Error).message });
       }
       throw error;
+    }
+  }
+
+  /**
+   * Les en-têtes HTTP (Authorization, etc.) doivent être des ByteString
+   * (caractères 0-255) — `fetch()` lève sinon une erreur cryptique
+   * ("Cannot convert argument to a ByteString...") sans dire quelle valeur
+   * ni quelle variable d'env est en cause. Vérification explicite pour
+   * transformer ça en message actionnable dans le journal WhatsApp : un
+   * jeton copié depuis un éditeur à correction typographique automatique
+   * peut par exemple se retrouver avec un tiret cadratin "—" à la place
+   * d'un tiret simple.
+   */
+  private assertHeaderSafe(value: string, label: string): void {
+    for (let i = 0; i < value.length; i++) {
+      if (value.charCodeAt(i) > 255) {
+        throw new Error(
+          `${label} contient un caractère invalide en position ${i} (code ${value.charCodeAt(i)}) — ` +
+            `vérifie que la valeur ne contient pas de caractère typographique (tiret cadratin, guillemets courbes...) ` +
+            `introduit par un copier-coller, et ressaisis-la depuis Meta Business Manager.`,
+        );
+      }
     }
   }
 

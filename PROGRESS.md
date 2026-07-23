@@ -2822,6 +2822,45 @@ placeholder Facebook.
 
 ---
 
+## Correctif : erreur ByteString cryptique dans le journal WhatsApp
+
+Remonté par l'utilisateur via le nouveau journal WhatsApp (ironie du sort :
+la fonctionnalité qui vient d'être construite a immédiatement révélé un
+souci de config caché jusque-là) : une entrée `FAILED` avec l'erreur
+`Cannot convert argument to a ByteString because the character at index 24
+has a value of 8212 which is greater than 255.` — 8212 = tiret cadratin
+« — » (U+2014).
+
+**Diagnostic** (agent Explore dédié + vérification manuelle, `node -e`
+reproduisant l'erreur) : cette exception est levée par `fetch()` quand une
+**valeur d'en-tête HTTP** contient un caractère hors Latin-1 (0-255) — elle
+ne s'applique jamais au corps JSON de la requête. Dans `WhatsAppService`,
+le seul en-tête dynamique est `Authorization: Bearer ${WHATSAPP_ACCESS_TOKEN}`.
+Le message de la notification (qui contient bien un « — », choix de mise
+en forme dans `buildWhatsAppMessage()`) n'est **jamais envoyé à Meta en
+mode test** (`whatsapp_test_mode`, template `hello_world` sans variable) —
+il ne peut donc pas être la source de l'erreur, malgré la coïncidence
+d'affichage dans le journal. Conclusion : c'est très probablement la
+valeur de `WHATSAPP_ACCESS_TOKEN` elle-même (dans le `.env` de prod) qui
+contient un caractère invalide — typiquement un tiret cadratin introduit
+par un copier-coller depuis un éditeur à correction typographique
+automatique, à la place d'un tiret simple dans le jeton.
+- **`WhatsAppService.assertHeaderSafe()`** (nouveau) : vérifie
+  `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID` avant l'appel réseau,
+  et transforme l'erreur cryptique native en message actionnable (variable
+  d'env concernée, position du caractère fautif, conseil de ressaisie)
+  stocké tel quel dans `WhatsAppLog.error` — pour que la cause soit visible
+  directement dans `/admin/journal-whatsapp` au prochain incident du genre,
+  sans repartir en chasse au débogage.
+- **Action utilisateur nécessaire** : vérifier/ressaisir `WHATSAPP_ACCESS_TOKEN`
+  dans le `.env` de production (copier depuis Meta Business Manager en
+  évitant tout éditeur à correction typographique automatique).
+- **Testé** : logique de détection validée isolément (`node -e`) — token
+  avec tiret cadratin → erreur claire avec position et code du caractère ;
+  token ASCII valide → aucune erreur. Build backend propre.
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

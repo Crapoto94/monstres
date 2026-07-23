@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.17',
+    date: '23 juillet 2026',
+    changes: [
+      'Fix : message d\'erreur clair dans le journal WhatsApp en cas de jeton invalide',
+    ],
+  },
+  {
     version: '0.4.16',
     date: '23 juillet 2026',
     changes: [
