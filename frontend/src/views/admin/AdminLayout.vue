@@ -77,7 +77,8 @@ function isActive(tab: { to: string; exact?: boolean }) {
         </RouterLink>
       </nav>
       <div class="border-t border-gray-200 px-3 py-2 dark:border-gray-800">
-        <RouterLink to="/profil" class="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← Profil</RouterLink>
+        <RouterLink to="/" class="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← Accueil</RouterLink>
+        <RouterLink to="/profil" class="ml-3 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← Profil</RouterLink>
       </div>
     </aside>
 
@@ -85,7 +86,10 @@ function isActive(tab: { to: string; exact?: boolean }) {
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden lg:h-full">
       <section class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-2 lg:p-3">
         <!-- Header mobile -->
-        <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 lg:hidden">Administration</h1>
+        <div class="flex items-center gap-3 lg:hidden">
+          <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Administration</h1>
+          <RouterLink to="/" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">← Accueil</RouterLink>
+        </div>
 
         <!-- Tabs mobile (scrollable) -->
         <nav class="mt-3 flex gap-1 overflow-x-auto text-sm lg:hidden">
