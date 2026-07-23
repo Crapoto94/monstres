@@ -424,7 +424,7 @@ function resetAndGoHome() {
         </div>
 
         <p v-if="address" class="text-xs text-gray-500 dark:text-gray-400">
-          📍 {{ address }}
+          📍 {{ shortenAddress(address) }}
         </p>
         <p v-else class="text-xs text-gray-400 dark:text-gray-500">
           Déplace le marqueur ou recherche une adresse.
@@ -491,7 +491,7 @@ function resetAndGoHome() {
             </span>
           </div>
           <p v-if="address" class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-            {{ address }}
+            {{ shortenAddress(address) }}
           </p>
         </div>
 
