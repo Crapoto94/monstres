@@ -2908,6 +2908,70 @@ vers `redirect_uri` avant même l'action réelle de l'utilisateur et ainsi
 
 ---
 
+## Support multi-domaine (monstres.fbc.fr + monstres.app)
+
+Demande utilisateur : l'ajout d'un second nom de domaine (`monstres.app`)
+pointant vers le même serveur permet de voir l'appli, mais la connexion ne
+fonctionne pas et aucun Monstre ne s'affiche.
+
+**Diagnostic** (agent Explore + inspection directe des `.env.example`/
+`docker-compose.yml`) : toute la config était figée sur un seul domaine
+`monstres.fbc.fr`, à trois endroits différents, chacun cassant quelque
+chose de différent :
+1. **`VITE_API_URL` figé en absolu** (`https://monstres.fbc.fr/api/v1`),
+   passé en build ARG Docker et **inliné dans le bundle JS au build** —
+   une seule image frontend, servie sur les deux domaines, appelait donc
+   toujours l'API sur `monstres.fbc.fr` même depuis `monstres.app`. Ça
+   suffit à casser l'affichage des Monstres (requête cross-origin bloquée
+   par CORS).
+2. **`CORS_ORIGIN` en chaîne unique** (`app.enableCors({ origin: '...' })`)
+   — même si l'appel avait visé le bon domaine, une requête depuis
+   `monstres.app` aurait quand même été refusée.
+3. **`JWT_COOKIE_DOMAIN=monstres.fbc.fr`** — un cookie posé avec un
+   `domain` explicite n'est jamais envoyé pour un autre domaine, même sur
+   le même serveur. La connexion pouvait réussir côté serveur, le cookie
+   de session était simplement ignoré par le navigateur sur `monstres.app`.
+
+**Corrigé** :
+- `VITE_API_URL=/api/v1` (chemin relatif) au lieu d'une URL absolue —
+  le navigateur résout `/api/v1` par rapport à l'origine de la page
+  visitée, donc ça fonctionne à l'identique sur n'importe quel domaine
+  pointant vers ce serveur, sans jamais passer par du CORS. Fallback dev
+  local (`http://localhost:3000/api/v1`) inchangé (nécessaire car
+  frontend/backend sont sur des ports différents en dev sans nginx).
+- `CORS_ORIGIN` accepte maintenant une liste séparée par des virgules
+  (`main.ts` : `.split(',').map(trim).filter(Boolean)` avant
+  `enableCors`) — reste utile pour un client qui appellerait l'API en
+  absolu (peu probable vu le point précédent, mais coûte rien).
+- `JWT_COOKIE_DOMAIN` : `getCookieOptions()` traite désormais vide/absent
+  comme `localhost` (cookie "host-only", sans attribut `domain`) — chaque
+  domaine a sa propre session indépendante, ce qui est le comportement
+  voulu ici (pas de partage de session entre fbc.fr et .app).
+- `nginx/nginx.conf` : `server_name` liste explicitement les deux domaines
+  au lieu de compter sur le comportement implicite de nginx (server par
+  défaut pour un Host non reconnu).
+- **Limite connue, non résolue** : la connexion Google/Facebook reste
+  câblée sur un domaine canonique unique (`APP_URL`/`FRONTEND_URL`), car
+  Google/Facebook n'acceptent qu'une liste FIXE d'URI de redirection par
+  client OAuth — la rendre dynamique par domaine est un chantier à part,
+  pas fait ici (pas demandé, l'email/mot de passe et l'affichage des
+  Monstres sont le cœur du problème signalé).
+- **Testé** : logique `getCookieOptions()` validée isolément (vide/absent/
+  `localhost` → host-only ; valeur réelle → conservée). CORS testé en
+  local avec `curl -X OPTIONS` : origine autorisée → en-tête
+  `Access-Control-Allow-Origin` correct ; origine non listée → absent.
+  Builds backend et frontend propres.
+- **Action utilisateur nécessaire pour que ça prenne effet en prod** :
+  mettre à jour le `.env` du serveur (`VITE_API_URL=/api/v1`,
+  `JWT_COOKIE_DOMAIN=` vide,
+  `CORS_ORIGIN=https://monstres.fbc.fr,https://monstres.app`), puis
+  **reconstruire l'image frontend**
+  (`docker compose build frontend` — `VITE_API_URL` est figé au build,
+  une simple modification du `.env` sans rebuild ne suffit pas) et
+  redéployer (`docker compose up -d`).
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

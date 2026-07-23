@@ -28,8 +28,19 @@ async function bootstrap() {
     exclude: [{ path: 'monstres/:id', method: RequestMethod.GET }],
   });
   app.use(cookieParser());
+  // Plusieurs domaines peuvent pointer vers ce même serveur (ex.
+  // monstres.fbc.fr + monstres.app) — CORS_ORIGIN accepte une liste séparée
+  // par des virgules. Utile surtout pour un client qui appellerait l'API en
+  // absolu depuis un autre domaine ; le SPA lui-même appelle l'API en
+  // chemin relatif (voir VITE_API_URL) et n'est donc jamais concerné par le
+  // CORS tant qu'il est servi par le même nginx que l'API.
+  const corsOrigins = config
+    .get<string>('CORS_ORIGIN', 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: corsOrigins,
     credentials: true,
   });
   app.useGlobalPipes(

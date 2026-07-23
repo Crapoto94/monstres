@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.19',
+    date: '23 juillet 2026',
+    changes: [
+      'Support de plusieurs noms de domaine pointant vers le même serveur (ex. monstres.app)',
+    ],
+  },
+  {
     version: '0.4.18',
     date: '23 juillet 2026',
     changes: [
