@@ -118,6 +118,12 @@ export const router = createRouter({
           component: () => import('@/views/admin/AdminEmailLogView.vue'),
           meta: { requiresAdmin: true, requiresSuperAdmin: true },
         },
+        {
+          path: 'journal-whatsapp',
+          name: 'admin-whatsapp-log',
+          component: () => import('@/views/admin/AdminWhatsAppLogView.vue'),
+          meta: { requiresAdmin: true, requiresSuperAdmin: true },
+        },
       ],
     },
   ],

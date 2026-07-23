@@ -401,17 +401,25 @@ async function handleDeleteComment(comment: Comment) {
         <!-- Adresse -->
         <div class="flex items-start gap-2 text-sm">
           <span class="mt-0.5">📍</span>
-          <span v-if="shortAddress" class="text-gray-700 dark:text-gray-300">{{ shortAddress }}</span>
-          <span v-else class="text-gray-400 dark:text-gray-500">Adresse non renseignée.</span>
-          <a
-            v-if="item.latitude && item.longitude"
-            :href="`geo:${item.latitude},${item.longitude}?q=${item.latitude},${item.longitude}`"
-            target="_blank"
-            rel="noopener"
-            class="ml-auto flex-shrink-0 rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
-          >
-            🧭 Y aller
-          </a>
+          <template v-if="auth.isAuthenticated && auth.user?.emailVerifiedAt">
+            <span v-if="shortAddress" class="text-gray-700 dark:text-gray-300">{{ shortAddress }}</span>
+            <span v-else class="text-gray-400 dark:text-gray-500">Adresse non renseignée.</span>
+            <a
+              v-if="item.latitude && item.longitude"
+              :href="`geo:${item.latitude},${item.longitude}?q=${item.latitude},${item.longitude}`"
+              target="_blank"
+              rel="noopener"
+              class="ml-auto flex-shrink-0 rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
+            >
+              🧭 Y aller
+            </a>
+          </template>
+          <span v-else-if="auth.isAuthenticated" class="text-gray-400 dark:text-gray-500">
+            Valide ton email pour voir l'adresse.
+          </span>
+          <RouterLink v-else to="/connexion" class="text-gray-400 underline dark:text-gray-500">
+            Connecte-toi pour voir l'adresse.
+          </RouterLink>
         </div>
 
         <!-- Récupération validée -->

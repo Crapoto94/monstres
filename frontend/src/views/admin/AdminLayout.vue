@@ -34,6 +34,7 @@ const tabs = computed(() => [
     ? [
         { to: '/admin/journal', label: 'Journal', badge: null as number | null },
         { to: '/admin/journal-mails', label: 'Journal mails', badge: null as number | null },
+        { to: '/admin/journal-whatsapp', label: 'Journal WhatsApp', badge: null as number | null },
         { to: '/admin/sql', label: 'Console SQL', badge: null as number | null },
       ]
     : []),

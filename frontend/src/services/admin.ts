@@ -346,3 +346,19 @@ export async function fetchEmailLog(params: { search?: string; status?: string; 
   const { data } = await api.get<ApiSuccess<{ logs: AdminEmailLogEntry[] } & Paginated>>('/admin/email-log', { params })
   return data.data
 }
+
+export interface AdminWhatsAppLogEntry {
+  id: string
+  to: string
+  message: string
+  templateName: string
+  testMode: boolean
+  status: 'SENT' | 'FAILED' | 'SKIPPED'
+  error: string | null
+  createdAt: string
+}
+
+export async function fetchWhatsAppLog(params: { search?: string; status?: string; page?: number; pageSize?: number }) {
+  const { data } = await api.get<ApiSuccess<{ logs: AdminWhatsAppLogEntry[] } & Paginated>>('/admin/whatsapp-log', { params })
+  return data.data
+}
