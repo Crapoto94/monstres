@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { fetchCategories, type Category } from '@/services/categories'
 import { fetchItems, type Item } from '@/services/items'
 import { fetchPublicSettings } from '@/services/settings'
@@ -28,7 +28,7 @@ const userLng = ref<number | null>(null)
 const locating = ref(false)
 const showGeoModal = ref(false)
 const geoExplanation = ref('')
-const gpsActive = computed(() => userLat.value !== null)
+const gpsActive = ref(false)
 
 function openGeoModal() {
   showGeoModal.value = true
@@ -36,6 +36,8 @@ function openGeoModal() {
 
 function activateGps() {
   showGeoModal.value = false
+  gpsActive.value = true
+  localStorage.setItem('gps_active', 'true')
   if (!navigator.geolocation) return
   locating.value = true
   navigator.geolocation.getCurrentPosition(
@@ -54,6 +56,8 @@ function activateGps() {
 function deactivateGps() {
   userLat.value = null
   userLng.value = null
+  gpsActive.value = false
+  localStorage.removeItem('gps_active')
   showGeoModal.value = false
 }
 
@@ -87,7 +91,12 @@ onMounted(async () => {
   } catch {
     // Fallback silencieux si le chargement échoue
   }
-  activateGps()
+  if (localStorage.getItem('gps_active') !== 'false') {
+    gpsActive.value = true
+  }
+  if (gpsActive.value) {
+    activateGps()
+  }
   await load()
 })
 

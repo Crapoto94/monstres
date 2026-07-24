@@ -6,7 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '0.4.26',
+    version: '0.4.28',
+    date: '24 juillet 2026',
+    changes: [
+      'GPS actif par défaut en permanence — persistance localStorage, désactivable dans la modale',
+    ],
+  },
+  {
+    version: '0.4.27',
     date: '24 juillet 2026',
     changes: [
       'Bouton GPS sur l\'accueil : fenêtre d\'explication avec texte modifiable en admin, activation/désactivation',
