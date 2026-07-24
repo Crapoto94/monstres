@@ -124,6 +124,15 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     description: 'Lien du groupe Facebook cible (ex. https://www.facebook.com/groups/xxxxxxxxxx). Mettre le groupe de test pendant le développement, le vrai groupe en production.',
     placeholder: 'https://www.facebook.com/groups/...',
   },
+  new_user_admin_notification_enabled: {
+    label: 'Alerte nouvel inscrit',
+    description: 'Envoie un email à l\'administrateur à chaque nouvelle inscription sur l\'application.',
+  },
+  admin_notification_email: {
+    label: 'Email de notification admin',
+    description: 'Adresse email qui reçoit les alertes (nouveaux inscrits, etc.). Par défaut : admin@fbc.fr.',
+    placeholder: 'admin@fbc.fr',
+  },
   mission_content: {
     label: 'Contenu de la page /pourquoi',
     description: 'Contenu HTML affiché sur la page "Pourquoi Les Monstres". Utilise les balises &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;. Si vide, un contenu par défaut est affiché.',
@@ -149,6 +158,7 @@ const SECTIONS = [
   { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
+  { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email'] },
   { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content'] },
 ]
 

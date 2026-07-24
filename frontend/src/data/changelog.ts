@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.25',
+    date: '24 juillet 2026',
+    changes: [
+      'Alerte email à l\'admin (admin@fbc.fr) à chaque nouvel inscrit — désactivable dans les paramètres admin',
+    ],
+  },
+  {
     version: '0.4.24',
     date: '24 juillet 2026',
     changes: [

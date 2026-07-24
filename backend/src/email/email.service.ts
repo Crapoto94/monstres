@@ -119,6 +119,22 @@ export class EmailService {
     await this.send({ to, subject, htmlContent, templateKey: 'password_reset' });
   }
 
+  /** Alerte opérationnelle à l'admin (§ notification nouvel inscrit), pas une notification utilisateur classique — pas de `NotificationType` associé. */
+  async sendNewUserAlert(to: string, newUser: { name: string; email: string }): Promise<void> {
+    const adminUrl = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/admin/utilisateurs`;
+    const vars = { user_name: newUser.name, new_user_email: newUser.email, admin_url: adminUrl };
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate('new_user_registered', vars, {
+      subject: `Nouvel inscrit : ${newUser.name} — Les Monstres`,
+      htmlContent: `
+        <p>Un nouvel utilisateur vient de s'inscrire sur Les Monstres :</p>
+        <p><strong>${escapeHtml(newUser.name)}</strong> — ${escapeHtml(newUser.email)}</p>
+        <p><a href="${adminUrl}">Voir dans l'admin →</a></p>
+      `,
+    });
+    const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
+    await this.send({ to, subject, htmlContent, templateKey: 'new_user_registered' });
+  }
+
   private async renderTemplate(
     key: string,
     vars: Record<string, string>,

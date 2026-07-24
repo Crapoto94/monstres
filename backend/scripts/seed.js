@@ -30,6 +30,8 @@ const DEFAULT_SETTINGS = [
   { key: 'whatsapp_test_mode', value: 'false', type: 'BOOLEAN' },
   { key: 'facebook_share_enabled', value: 'true', type: 'BOOLEAN' },
   { key: 'facebook_group_url', value: 'https://www.facebook.com/groups/160649897058', type: 'STRING' },
+  { key: 'new_user_admin_notification_enabled', value: 'true', type: 'BOOLEAN' },
+  { key: 'admin_notification_email', value: 'admin@fbc.fr', type: 'STRING' },
   { key: 'beta_mode_enabled', value: 'true', type: 'BOOLEAN' },
 ];
 
@@ -174,6 +176,18 @@ const DEFAULT_EMAIL_TEMPLATES = [
   <h2 style="color:#7c3aed;">Badge débloqué ! 🏆</h2>
   <p>Bravo ! Tu as débloqué le badge <strong>"{{badge_name}}"</strong>.</p>
   <p>Continue comme ça, la communauté compte sur toi !</p>
+</div>`,
+  },
+  {
+    key: 'new_user_registered',
+    name: 'Nouvel inscrit (alerte admin)',
+    subject: 'Nouvel inscrit : {{user_name}} — Les Monstres',
+    isSystem: true,
+    htmlContent: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <h2 style="color:#7c3aed;">Nouvel inscrit</h2>
+  <p>Un nouvel utilisateur vient de s'inscrire :</p>
+  <p><strong>{{user_name}}</strong> — {{new_user_email}}</p>
+  <p><a href="{{admin_url}}" style="color:#7c3aed;font-weight:bold;">Voir dans l'admin →</a></p>
 </div>`,
   },
 ];

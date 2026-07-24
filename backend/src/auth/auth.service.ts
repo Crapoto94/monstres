@@ -91,8 +91,27 @@ export class AuthService {
       this.logger.error(`Échec envoi email de vérification à ${user.email}`, error as Error);
     }
 
+    await this.notifyAdminOfNewUser(user);
+
     const token = this.issueToken(user.id, user.email, user.role);
     return { user: this.usersService.toSafeUser(user), token };
+  }
+
+  /**
+   * Alerte l'admin (email configurable, `admin_notification_email`) à
+   * chaque nouvel inscrit — désactivable via `new_user_admin_notification_enabled`
+   * (admin → Paramètres). N'empêche jamais l'inscription en cas d'échec.
+   */
+  private async notifyAdminOfNewUser(user: { name: string; email: string }): Promise<void> {
+    const enabled = await this.settings.getBoolean('new_user_admin_notification_enabled', true);
+    if (!enabled) return;
+
+    const adminEmail = await this.settings.getString('admin_notification_email', 'admin@fbc.fr');
+    try {
+      await this.emailService.sendNewUserAlert(adminEmail, user);
+    } catch (error) {
+      this.logger.error(`Échec envoi alerte nouvel inscrit à ${adminEmail}`, error as Error);
+    }
   }
 
   async validateUser(email: string, password: string) {
@@ -179,6 +198,8 @@ export class AuthService {
           },
         },
       });
+
+      await this.notifyAdminOfNewUser(user);
     }
 
     if (user.bannedAt) throw new ForbiddenException('Ce compte a été banni.');

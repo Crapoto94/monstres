@@ -32,6 +32,7 @@ const VARIABLES_BY_TEMPLATE: Record<string, string[]> = {
   reservation_created: ['{{item_title}}', '{{reserver_name}}', '{{item_url}}'],
   item_collected: ['{{item_title}}', '{{collector_name}}', '{{item_url}}'],
   badge_unlocked: ['{{badge_name}}'],
+  new_user_registered: ['{{user_name}}', '{{new_user_email}}', '{{admin_url}}'],
 }
 
 const currentVars = computed(() => {
