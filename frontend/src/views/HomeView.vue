@@ -87,6 +87,7 @@ onMounted(async () => {
   } catch {
     // Fallback silencieux si le chargement échoue
   }
+  activateGps()
   await load()
 })
 
@@ -185,7 +186,7 @@ function coverPhoto(item: Item) {
         >
           <template v-if="locating">⏳</template>
           <template v-else-if="gpsActive">✅ GPS actif</template>
-          <template v-else>📍 Géo</template>
+          <template v-else>📍 GPS</template>
         </button>
       </div>
 

@@ -10,6 +10,7 @@ export const changelog: ChangelogEntry[] = [
     date: '24 juillet 2026',
     changes: [
       'Bouton GPS sur l\'accueil : fenêtre d\'explication avec texte modifiable en admin, activation/désactivation',
+      'GPS actif par défaut au chargement de la page',
       'Bouton "Y aller" restauré sur le détail d\'un Monstre',
     ],
   },
