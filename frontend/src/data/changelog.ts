@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.26',
+    date: '24 juillet 2026',
+    changes: [
+      'Bouton GPS sur l\'accueil : fenêtre d\'explication avec texte modifiable en admin, activation/désactivation',
+      'Bouton "Y aller" restauré sur le détail d\'un Monstre',
+    ],
+  },
+  {
     version: '0.4.25',
     date: '24 juillet 2026',
     changes: [

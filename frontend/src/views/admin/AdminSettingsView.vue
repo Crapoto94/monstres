@@ -133,6 +133,10 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     description: 'Adresse email qui reçoit les alertes (nouveaux inscrits, etc.). Par défaut : admin@fbc.fr.',
     placeholder: 'admin@fbc.fr',
   },
+  geo_explanation_content: {
+    label: 'Explication activation GPS',
+    description: 'Texte affiché dans la fenêtre d\'explication quand un utilisateur clique sur le bouton GPS sur la page d\'accueil. HTML autorisé.',
+  },
   mission_content: {
     label: 'Contenu de la page /pourquoi',
     description: 'Contenu HTML affiché sur la page "Pourquoi Les Monstres". Utilise les balises &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;. Si vide, un contenu par défaut est affiché.',
@@ -156,7 +160,7 @@ const SECTIONS = [
   { title: '📸 Photos & Signalements', keys: ['max_photos_per_item', 'report_threshold', 'already_collected_threshold'] },
   { title: '⭐ Points & Classement', keys: ['points_creation', 'points_recuperation', 'points_validation', 'points_vote_utile', 'ranking_weight_distance', 'ranking_weight_popularity', 'ranking_weight_recency', 'ranking_weight_trust'] },
   { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
-  { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode'] },
+  { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode', 'geo_explanation_content'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
   { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email'] },
   { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content'] },

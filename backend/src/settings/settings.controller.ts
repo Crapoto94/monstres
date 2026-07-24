@@ -17,6 +17,7 @@ export class SettingsController {
       facebookShareEnabled: await this.settingsService.getBoolean('facebook_share_enabled', false),
       facebookGroupUrl: await this.settingsService.getString('facebook_group_url', ''),
       betaModeEnabled: await this.settingsService.getBoolean('beta_mode_enabled', true),
+      geoExplanationContent: await this.settingsService.getString('geo_explanation_content', ''),
     };
   }
 }

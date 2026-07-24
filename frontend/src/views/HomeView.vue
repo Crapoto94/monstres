@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { fetchCategories, type Category } from '@/services/categories'
 import { fetchItems, type Item } from '@/services/items'
+import { fetchPublicSettings } from '@/services/settings'
 import { formatRelativeTime } from '@/utils/time'
 import { useAuthStore } from '@/stores/auth'
 import logo from '@/assets/logo-transparent.png'
@@ -25,8 +26,16 @@ const error = ref<string | null>(null)
 const userLat = ref<number | null>(null)
 const userLng = ref<number | null>(null)
 const locating = ref(false)
+const showGeoModal = ref(false)
+const geoExplanation = ref('')
+const gpsActive = computed(() => userLat.value !== null)
 
-function locateMe() {
+function openGeoModal() {
+  showGeoModal.value = true
+}
+
+function activateGps() {
+  showGeoModal.value = false
   if (!navigator.geolocation) return
   locating.value = true
   navigator.geolocation.getCurrentPosition(
@@ -40,6 +49,12 @@ function locateMe() {
     },
     { enableHighAccuracy: true, timeout: 8000 },
   )
+}
+
+function deactivateGps() {
+  userLat.value = null
+  userLng.value = null
+  showGeoModal.value = false
 }
 
 async function load() {
@@ -66,7 +81,12 @@ async function load() {
 
 onMounted(async () => {
   categories.value = await fetchCategories()
-  locateMe()
+  try {
+    const settings = await fetchPublicSettings()
+    geoExplanation.value = settings.geoExplanationContent
+  } catch {
+    // Fallback silencieux si le chargement échoue
+  }
   await load()
 })
 
@@ -156,11 +176,16 @@ function coverPhoto(item: Item) {
         </div>
         <button
           type="button"
-          class="flex-shrink-0 rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 shadow-sm dark:bg-brand-900/60 dark:text-brand-200"
+          class="flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition-colors"
+          :class="gpsActive
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300'
+            : 'bg-brand-50 text-brand-700 dark:bg-brand-900/60 dark:text-brand-200'"
           :disabled="locating"
-          @click="locateMe"
+          @click="openGeoModal"
         >
-          {{ locating ? '…' : '📍 Géo' }}
+          <template v-if="locating">⏳</template>
+          <template v-else-if="gpsActive">✅ GPS actif</template>
+          <template v-else>📍 Géo</template>
         </button>
       </div>
 
@@ -252,5 +277,68 @@ function coverPhoto(item: Item) {
     </p>
 
     <WhatsNewModal :open="showWhatsNew" @close="showWhatsNew = false" />
+
+    <!-- Modal explication GPS -->
+    <Teleport to="body">
+      <div
+        v-if="showGeoModal"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 pb-8 sm:items-center sm:pb-0"
+        @click.self="showGeoModal = false"
+      >
+        <div class="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-gray-900 dark:text-gray-100">
+              {{ gpsActive ? '✅ GPS activé' : '📡 Activer le GPS ?' }}
+            </h3>
+            <button
+              type="button"
+              class="text-gray-400 hover:text-gray-600"
+              @click="showGeoModal = false"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div
+            v-if="geoExplanation"
+            class="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400"
+            v-html="geoExplanation"
+          />
+          <p
+            v-else
+            class="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400"
+          >
+            Active la géolocalisation pour trier les Monstres par distance
+            et faciliter la publication de nouveaux Monstres.
+          </p>
+
+          <div class="mt-4 flex gap-2">
+            <button
+              v-if="!gpsActive"
+              type="button"
+              class="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+              @click="activateGps"
+            >
+              Activer ma position
+            </button>
+            <button
+              v-else
+              type="button"
+              class="flex-1 rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+              @click="deactivateGps"
+            >
+              Désactiver le GPS
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400"
+              @click="showGeoModal = false"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>

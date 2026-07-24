@@ -5,6 +5,7 @@ export interface PublicSettings {
   facebookShareEnabled: boolean
   facebookGroupUrl: string
   betaModeEnabled: boolean
+  geoExplanationContent: string
 }
 
 export async function fetchPublicSettings(): Promise<PublicSettings> {

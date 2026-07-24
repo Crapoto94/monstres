@@ -32,6 +32,7 @@ const DEFAULT_SETTINGS = [
   { key: 'facebook_group_url', value: 'https://www.facebook.com/groups/160649897058', type: 'STRING' },
   { key: 'new_user_admin_notification_enabled', value: 'true', type: 'BOOLEAN' },
   { key: 'admin_notification_email', value: 'admin@fbc.fr', type: 'STRING' },
+  { key: 'geo_explanation_content', value: '<p>Active la géolocalisation pour :</p><ul><li>🏠 <strong>Trier les Monstres par distance</strong> — voir les objets près de chez toi en premier</li><li>📸 <strong>Publier facilement</strong> — ta position est automatiquement détectée quand tu crées un Monstre</li></ul><p>Ta position n\'est jamais partagée publiquement. Seule la distance approximative est affichée aux autres utilisateurs.</p>', type: 'STRING' },
   { key: 'beta_mode_enabled', value: 'true', type: 'BOOLEAN' },
 ];
 
