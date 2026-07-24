@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.24',
+    date: '24 juillet 2026',
+    changes: [
+      'Fix : les toggles (on/off) des paramètres admin ne sauvegardaient jamais réellement',
+    ],
+  },
+  {
     version: '0.4.23',
     date: '24 juillet 2026',
     changes: [

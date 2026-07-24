@@ -3166,6 +3166,43 @@ pas réels (données de test, contenus fictifs pendant la phase de bêta).
 
 ---
 
+## Correctif : les toggles admin ne sauvegardaient jamais (v0.4.24)
+
+Repéré en testant le toggle du bandeau bêta ci-dessus : cliquer dessus
+changeait bien l'affichage (Activé/Désactivé) mais rien n'était envoyé au
+serveur. **Bug pré-existant, pas introduit par le bandeau bêta** — touche
+les 3 toggles de la section "⚙️ Fonctionnalités" (`pwa_enabled`,
+`whatsapp_test_mode`, `facebook_share_enabled`, `beta_mode_enabled`) depuis
+leur création.
+
+### Cause
+Le clic sur le toggle ne modifiait que `drafts[key]` (état local Vue),
+sans jamais appeler `onSave()`. Le bouton "Sauvegarder" affiché pour les
+autres types de réglages (texte/nombre) était explicitement exclu pour les
+booléens (`v-if="!isBoolean(...) && ..."`), pensant sans doute, à tort,
+que le toggle se sauvegardait déjà tout seul.
+
+### Correctif
+Sauvegarde immédiate au clic (`onToggleBoolean()`), même logique que les
+toggles de notifications dans le profil (email/push) — pas de bouton
+"Sauvegarder" séparé pour un interrupteur ON/OFF, c'est le clic lui-même
+qui doit persister. État visuel pendant l'appel (`…`) et confirmation
+(`✓ Sauvegardé`) réutilisent `busyKey`/`savedKey`, déjà en place pour les
+autres champs.
+- **Testé** : compte de test promu SUPER_ADMIN, toggle "Bandeau version
+  bêta" basculé Activé → Désactivé → Activé directement via le DOM, avec
+  vérification à chaque étape que `GET /api/v1/settings/public` reflète
+  bien le changement côté serveur (pas seulement l'affichage) — confirmé
+  dans les deux sens. Compte de test nettoyé après vérification.
+
+### Impact
+Si `pwa_enabled`/`whatsapp_test_mode`/`facebook_share_enabled` ont déjà
+été basculés depuis l'admin en production, la valeur affichée peut ne pas
+correspondre à celle réellement en base — à vérifier après ce déploiement
+et rebasculer si besoin (un seul clic suffit maintenant, plus jamais deux).
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

@@ -178,6 +178,12 @@ async function load() {
 
 onMounted(load)
 
+/** Les toggles booléens se sauvegardent immédiatement au clic (comme les autres toggles de l'appli), pas de bouton "Sauvegarder" séparé. */
+function onToggleBoolean(setting: AdminSetting) {
+  drafts.value[setting.key] = drafts.value[setting.key] === 'true' ? 'false' : 'true'
+  onSave(setting)
+}
+
 async function onSave(setting: AdminSetting) {
   const value = drafts.value[setting.key]
   if (value === setting.value) return
@@ -234,13 +240,14 @@ async function onSave(setting: AdminSetting) {
             <!-- Description -->
             <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ meta(key).description }}</p>
 
-            <!-- BOOLEAN toggle -->
+            <!-- BOOLEAN toggle : sauvegarde immédiate au clic -->
             <div v-if="isBoolean(settingByKey(key)?.type ?? '')" class="mt-3">
               <button
                 type="button"
-                class="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors"
+                :disabled="busyKey === key"
+                class="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-wait disabled:opacity-60"
                 :class="drafts[key] === 'true' ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'"
-                @click="drafts[key] = drafts[key] === 'true' ? 'false' : 'true'"
+                @click="onToggleBoolean(settingByKey(key)!)"
               >
                 <span
                   class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
@@ -248,7 +255,7 @@ async function onSave(setting: AdminSetting) {
                 />
               </button>
               <span class="ml-2 text-sm" :class="drafts[key] === 'true' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'">
-                {{ drafts[key] === 'true' ? 'Activé' : 'Désactivé' }}
+                {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : drafts[key] === 'true' ? 'Activé' : 'Désactivé' }}
               </span>
             </div>
 
