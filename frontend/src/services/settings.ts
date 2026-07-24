@@ -4,6 +4,7 @@ export interface PublicSettings {
   pwaEnabled: boolean
   facebookShareEnabled: boolean
   facebookGroupUrl: string
+  betaModeEnabled: boolean
 }
 
 export async function fetchPublicSettings(): Promise<PublicSettings> {

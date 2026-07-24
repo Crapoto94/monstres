@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.23',
+    date: '24 juillet 2026',
+    changes: [
+      'Bandeau "version bêta" (désactivable en admin) prévenant que les Monstres affichés ne sont peut-être pas réels',
+    ],
+  },
+  {
     version: '0.4.22',
     date: '23 juillet 2026',
     changes: [

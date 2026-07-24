@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS = [
   { key: 'whatsapp_test_mode', value: 'false', type: 'BOOLEAN' },
   { key: 'facebook_share_enabled', value: 'true', type: 'BOOLEAN' },
   { key: 'facebook_group_url', value: 'https://www.facebook.com/groups/160649897058', type: 'STRING' },
+  { key: 'beta_mode_enabled', value: 'true', type: 'BOOLEAN' },
 ];
 
 const DEFAULT_CATEGORIES = [

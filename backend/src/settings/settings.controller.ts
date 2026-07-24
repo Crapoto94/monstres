@@ -16,6 +16,7 @@ export class SettingsController {
       pwaEnabled: await this.settingsService.getBoolean('pwa_enabled', true),
       facebookShareEnabled: await this.settingsService.getBoolean('facebook_share_enabled', false),
       facebookGroupUrl: await this.settingsService.getString('facebook_group_url', ''),
+      betaModeEnabled: await this.settingsService.getBoolean('beta_mode_enabled', true),
     };
   }
 }

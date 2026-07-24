@@ -3127,6 +3127,45 @@ immédiate par la nouvelle version, conformément à l'esprit `autoUpdate`.
 
 ---
 
+## Bandeau "version bêta" (v0.4.23)
+
+Demande directe : préparer le lancement bêta avec des testeurs externes
+(posts Facebook rédigés en parallèle) en prévenant clairement dans l'appli
+que c'est une version de test et que les Monstres affichés ne sont peut-être
+pas réels (données de test, contenus fictifs pendant la phase de bêta).
+
+### Décisions
+- Nouveau réglage `beta_mode_enabled` (BOOLEAN, défaut `true`), même
+  pattern que `pwa_enabled`/`whatsapp_test_mode` — modifiable depuis
+  l'admin sans déploiement, à désactiver le jour de l'ouverture officielle.
+- Exposé via `GET /api/v1/settings/public` (déjà consommé par plusieurs
+  vues pour `pwaEnabled`/`facebookShareEnabled`).
+- Bandeau affiché en haut de l'appli (`App.vue`, au-dessus de `RouterView`)
+  sur toutes les routes **sauf** `/admin/*` (l'équipe sait déjà que c'est
+  la bêta) — texte : "Version bêta, en cours de test — les Monstres
+  affichés ne sont peut-être pas réels."
+
+### Fait
+- Backend : clé ajoutée à `DEFAULT_SETTINGS` (`scripts/seed.js`, idempotent
+  — ne touche pas aux settings déjà modifiés) et à `SettingsController.getPublicSettings()`.
+- Frontend : `PublicSettings`/`fetchPublicSettings()` étendus, bandeau dans
+  `App.vue`, toggle ajouté dans `AdminSettingsView.vue` (section
+  "⚙️ Fonctionnalités").
+- **Testé** : build backend + typecheck frontend propres ; `npm run
+  prisma:seed` en local confirme l'insertion de `beta_mode_enabled = true`
+  sans toucher aux settings existants ; vérifié dans le navigateur que le
+  bandeau s'affiche sur `/` et disparaît sur `/admin/*` (compte de test
+  promu SUPER_ADMIN, nettoyé après vérification) ; toggle "Bandeau version
+  bêta" confirmé visible et fonctionnel dans `/admin/parametres`.
+- **Important pour le déploiement** : contrairement aux réglages déjà
+  seedés en prod, `beta_mode_enabled` est une clé toute neuve — sans
+  réexécuter `npm run prisma:seed` sur le Proxmox, la ligne n'existe pas en
+  base et le toggle n'apparaît pas dans `/admin/parametres` (le bandeau
+  s'affiche quand même côté public grâce au fallback `true` de
+  `getBoolean()`, seul le toggle admin a besoin de la ligne pour fonctionner).
+
+---
+
 ## Phases suivantes
 
 Le plan du cahier des charges (§17, Phases 0 à 11) est maintenant

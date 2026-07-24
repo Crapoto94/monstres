@@ -107,6 +107,10 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     label: 'Installation PWA',
     description: 'Active le bouton "Installer l\'application" dans le profil. Permet aux utilisateurs d\'ajouter Les Monstres à leur écran d\'accueil comme une app native.',
   },
+  beta_mode_enabled: {
+    label: 'Bandeau version bêta',
+    description: 'Affiche un bandeau en haut de l\'appli (masqué en admin) prévenant que c\'est une version bêta et que les Monstres affichés ne sont peut-être pas réels. À désactiver à l\'ouverture officielle.',
+  },
   whatsapp_test_mode: {
     label: 'Mode test WhatsApp',
     description: 'En mode test, les notifications WhatsApp sont simulées en base sans être réellement envoyées. Utile pour le développement.',
@@ -143,7 +147,7 @@ const SECTIONS = [
   { title: '📸 Photos & Signalements', keys: ['max_photos_per_item', 'report_threshold', 'already_collected_threshold'] },
   { title: '⭐ Points & Classement', keys: ['points_creation', 'points_recuperation', 'points_validation', 'points_vote_utile', 'ranking_weight_distance', 'ranking_weight_popularity', 'ranking_weight_recency', 'ranking_weight_trust'] },
   { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
-  { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'whatsapp_test_mode'] },
+  { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
   { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content'] },
 ]
