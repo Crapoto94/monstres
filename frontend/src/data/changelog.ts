@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.30',
+    date: '25 juillet 2026',
+    changes: [
+      'Adresse (géolocalisation + recherche) : passage à la BAN (Base Adresse Nationale, data.gouv.fr) — bien meilleure couverture des numéros de rue que Nominatim/OSM en France',
+    ],
+  },
+  {
     version: '0.4.29',
     date: '25 juillet 2026',
     changes: [

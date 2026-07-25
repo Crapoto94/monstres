@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-25** (v0.4.29 — redimensionnement photo
-client + adresse Nominatim simplifiée)
+Dernière mise à jour : **2026-07-25** (v0.4.30 — géocodage adresse basculé
+sur la BAN, data.gouv.fr, pour un vrai numéro de rue)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3320,3 +3320,58 @@ Build réel (`npm run build`, pas seulement `vue-tsc --noEmit`) et
 `vue-tsc -b` passés sans erreur. Version bumpée à `0.4.29`
 (`backend/package.json` + `frontend/package.json` + entrée
 `frontend/src/data/changelog.ts`).
+
+---
+
+## Correctif : numéro de rue absent — bascule Nominatim → BAN (v0.4.30)
+
+Suite au correctif v0.4.29 ci-dessus, l'utilisateur a signalé qu'il ne
+manquait plus que le numéro de rue (ex. attendu : « 59 avenue des Tilleuls »,
+obtenu : « avenue des Tilleuls »). Le correctif précédent documentait ça
+comme une limite de données OSM/Nominatim (pas de `house_number` mappé à la
+position testée) — **vérifié plus en profondeur cette session** : en
+interrogeant l'API officielle de la **BAN (Base Adresse Nationale,
+`api-adresse.data.gouv.fr`, État français)** pour la même coordonnée exacte
+que le test Nominatim précédent, elle renvoie bien un numéro (« 2 Rue du
+Moulin » à 104 m) là où Nominatim ne renvoyait que la rue. Confirmé aussi
+qu'élargir la recherche autour du point (échantillonnage à ±15-35 m, sondé
+via Nominatim) ne trouvait toujours rien : la lacune est propre aux données
+communautaires OSM à cet endroit, pas à la position GPS. La BAN (import
+massif des données cadastrales/La Poste par l'État) a une couverture des
+numéros de rue nettement supérieure à OSM pour la France.
+
+**Décision : la BAN remplace Nominatim comme source principale du géocodage
+adresse** (recherche ET géocodage inverse), avec **repli sur Nominatim si la
+BAN ne répond rien** (indisponible, cas limite hors couverture). Cohérent
+avec le fait que l'appli ne vise que la France (`countrycodes=fr` déjà en
+place côté recherche). Gratuit, sans clé, même famille de contrainte que
+Nominatim (à ne pas solliciter en masse, mais un lookup par sélection
+d'adresse utilisateur reste très raisonnable).
+
+**Fait** :
+- `frontend/src/utils/address.ts` : ajout de `formatShortBanAddress()` +
+  types `BanAddressProperties` (à partir des champs plats `housenumber`/
+  `street`/`name`/`city` renvoyés par la BAN — pas besoin de découpage de
+  chaîne, contrairement à Nominatim). `formatShortAddress()` (Nominatim)
+  conservée, utilisée uniquement en repli.
+- `AddItemView.vue` : `reverseGeocode()` interroge désormais
+  `api-adresse.data.gouv.fr/reverse/` en premier (repli Nominatim en cas
+  d'échec/réponse vide). `searchAddresses()` (nouvelle fonction, extraite du
+  `watch(addressQuery)`) interroge `api-adresse.data.gouv.fr/search/` avec un
+  biais de proximité (`lat`/`lon` = position actuelle du marqueur) pour
+  prioriser les résultats proches, repli Nominatim identique. `AddressResult`
+  simplifié en `{ shortLabel, lat, lon }` (adresse déjà formatée + coordonnées
+  numériques), qu'elle vienne de la BAN ou du repli Nominatim — le template
+  et `selectAddress()` n'ont plus besoin de connaître la source.
+- `AlertsView.vue` (zones d'alerte) toujours **non touché** — même
+  raisonnement hors périmètre que dans le correctif v0.4.29, mais bénéficierait
+  du même changement si un jour demandé.
+
+**Testé en navigateur réel** : même coordonnée Limeil-Brévannes que le test
+précédent (géolocalisation mockée) → adresse affichée **« 2 Rue du Moulin,
+Limeil-Brévannes »** (numéro maintenant présent, confirmant la BAN). Suggestions
+de recherche « avenue des tilleuls limeil » → liste BAN cohérente (« Avenue
+des Tilleuls, Limeil-Brévannes », « Place des Tilleuls, Limeil-Brévannes »),
+sélection → adresse conservée jusqu'à la publication (`POST /items` → 201).
+Zéro erreur console. `npm run build` et `vue-tsc -b` passés sans erreur.
+Version bumpée à `0.4.30`.

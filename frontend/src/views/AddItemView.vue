@@ -10,7 +10,7 @@ import { fetchCategories, type Category } from '@/services/categories'
 import { createItem, type Item } from '@/services/items'
 import { fetchPublicSettings } from '@/services/settings'
 import { resizeImageFile } from '@/utils/image'
-import { formatShortAddress, type NominatimAddress } from '@/utils/address'
+import { formatShortAddress, formatShortBanAddress, type BanAddressProperties, type NominatimAddress } from '@/utils/address'
 
 // Corrige le chemin des icônes par défaut de Leaflet (cassé par les bundlers).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
@@ -86,10 +86,9 @@ let map: L.Map | null = null
 let marker: L.Marker | null = null
 
 interface AddressResult {
-  display_name: string
-  lat: string
-  lon: string
-  address?: NominatimAddress
+  shortLabel: string
+  lat: number
+  lon: number
 }
 
 const addressQuery = ref('')
@@ -120,8 +119,27 @@ function setPosition(lat: number, lng: number) {
   marker?.setLatLng([lat, lng])
 }
 
-// Géocodage inverse : récupérer l'adresse à partir des coordonnées
+// Géocodage inverse : BAN (Base Adresse Nationale, data.gouv.fr) en priorité —
+// couverture des numéros de rue nettement meilleure que Nominatim/OSM pour la
+// France (vérifié en pratique : une adresse sans numéro via Nominatim en a un
+// via la BAN à la même position). Repli sur Nominatim si la BAN ne répond
+// rien (indisponible, hors zone couverte…).
 async function reverseGeocode(lat: number, lng: number) {
+  try {
+    const banUrl = `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`
+    const banResponse = await fetch(banUrl)
+    const banData = await banResponse.json()
+    const feature = banData?.features?.[0]
+    if (feature) {
+      const short = formatShortBanAddress(feature.properties)
+      address.value = short
+      addressQuery.value = short
+      return
+    }
+  } catch {
+    // repli Nominatim ci-dessous
+  }
+
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}&accept-language=fr`
     const response = await fetch(url, {
@@ -165,27 +183,54 @@ watch(addressQuery, (query) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=fr&limit=5&q=${encodeURIComponent(query)}`
-      const response = await fetch(url, {
-        headers: { 'User-Agent': 'LesMonstres/1.0' },
-      })
-      addressResults.value = await response.json()
+      addressResults.value = await searchAddresses(query)
     } finally {
       searching.value = false
     }
   }, 400)
 })
 
-function shortAddressOf(result: AddressResult): string {
-  return formatShortAddress(result.address, result.display_name)
+// Recherche d'adresse : BAN en priorité (biaisée vers la position actuelle
+// du marqueur via lat/lon), repli Nominatim si la BAN ne renvoie rien.
+async function searchAddresses(query: string): Promise<AddressResult[]> {
+  try {
+    const banUrl = `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5&lat=${latitude.value}&lon=${longitude.value}`
+    const banResponse = await fetch(banUrl)
+    const banData = await banResponse.json()
+    const features = banData?.features ?? []
+    if (features.length) {
+      return features.map((feature: { properties: BanAddressProperties; geometry: { coordinates: [number, number] } }) => ({
+        shortLabel: formatShortBanAddress(feature.properties),
+        lon: feature.geometry.coordinates[0],
+        lat: feature.geometry.coordinates[1],
+      }))
+    }
+  } catch {
+    // repli Nominatim ci-dessous
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=fr&limit=5&q=${encodeURIComponent(query)}`
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'LesMonstres/1.0' },
+    })
+    const results: Array<{ display_name: string; lat: string; lon: string; address?: NominatimAddress }> =
+      await response.json()
+    return results.map((result) => ({
+      shortLabel: formatShortAddress(result.address, result.display_name),
+      lat: Number(result.lat),
+      lon: Number(result.lon),
+    }))
+  } catch {
+    return []
+  }
 }
 
 function selectAddress(result: AddressResult) {
-  const short = shortAddressOf(result)
-  address.value = short
-  addressQuery.value = short
+  address.value = result.shortLabel
+  addressQuery.value = result.shortLabel
   addressResults.value = []
-  setPosition(Number(result.lat), Number(result.lon))
+  setPosition(result.lat, result.lon)
 }
 
 // Étape 3 — Informations
@@ -438,11 +483,11 @@ function resetAndGoHome() {
           >
             <li
               v-for="result in addressResults"
-              :key="result.display_name"
+              :key="`${result.lat}-${result.lon}-${result.shortLabel}`"
               class="cursor-pointer px-4 py-2.5 text-sm transition-colors hover:bg-brand-50 dark:hover:bg-gray-800"
               @click="selectAddress(result)"
             >
-              {{ shortAddressOf(result) }}
+              {{ result.shortLabel }}
             </li>
           </ul>
         </div>
