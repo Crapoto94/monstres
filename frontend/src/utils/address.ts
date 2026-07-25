@@ -35,6 +35,22 @@ export interface BanAddressProperties {
   street?: string
   housenumber?: string
   city?: string
+  type?: string
+}
+
+/**
+ * `/reverse` de la BAN renvoie plusieurs candidats triés par proximité, mais
+ * le plus proche n'est pas toujours de type `housenumber` — une place ou une
+ * rue peut être à distance quasi identique (vérifié : "Place de la Mairie"
+ * à 18 m contre "1 Place de la Mairie" à 18 m également, le numéro classé
+ * juste après). On prend donc le premier candidat de type `housenumber`
+ * parmi la liste plutôt que de se limiter au tout premier résultat.
+ */
+export function pickBestBanFeature<T extends { properties: BanAddressProperties }>(
+  features: T[] | undefined,
+): T | undefined {
+  if (!features?.length) return undefined
+  return features.find((f) => f.properties.type === 'housenumber') ?? features[0]
 }
 
 /**

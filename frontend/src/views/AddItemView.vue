@@ -10,7 +10,13 @@ import { fetchCategories, type Category } from '@/services/categories'
 import { createItem, type Item } from '@/services/items'
 import { fetchPublicSettings } from '@/services/settings'
 import { resizeImageFile } from '@/utils/image'
-import { formatShortAddress, formatShortBanAddress, type BanAddressProperties, type NominatimAddress } from '@/utils/address'
+import {
+  formatShortAddress,
+  formatShortBanAddress,
+  pickBestBanFeature,
+  type BanAddressProperties,
+  type NominatimAddress,
+} from '@/utils/address'
 
 // Corrige le chemin des icônes par défaut de Leaflet (cassé par les bundlers).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
@@ -129,7 +135,7 @@ async function reverseGeocode(lat: number, lng: number) {
     const banUrl = `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`
     const banResponse = await fetch(banUrl)
     const banData = await banResponse.json()
-    const feature = banData?.features?.[0]
+    const feature = pickBestBanFeature(banData?.features)
     if (feature) {
       const short = formatShortBanAddress(feature.properties)
       address.value = short

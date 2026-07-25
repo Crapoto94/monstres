@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.31',
+    date: '25 juillet 2026',
+    changes: [
+      'Adresse : le numéro de rue le plus proche est préféré même quand ce n\'est pas le tout premier résultat renvoyé par la BAN (ex. place/rue à distance quasi identique)',
+    ],
+  },
+  {
     version: '0.4.30',
     date: '25 juillet 2026',
     changes: [

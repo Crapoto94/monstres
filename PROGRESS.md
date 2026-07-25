@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-25** (v0.4.30 — géocodage adresse basculé
-sur la BAN, data.gouv.fr, pour un vrai numéro de rue)
+Dernière mise à jour : **2026-07-25** (v0.4.31 — préférence pour le
+candidat BAN avec numéro de rue, pas juste le premier de la liste)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3375,3 +3375,42 @@ des Tilleuls, Limeil-Brévannes », « Place des Tilleuls, Limeil-Brévannes »)
 sélection → adresse conservée jusqu'à la publication (`POST /items` → 201).
 Zéro erreur console. `npm run build` et `vue-tsc -b` passés sans erreur.
 Version bumpée à `0.4.30`.
+
+---
+
+## Correctif : numéro toujours absent par endroits (Val-de-Marne) — v0.4.31
+
+Après la bascule vers la BAN (v0.4.30), l'utilisateur a signalé que le
+numéro manquait encore par endroits dans le 94 (Limeil-Brévannes, Créteil),
+alors que ça fonctionnait à Montreuil ou Reims — avec l'impression que
+c'était propre à tout le département.
+
+**Investigation** : test de plusieurs points dans le 94 (Ivry-sur-Seine,
+Vitry-sur-Seine, Créteil) → numéro renvoyé correctement dans la plupart des
+cas, donc pas un problème départemental général. **Cause réelle trouvée**
+sur un point précis à Villejuif (place de la mairie) : `/reverse` de la BAN
+renvoie plusieurs candidats triés par proximité (jusqu'à 10), et le premier
+de la liste (`features[0]`, utilisé jusqu'ici sans filtrage) n'est pas
+toujours de type `housenumber` — ici, `"Place de la Mairie"` (type `street`)
+à 18 m arrivait juste avant `"1 Place de la Mairie"` (type `housenumber`),
+**à la même distance**. Notre code ne regardait jamais au-delà du premier
+résultat, donc perdait le numéro dans ce cas alors qu'il était disponible
+dans la même réponse, sans appel réseau supplémentaire.
+
+**Correctif** : `frontend/src/utils/address.ts` — nouvelle fonction
+`pickBestBanFeature()` : prend le premier candidat de type `housenumber`
+parmi la liste renvoyée (déjà triée par proximité/score), ne retombe sur
+`features[0]` (quel que soit son type) que si aucun candidat n'a de numéro.
+Appliquée dans `reverseGeocode()` de `AddItemView.vue` (géolocalisation +
+déplacement du marqueur). La recherche d'adresse (`searchAddresses`) n'a pas
+besoin du même traitement : elle affiche déjà plusieurs suggestions
+distinctes que l'utilisateur choisit lui-même, pas un unique résultat à
+départager.
+
+**Testé en navigateur réel** : reproduction exacte du cas Villejuif
+(géolocalisation mockée sur les coordonnées de la mairie) → avant le
+correctif la BAN aurait renvoyé « Place de la Mairie, Villejuif » (vérifié
+via l'API brute), après le correctif l'appli affiche bien **« 1 Place de la
+Mairie, Villejuif »**. Publication de bout en bout testée (`POST /items` →
+201). Zéro erreur console. `npm run build` et `vue-tsc -b` passés sans
+erreur. Version bumpée à `0.4.31`.
