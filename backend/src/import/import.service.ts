@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import { CreateFacebookImportDto } from './dto/create-facebook-import.dto';
 
 const SOURCE = 'facebook';
@@ -21,6 +22,7 @@ export class ImportService {
     private readonly prisma: PrismaService,
     private readonly imageService: ImageService,
     private readonly config: ConfigService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Identifiants des posts déjà importés — permet à la routine de sauter tôt. */
@@ -81,6 +83,11 @@ export class ImportService {
     const itemId = randomUUID();
     const processed = await this.imageService.process(photo.buffer, itemId);
 
+    // Publication immédiate (AVAILABLE) ou mise en attente de modération
+    // (PENDING_REVIEW), pilotable via `settings` sans redéploiement — défaut :
+    // en ligne tout de suite (modération a posteriori, choix utilisateur).
+    const autoPublish = await this.settings.getBoolean('import_facebook_auto_publish', true);
+
     const item = await this.prisma.item.create({
       data: {
         id: itemId,
@@ -90,8 +97,7 @@ export class ImportService {
         latitude,
         longitude,
         address,
-        // Importé = en attente de validation manuelle par un admin (§ modération).
-        status: 'PENDING_REVIEW',
+        status: autoPublish ? 'AVAILABLE' : 'PENDING_REVIEW',
         photos: {
           create: [{ type: 'LISTING', path: processed.path, thumbnailPath: processed.thumbnailPath, order: 0 }],
         },
@@ -103,7 +109,9 @@ export class ImportService {
       data: { source: SOURCE, externalId: dto.postId, itemId: item.id },
     });
 
-    this.logger.log(`Monstre importé de Facebook (post ${dto.postId}) → item ${item.id} (PENDING_REVIEW).`);
+    this.logger.log(
+      `Monstre importé de Facebook (post ${dto.postId}) → item ${item.id} (${autoPublish ? 'AVAILABLE' : 'PENDING_REVIEW'}).`,
+    );
     return { status: 'created', itemId: item.id };
   }
 

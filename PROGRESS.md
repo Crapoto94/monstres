@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-25** (v0.4.32 — module d'import de Monstres
-depuis le groupe Facebook, en PENDING_REVIEW)
+Dernière mise à jour : **2026-07-25** (v0.4.33 — import Facebook : statut
+pilotable par setting, publication immédiate par défaut)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3492,10 +3492,20 @@ crossOrigin → download → `POST /import/facebook` → item créé en
 servie, **rendu confirmé dans l'appli** (`/monstres/:id`, auteur « Les
 Monstres (import Facebook) »). Anti-doublon vérifié (2e POST → `duplicate`).
 
+### Mise à jour v0.4.33 — publication immédiate
+Sur demande utilisateur (« je ne veux pas valider en admin, modération a
+posteriori »), le statut des Monstres importés est désormais **pilotable par
+le setting `import_facebook_auto_publish`** (BOOLEAN, lu via `SettingsService`,
+**défaut `true` → `AVAILABLE`** = en ligne immédiatement). Le mettre à `false`
+rebascule en `PENDING_REVIEW` sans redéploiement. Pas de seed nécessaire
+(`getBoolean(key, true)` renvoie le défaut si la clé est absente).
+**Note** : l'import ne déclenche PAS `notifyNearbySubscribers` (évite un
+envoi d'emails en masse via Brevo pour des imports en lot) — à activer plus
+tard si souhaité.
+
 ### Restant à faire
-- [ ] **Déploiement prod** : ajouter `IMPORT_API_TOKEN` (+ `IMPORT_BOT_EMAIL`)
-      au `.env` prod, rebuild Docker, lancer `create-import-bot.js` sur la
-      prod (`docker compose exec backend node scripts/create-import-bot.js`).
+- [x] **Déploiement prod** : `IMPORT_API_TOKEN` + compte robot créés en prod
+      (2026-07-25). Rebuild v0.4.33 requis pour la publication immédiate.
 - [ ] **Routine récurrente** : orchestration Claude (toutes les ~30 min,
       PC+Chrome actifs) qui, par nouveau post non déjà importé : lit
       texte/commentaires → titre+adresse, extrait+télécharge la photo, POST
