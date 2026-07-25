@@ -6,6 +6,7 @@ import { toggleInterest } from '@/services/reservations'
 import { fetchComments, createComment, deleteComment, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
+import { resizeImageFile } from '@/utils/image'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -184,13 +185,15 @@ function onGalleryScroll() {
   activePhoto.value = Math.round(el.scrollLeft / el.clientWidth)
 }
 
-function onCollectFileChange(e: Event) {
+async function onCollectFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0] ?? null
-  collectFile.value = file
   if (file) {
-    collectPreview.value = URL.createObjectURL(file)
+    const resized = await resizeImageFile(file)
+    collectFile.value = resized
+    collectPreview.value = URL.createObjectURL(resized)
   } else {
+    collectFile.value = null
     collectPreview.value = null
   }
 }

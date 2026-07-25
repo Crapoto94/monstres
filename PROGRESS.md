@@ -7,9 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-22** (v0.3.8 — page blanche après
-connexion Facebook/Google : le service worker interceptait la redirection
-OAuth du backend)
+Dernière mise à jour : **2026-07-25** (v0.4.29 — redimensionnement photo
+client + adresse Nominatim simplifiée)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3262,3 +3261,62 @@ documentés au fil des sections ci-dessus plutôt que des phases planifiées :
    versionné : rappeler à l'utilisateur de reporter les nouvelles valeurs à
    la main (en remplaçant, pas en dupliquant les clés — voir le bug de
    clés dupliquées ci-dessus) avant chaque `docker compose up -d --build`.
+
+---
+
+## Correctif : upload photo échouant + adresse Nominatim trop verbeuse (v0.4.29)
+
+Signalé par l'utilisateur : (1) l'upload d'une photo de smartphone (souvent
+10-15 Mo, 12+ Mpx) échouait à la publication d'un Monstre avec le message
+générique « La publication a échoué. Réessaie. » — le multipart dépasse
+`MAX_FILE_SIZE_BYTES` (5 Mo, `backend/src/items/items.controller.ts`) avant
+même d'atteindre le redimensionnement serveur (`ImageService`, sharp,
+1200 px max). (2) L'adresse proposée/enregistrée à partir de la géolocalisation
+était le `display_name` complet de Nominatim (rue, ville, arrondissement,
+département, région, pays, code postal…), sans numéro de rue visible même
+quand OSM en a un, l'utilisateur voulait juste « numéro rue, ville ».
+
+**Correctifs (frontend uniquement, aucun changement backend)** :
+- `frontend/src/utils/image.ts` (nouveau) : `resizeImageFile()` redimensionne
+  côté client à ~4 Mpx max via `createImageBitmap(file, { imageOrientation:
+  'from-image' })` (corrige la rotation EXIF *avant* le redessin canvas — le
+  canvas ne conserve pas les métadonnées EXIF, donc sans ça les photos
+  portrait ressortiraient pivotées) + export JPEG qualité 0.85. Appliqué à la
+  sélection de photos dans `AddItemView.vue` (création) et au upload de la
+  photo de récupération dans `ItemDetailView.vue` (`onCollectFileChange`).
+  Ne redimensionne pas si l'image fait déjà ≤ 4 Mpx.
+- `frontend/src/utils/address.ts` (nouveau) : `formatShortAddress()`
+  reconstruit une adresse courte (`"12 rue Piard, Limeil-Brévannes"`) à
+  partir des champs structurés Nominatim (`addressdetails=1` ajouté aux
+  appels `/reverse` et `/search`) plutôt que de découper `display_name` par
+  virgules (peu fiable, le nombre de segments varie selon la zone). Appliqué
+  dans `AddItemView.vue` : géolocalisation (`reverseGeocode`), marqueur
+  déplacé, et recherche d'adresse (liste de suggestions ET adresse
+  sélectionnée).
+  **Limite connue, pas un bug applicatif** : si OpenStreetMap n'a pas mappé
+  de numéro de rue à l'endroit précis (fréquent en zone pavillonnaire en
+  France), le numéro reste absent — vérifié en interrogeant directement
+  l'API Nominatim pour l'exemple donné par l'utilisateur (Limeil-Brévannes) :
+  la réponse ne contient pas de `house_number`, seul le type `highway` est
+  retourné à cette coordonnée. Rien à corriger côté appli dans ce cas.
+- `AlertsView.vue` (recherche d'adresse pour les zones d'alerte) a un
+  `simplifyAddress()` similaire mais **non touché** — hors périmètre de la
+  demande utilisateur (qui portait sur le flux de création de Monstre), même
+  s'il pourrait bénéficier du même traitement plus tard.
+
+**Testé en navigateur réel** (Chrome via Claude Browser, backend + frontend
+lancés en local) : compte de test créé et nettoyé après coup (email +
+onboarding marqués vérifiés directement en base pour contourner les guards
+de route le temps du test, aucun vrai email envoyé). Photo de test 4032×3024
+(12,2 Mpx) injectée via `DataTransfer` (pas de sélecteur de fichier natif
+pilotable) → aperçu redimensionné confirmé à 2309×1732 (~4 Mpx, ratio
+préservé). Géolocalisation mockée sur les coordonnées Limeil-Brévannes de
+l'exemple utilisateur → adresse affichée « Rue du Moulin, Limeil-Brévannes »
+(court, sans numéro — cohérent avec l'absence de donnée OSM). Recherche
+« 10 rue de Rivoli Paris » → suggestion et adresse sélectionnée « 10 Rue de
+Rivoli, Paris » (numéro présent cette fois, OSM a la donnée). Publication du
+Monstre de test réussie (`POST /items` → 201). Zéro erreur console.
+Build réel (`npm run build`, pas seulement `vue-tsc --noEmit`) et
+`vue-tsc -b` passés sans erreur. Version bumpée à `0.4.29`
+(`backend/package.json` + `frontend/package.json` + entrée
+`frontend/src/data/changelog.ts`).

@@ -9,6 +9,8 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { fetchCategories, type Category } from '@/services/categories'
 import { createItem, type Item } from '@/services/items'
 import { fetchPublicSettings } from '@/services/settings'
+import { resizeImageFile } from '@/utils/image'
+import { formatShortAddress, type NominatimAddress } from '@/utils/address'
 
 // Corrige le chemin des icônes par défaut de Leaflet (cassé par les bundlers).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
@@ -43,7 +45,9 @@ const photos = ref<File[]>([])
 const photoPreviews = ref<string[]>([])
 const photoError = ref<string | null>(null)
 
-function onPhotosSelected(event: Event) {
+const resizingPhotos = ref(false)
+
+async function onPhotosSelected(event: Event) {
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files ?? [])
   photoError.value = null
@@ -52,10 +56,16 @@ function onPhotosSelected(event: Event) {
     photoError.value = `${MAX_PHOTOS} photos maximum.`
   }
 
-  for (const file of files) {
-    if (photos.value.length >= MAX_PHOTOS) break
-    photos.value.push(file)
-    photoPreviews.value.push(URL.createObjectURL(file))
+  resizingPhotos.value = true
+  try {
+    for (const file of files) {
+      if (photos.value.length >= MAX_PHOTOS) break
+      const resized = await resizeImageFile(file)
+      photos.value.push(resized)
+      photoPreviews.value.push(URL.createObjectURL(resized))
+    }
+  } finally {
+    resizingPhotos.value = false
   }
   input.value = ''
 }
@@ -75,8 +85,15 @@ const mapContainer = ref<HTMLDivElement | null>(null)
 let map: L.Map | null = null
 let marker: L.Marker | null = null
 
+interface AddressResult {
+  display_name: string
+  lat: string
+  lon: string
+  address?: NominatimAddress
+}
+
 const addressQuery = ref('')
-const addressResults = ref<Array<{ display_name: string; lat: string; lon: string }>>([])
+const addressResults = ref<AddressResult[]>([])
 const searching = ref(false)
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
 
@@ -106,14 +123,15 @@ function setPosition(lat: number, lng: number) {
 // Géocodage inverse : récupérer l'adresse à partir des coordonnées
 async function reverseGeocode(lat: number, lng: number) {
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}&accept-language=fr`
     const response = await fetch(url, {
       headers: { 'User-Agent': 'LesMonstres/1.0' },
     })
     const data = await response.json()
     if (data.display_name) {
-      address.value = data.display_name
-      addressQuery.value = data.display_name
+      const short = formatShortAddress(data.address, data.display_name)
+      address.value = short
+      addressQuery.value = short
     }
   } catch {
     // silencieux — l'adresse reste ce qu'elle était
@@ -147,7 +165,7 @@ watch(addressQuery, (query) => {
   searchTimeout = setTimeout(async () => {
     searching.value = true
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&countrycodes=fr&limit=5&q=${encodeURIComponent(query)}`
       const response = await fetch(url, {
         headers: { 'User-Agent': 'LesMonstres/1.0' },
       })
@@ -158,9 +176,14 @@ watch(addressQuery, (query) => {
   }, 400)
 })
 
-function selectAddress(result: { display_name: string; lat: string; lon: string }) {
-  address.value = result.display_name
-  addressQuery.value = result.display_name
+function shortAddressOf(result: AddressResult): string {
+  return formatShortAddress(result.address, result.display_name)
+}
+
+function selectAddress(result: AddressResult) {
+  const short = shortAddressOf(result)
+  address.value = short
+  addressQuery.value = short
   addressResults.value = []
   setPosition(Number(result.lat), Number(result.lon))
 }
@@ -385,6 +408,7 @@ function resetAndGoHome() {
           </label>
         </div>
 
+        <p v-if="resizingPhotos" class="text-sm text-gray-500 dark:text-gray-400">⏳ Optimisation de la photo…</p>
         <p v-if="photoError" class="text-sm text-red-600 dark:text-red-400">{{ photoError }}</p>
       </div>
 
@@ -418,7 +442,7 @@ function resetAndGoHome() {
               class="cursor-pointer px-4 py-2.5 text-sm transition-colors hover:bg-brand-50 dark:hover:bg-gray-800"
               @click="selectAddress(result)"
             >
-              {{ result.display_name }}
+              {{ shortAddressOf(result) }}
             </li>
           </ul>
         </div>

@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.29',
+    date: '25 juillet 2026',
+    changes: [
+      'Fix : les photos de smartphone (10-15 Mo) faisaient échouer la publication — redimensionnement automatique à 4 mégapixels avant envoi',
+      'Adresse simplifiée (numéro + rue + ville, ex. "10 rue de Rivoli, Paris") au lieu de l\'adresse complète Nominatim (département, région, code postal…)',
+    ],
+  },
+  {
     version: '0.4.28',
     date: '24 juillet 2026',
     changes: [
