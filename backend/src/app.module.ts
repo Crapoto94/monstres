@@ -27,6 +27,7 @@ import { TutorialModule } from './tutorial/tutorial.module';
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { LegalModule } from './legal/legal.module';
 import { ShareModule } from './share/share.module';
+import { ImportModule } from './import/import.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ShareModule } from './share/share.module';
     EmailTemplatesModule,
     LegalModule,
     ShareModule,
+    ImportModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

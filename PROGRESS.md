@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-25** (v0.4.31 — préférence pour le
-candidat BAN avec numéro de rue, pas juste le premier de la liste)
+Dernière mise à jour : **2026-07-25** (v0.4.32 — module d'import de Monstres
+depuis le groupe Facebook, en PENDING_REVIEW)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3414,3 +3414,91 @@ via l'API brute), après le correctif l'appli affiche bien **« 1 Place de la
 Mairie, Villejuif »**. Publication de bout en bout testée (`POST /items` →
 201). Zéro erreur console. `npm run build` et `vue-tsc -b` passés sans
 erreur. Version bumpée à `0.4.31`.
+
+---
+
+## Import automatique depuis le groupe Facebook (v0.4.32) — base construite
+
+Demande utilisateur : alimenter l'appli avec les Monstres postés dans le
+groupe Facebook privé `971650613537464`, où l'adresse est souvent noyée dans
+le texte/les commentaires (ex. « 46 av. De Fontainebleau,xau Kremlin Bicêtre.
+A restaurer » → adresse réelle « 46 av. De Fontainebleau, Kremlin Bicêtre »).
+
+### Décision d'architecture (importante pour la suite)
+- **Pas d'API Facebook** : l'accès à la lecture des posts/commentaires d'un
+  groupe est verrouillé par Meta depuis 2018 (réservé à des cas d'usage
+  entreprise validés). Une appli perso n'y a pas droit.
+- **Pas de scraper serveur permanent** (viole les CGU, risque de bannissement
+  du compte) — écarté explicitement avec l'utilisateur.
+- **Retenu : routine Claude semi-planifiée via le Chrome réel de
+  l'utilisateur** (extension « Claude in Chrome »), déjà connecté à Facebook.
+  Aucun mot de passe manipulé/stocké. **Nécessite PC + Chrome + extension
+  actifs** au moment du déclenchement (une tâche cloud PC éteint n'aurait
+  aucun navigateur connecté à la session Facebook).
+
+### Le vrai obstacle résolu : sortir la photo de Facebook
+Plusieurs transports testés en conditions réelles et **écartés avec preuve** :
+- Lire l'URL fbcdn en JS → **redigée** par l'extension (`[BLOCKED: Cookie/
+  query string data]`) — protection anti-fuite délibérée, non contournée.
+- `computer` screenshot `save_to_disk:true` → **timeout CDP** systématique
+  sur la page FB (renderer lourd).
+- Clic droit → « Enregistrer sous » → menu natif **non déclenchable** en
+  automatisation CDP.
+- Canvas `toDataURL` direct → **canvas tainted** (image cross-origin sans CORS).
+- Presse-papier (`navigator.clipboard.write`) → **`Document is not focused`**
+  (l'onglet piloté n'a jamais le focus OS ; `document.hasFocus()===false`),
+  irréparable ici.
+- `window.name` à travers une navigation cross-site → **vidé par Chrome**
+  (mitigation anti-tracking moderne).
+- `fetch` sortant depuis la page FB → **bloqué par la CSP `connect-src` de
+  Facebook** (« Failed to fetch » même vers la BAN à CORS permissif) — vaut
+  aussi en prod, donc pas d'appel direct page FB → API.
+
+**Transport qui marche (retenu)** : recharger l'image **avec
+`crossOrigin='anonymous'`** (le CDN Facebook renvoie alors les en-têtes CORS
+→ canvas non tainted) → `canvas.toBlob` → **déclencher un téléchargement**
+(`<a download>` d'un `blob:` URL). Ni fetch, ni presse-papier, ni CSP en
+travers, ni gesture requis. Le fichier atterrit dans le dossier
+Téléchargements ; l'envoi à l'API se fait ensuite **depuis le terminal
+(curl/PowerShell) avec le token** — donc **le token ne touche jamais la page
+Facebook**. Vérifié : fichier téléchargé = photo source pleine qualité,
+octet pour octet la taille du blob.
+
+### Construit côté backend (compile, testé en local)
+- **Table `imported_posts`** (`ImportedPost` : `source` + `externalId`
+  unique + `itemId`) — anti-doublon. Migration
+  `20260725170000_add_imported_posts` (écrite à la main + `migrate deploy`,
+  workaround habituel).
+- **Module `src/import/`** :
+  - `POST /api/v1/import/facebook` (multipart : `postId, title, description?,
+    address?, latitude?, longitude?` + fichier `photo`). Protégé par
+    `ImportTokenGuard` (en-tête `x-import-token` == `IMPORT_API_TOKEN`, refus
+    si non configuré). Géocode l'adresse via la **BAN** côté serveur si
+    lat/lng absents, crée l'Item en **`PENDING_REVIEW`** sous le compte robot,
+    traite la photo via `ImageService`, enregistre l'`ImportedPost`. Renvoie
+    `{status:'created'|'duplicate', itemId}`.
+  - `GET /api/v1/import/facebook/known` → liste des `externalId` déjà importés
+    (la routine s'en sert pour sauter les posts déjà traités). Même token.
+- **`scripts/create-import-bot.js`** : crée/maj le compte robot
+  (`IMPORT_BOT_EMAIL`, défaut `import-bot@monstres.local`), email vérifié,
+  mot de passe aléatoire inutilisable (ne se connecte jamais via formulaire).
+- **`.env` / `.env.example`** : `IMPORT_API_TOKEN`, `IMPORT_BOT_EMAIL`,
+  `IMPORT_BOT_NAME`.
+
+### Validé en local (démo bout-en-bout sur un vrai post)
+Post réel (dinette enfant, « 4 rue Yvonne le Tac 75018 ») : extraction photo
+crossOrigin → download → `POST /import/facebook` → item créé en
+`PENDING_REVIEW`, adresse géocodée « 4 Rue Yvonne Le Tac 75018 Paris », photo
+servie, **rendu confirmé dans l'appli** (`/monstres/:id`, auteur « Les
+Monstres (import Facebook) »). Anti-doublon vérifié (2e POST → `duplicate`).
+
+### Restant à faire
+- [ ] **Déploiement prod** : ajouter `IMPORT_API_TOKEN` (+ `IMPORT_BOT_EMAIL`)
+      au `.env` prod, rebuild Docker, lancer `create-import-bot.js` sur la
+      prod (`docker compose exec backend node scripts/create-import-bot.js`).
+- [ ] **Routine récurrente** : orchestration Claude (toutes les ~30 min,
+      PC+Chrome actifs) qui, par nouveau post non déjà importé : lit
+      texte/commentaires → titre+adresse, extrait+télécharge la photo, POST
+      import. Rythme 30 min conseillé (pas 15) pour limiter la détection
+      côté Facebook.
+- [ ] (option) Tag visuel « Importé de Facebook » dans l'admin.

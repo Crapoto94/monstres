@@ -474,3 +474,18 @@ model EmailTemplate {
 
   @@map("email_templates")
 }
+
+// Trace des posts externes déjà importés (ex. groupe Facebook), pour
+// éviter les doublons : la routine d'import vérifie/insère `externalId`
+// avant de créer un Monstre. `itemId` relie au Monstre créé (null si l'item
+// a été supprimé ensuite). Voir src/import/.
+model ImportedPost {
+  id         String   @id @default(cuid())
+  source     String
+  externalId String
+  itemId     String?
+  createdAt  DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@map("imported_posts")
+}
