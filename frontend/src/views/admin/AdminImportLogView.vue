@@ -81,7 +81,15 @@ function summary(run: AdminImportLogRun): string {
         >
           <button type="button" class="flex w-full items-center gap-3 p-3 text-left" @click="toggle(run.runId)">
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ formatDateTime(run.startedAt) }}</p>
+              <p class="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
+                {{ formatDateTime(run.startedAt) }}
+                <span
+                  v-if="run.machine"
+                  class="rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-normal text-brand-700 dark:bg-brand-950 dark:text-brand-300"
+                >
+                  {{ run.machine }}
+                </span>
+              </p>
               <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ summary(run) }}</p>
             </div>
             <span class="flex-shrink-0 text-xs text-gray-400 dark:text-gray-500">{{ run.total }} ligne{{ run.total > 1 ? 's' : '' }}</span>

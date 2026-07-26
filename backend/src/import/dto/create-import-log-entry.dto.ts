@@ -35,4 +35,9 @@ export class CreateImportLogEntryDto {
   @IsOptional()
   @IsString()
   itemId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  machine?: string;
 }

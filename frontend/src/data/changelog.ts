@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.39',
+    date: '26 juillet 2026',
+    changes: [
+      "Le journal d'import (admin) indique désormais quelle machine a exécuté chaque passage de la routine, utile quand plusieurs machines tournent en parallèle",
+    ],
+  },
+  {
     version: '0.4.38',
     date: '26 juillet 2026',
     changes: [

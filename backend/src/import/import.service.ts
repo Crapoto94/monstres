@@ -51,6 +51,7 @@ export class ImportService {
       data: {
         runId: dto.runId,
         source: SOURCE,
+        machine: dto.machine ?? null,
         decision: dto.decision,
         postId: dto.postId ?? null,
         reason: dto.reason ?? null,

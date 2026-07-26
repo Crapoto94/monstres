@@ -501,6 +501,7 @@ model ImportLogEntry {
   id        String   @id @default(cuid())
   runId     String
   source    String   @default("facebook")
+  machine   String?
   postId    String?
   decision  String
   reason    String?

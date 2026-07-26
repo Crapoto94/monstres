@@ -50,6 +50,7 @@ export class AdminImportLogService {
         runId,
         startedAt: group._min.createdAt,
         total: group._count._all,
+        machine: runEntries[0]?.machine ?? null,
         counts,
         entries: runEntries,
       };

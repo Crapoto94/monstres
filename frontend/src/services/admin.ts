@@ -367,6 +367,7 @@ export interface AdminImportLogEntry {
   id: string
   runId: string
   source: string
+  machine: string | null
   postId: string | null
   decision: 'run' | 'imported' | 'duplicate' | 'skipped_found' | 'skipped_error' | 'skipped_other'
   reason: string | null
@@ -379,6 +380,7 @@ export interface AdminImportLogRun {
   runId: string
   startedAt: string
   total: number
+  machine: string | null
   counts: Record<string, number>
   entries: AdminImportLogEntry[]
 }
