@@ -6,6 +6,27 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.38',
+    date: '26 juillet 2026',
+    changes: [
+      "Correctif : les accents (é, è, à…) étaient corrompus dans le titre et la description de certains Monstres importés automatiquement depuis Facebook",
+    ],
+  },
+  {
+    version: '0.4.37',
+    date: '26 juillet 2026',
+    changes: [
+      "Nouveau : un journal de la routine d'import Facebook, consultable en administration (annonces trouvées, importées ou laissées de côté)",
+    ],
+  },
+  {
+    version: '0.4.36',
+    date: '26 juillet 2026',
+    changes: [
+      "Correctif : la fenêtre \"Quoi de neuf\" restait bloquée sur la version 0.4.31 et n'affichait plus les nouveautés récentes",
+    ],
+  },
+  {
     version: '0.4.35',
     date: '26 juillet 2026',
     changes: [
