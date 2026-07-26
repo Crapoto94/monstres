@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { fetchCommunity, type CommunityMember } from '@/services/community'
+import { useSeo } from '@/composables/useSeo'
+
+useSeo({
+  title: 'La communauté',
+  description: 'Découvre les membres qui repèrent, partagent et récupèrent les Monstres près de chez toi.',
+  path: '/communaute',
+})
 
 const members = ref<CommunityMember[]>([])
 const loading = ref(true)

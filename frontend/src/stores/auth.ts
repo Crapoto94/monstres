@@ -36,11 +36,12 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async register(payload: { name: string; email: string; password: string; confirmPassword: string }) {
+    async register(payload: { name: string; email: string; password: string; confirmPassword: string; newsletterOptin?: boolean }) {
       this.loading = true
       this.error = null
       try {
         this.user = await authService.register(payload)
+        this.initialized = true
       } catch (error) {
         this.error = extractErrorMessage(error, "L'inscription a échoué.")
         throw error
@@ -54,6 +55,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       try {
         this.user = await authService.login(payload)
+        this.initialized = true
       } catch (error) {
         this.error = extractErrorMessage(error, 'Email ou mot de passe incorrect.')
         throw error
@@ -65,6 +67,8 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       await authService.logout()
       this.user = null
+      this.initialized = false
+      this.error = null
     },
 
     /** Recharge le profil (ex. juste après vérification d'email) — contrairement à `init()`, toujours exécuté. */

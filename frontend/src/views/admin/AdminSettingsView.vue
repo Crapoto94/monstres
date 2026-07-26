@@ -145,6 +145,12 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     description: 'Adresse email qui reçoit les alertes (nouveaux inscrits, etc.). Par défaut : admin@fbc.fr.',
     placeholder: 'admin@fbc.fr',
   },
+  newsletter_frequency_days: {
+    label: 'Fréquence newsletter',
+    description: 'Nombre de jours minimum entre deux envois de newsletter. Permet de respecter l\'engagement "au maximum une fois par semaine" annoncé à l\'inscription.',
+    unit: 'j',
+    placeholder: '7',
+  },
   geo_explanation_content: {
     label: 'Explication activation GPS',
     description: 'Texte affiché dans la fenêtre d\'explication quand un utilisateur clique sur le bouton GPS sur la page d\'accueil. HTML autorisé.',
@@ -175,7 +181,7 @@ const SECTIONS = [
   { title: '📊 Statistiques', keys: ['analytics_retention_days'] },
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode', 'geo_explanation_content'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
-  { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email'] },
+  { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email', 'newsletter_frequency_days'] },
   { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content'] },
 ]
 

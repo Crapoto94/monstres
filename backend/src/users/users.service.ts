@@ -15,6 +15,7 @@ export interface SafeUser {
   trustScore: number;
   emailVerifiedAt: Date | null;
   emailNotifications: boolean;
+  newsletterOptin: boolean;
   phoneNumber: string | null;
   whatsappNotifications: boolean;
   createdAt: Date;
@@ -66,6 +67,7 @@ export class UsersService {
       trustScore: user.trustScore,
       emailVerifiedAt: user.emailVerifiedAt,
       emailNotifications: user.emailNotifications,
+      newsletterOptin: user.newsletterOptin,
       phoneNumber: user.phoneNumber,
       whatsappNotifications: user.whatsappNotifications,
       createdAt: user.createdAt,

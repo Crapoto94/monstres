@@ -59,6 +59,7 @@ export class AuthService {
         registrationUserAgent: ua ?? null,
         registrationOs: os,
         registrationBrowser: browser,
+        newsletterOptin: dto.newsletterOptin ?? false,
       },
     });
 

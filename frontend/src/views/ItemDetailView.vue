@@ -7,6 +7,7 @@ import { fetchComments, createComment, deleteComment, type Comment } from '@/ser
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
 import { resizeImageFile } from '@/utils/image'
+import { useSeo } from '@/composables/useSeo'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -177,6 +178,18 @@ const shortAddress = computed(() => {
   const parts = item.value.address.split(',').map((s) => s.trim())
   if (parts.length <= 3) return item.value.address
   return parts.slice(0, 3).join(', ')
+})
+
+// Doit rester cohérent avec la page prérendue pour les robots
+// (ShareController côté backend) : même titre, même description, même image.
+useSeo({
+  title: () => item.value?.title,
+  description: () =>
+    item.value?.description?.trim() ||
+    (shortAddress.value ? `Objet encombrant à récupérer gratuitement, ${shortAddress.value}.` : undefined),
+  image: () => listingPhotos.value[0]?.path,
+  path: () => route.path,
+  noindex: () => !!item.value && !['AVAILABLE', 'RESERVED', 'COLLECTED', 'ARCHIVED'].includes(item.value.status),
 })
 
 function isImageAvatar(avatar: string | null | undefined): boolean {

@@ -29,6 +29,7 @@ import { LegalModule } from './legal/legal.module';
 import { ShareModule } from './share/share.module';
 import { ImportModule } from './import/import.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { SeoModule } from './seo/seo.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     ShareModule,
     ImportModule,
     AnalyticsModule,
+    SeoModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

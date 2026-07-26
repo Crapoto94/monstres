@@ -7,6 +7,14 @@ import monsterMarker from '@/assets/monster-marker.png'
 import { fetchItems, fetchArchivedItems } from '@/services/items'
 import { fetchSubscriptions } from '@/services/subscriptions'
 import { useAuthStore } from '@/stores/auth'
+import { useSeo } from '@/composables/useSeo'
+
+useSeo({
+  title: 'La carte des encombrants',
+  description:
+    'Visualise sur une carte tous les Monstres — meubles et objets encombrants abandonnés dans la rue — signalés près de chez toi.',
+  path: '/carte',
+})
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522]
 

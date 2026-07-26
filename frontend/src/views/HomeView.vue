@@ -7,6 +7,9 @@ import { formatRelativeTime } from '@/utils/time'
 import { useAuthStore } from '@/stores/auth'
 import logo from '@/assets/logo-transparent.png'
 import WhatsNewModal from '@/components/WhatsNewModal.vue'
+import { useSeo } from '@/composables/useSeo'
+
+useSeo({ path: '/' })
 
 const auth = useAuthStore()
 
@@ -149,6 +152,17 @@ function coverPhoto(item: Item) {
     </div>
 
     <div class="px-4 pt-3">
+      <!-- Titre principal : seul <h1> de la page. Indispensable au
+           référencement (Google n'a sinon aucun texte à indexer, le logo
+           n'étant qu'une image) et utile aux lecteurs d'écran. -->
+      <h1 class="text-base font-bold text-gray-900 dark:text-gray-100">
+        Les Monstres, l'appli des encombrants
+      </h1>
+      <p class="mb-3 mt-0.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
+        Meubles, électroménager, jouets abandonnés dans la rue : repère-les près de chez toi et
+        récupère-les gratuitement, pour leur donner une seconde vie.
+      </p>
+
       <div class="flex items-center gap-2">
         <select
           v-model="categoryId"

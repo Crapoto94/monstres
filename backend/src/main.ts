@@ -22,10 +22,17 @@ async function bootstrap() {
   });
 
   // `monstres/:id` reste hors préfixe /api/v1 : c'est la route publique
-  // exacte (nginx y route les robots de partage — voir ShareController)
-  // pour que `og:url` corresponde au vrai lien partagé.
+  // exacte (nginx y route les robots de partage et les moteurs de
+  // recherche — voir ShareController) pour que `og:url` et l'URL canonique
+  // correspondent au vrai lien partagé. `robots.txt` et `sitemap.xml`
+  // doivent également répondre sur leurs URLs standard (voir SeoController).
   app.setGlobalPrefix('api/v1', {
-    exclude: [{ path: 'monstres/:id', method: RequestMethod.GET }],
+    exclude: [
+      { path: 'monstres/:id', method: RequestMethod.GET },
+      { path: 'robots.txt', method: RequestMethod.GET },
+      { path: 'sitemap.xml', method: RequestMethod.GET },
+      { path: 'pourquoi', method: RequestMethod.GET },
+    ],
   });
   app.use(cookieParser());
   // Plusieurs domaines peuvent pointer vers ce même serveur (ex.

@@ -6,7 +6,43 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2a7877" />
-    <title>Les Monstres</title>
+
+    <!-- Référencement : ces valeurs sont celles de l'accueil et servent de
+         repli. Chaque page les remplace au chargement via le composable
+         `useSeo` (voir src/composables/useSeo.ts). -->
+    <title>Les Monstres — l'appli des encombrants à récupérer près de chez toi</title>
+    <meta
+      name="description"
+      content="Les Monstres, c'est l'autre nom des encombrants : meubles, électroménager, livres, jouets abandonnés dans la rue. Repère-les près de chez toi et récupère-les gratuitement, pour leur donner une seconde vie."
+    />
+    <link rel="canonical" href="https://monstres.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Les Monstres" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content="Les Monstres — l'appli des encombrants à récupérer près de chez toi" />
+    <meta
+      property="og:description"
+      content="Les Monstres, c'est l'autre nom des encombrants : meubles, électroménager, livres, jouets abandonnés dans la rue. Repère-les près de chez toi et récupère-les gratuitement, pour leur donner une seconde vie."
+    />
+    <meta property="og:url" content="https://monstres.app/" />
+    <meta property="og:image" content="https://monstres.app/pwa-512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Les Monstres",
+        "alternateName": "Les Monstres, l'appli des encombrants",
+        "url": "https://monstres.app/",
+        "description": "Les Monstres, c'est l'autre nom des encombrants : meubles, électroménager, livres, jouets abandonnés dans la rue. Repère-les près de chez toi et récupère-les gratuitement, pour leur donner une seconde vie.",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "inLanguage": "fr-FR",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

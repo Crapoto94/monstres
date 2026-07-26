@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { api, type ApiSuccess } from '@/services/api'
+import { useSeo } from '@/composables/useSeo'
+
+useSeo({
+  title: "C'est quoi, un Monstre ?",
+  description:
+    "Chaque jour, des meubles, de l'électroménager et des jouets sont abandonnés dans la rue. Les Monstres crée un lien direct entre ceux qui les laissent et ceux qui peuvent les récupérer — gratuitement, sans publicité.",
+  path: '/pourquoi',
+})
 
 const content = ref('')
 const loading = ref(true)

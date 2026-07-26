@@ -2,6 +2,13 @@
 import { onMounted, ref, watch } from 'vue'
 import { fetchArchivedItems, type Item } from '@/services/items'
 import { formatRelativeTime } from '@/utils/time'
+import { useSeo } from '@/composables/useSeo'
+
+useSeo({
+  title: 'Archives des Monstres récupérés',
+  description: 'Historique des Monstres déjà récupérés ou archivés — consultation seule.',
+  path: '/archives',
+})
 
 const items = ref<Item[]>([])
 const page = ref(1)

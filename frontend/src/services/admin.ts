@@ -417,6 +417,30 @@ export interface AnalyticsSummary {
   byCountry: AnalyticsCount[]
 }
 
+export interface NewsletterStatus {
+  optedInCount: number
+  lastSentAt: string | null
+  frequencyDays: number
+  canSend: boolean
+  reason: string | null
+}
+
+export interface NewsletterResult {
+  sentCount: number
+  failedCount: number
+  totalTarget: number
+}
+
+export async function fetchNewsletterStatus() {
+  const { data } = await api.get<ApiSuccess<NewsletterStatus>>('/admin/newsletter/status')
+  return data.data
+}
+
+export async function sendNewsletter(payload: { subject: string; htmlContent: string }) {
+  const { data } = await api.post<ApiSuccess<NewsletterResult>>('/admin/newsletter/send', payload)
+  return data.data
+}
+
 export async function fetchAnalyticsSummary(days: number) {
   const { data } = await api.get<ApiSuccess<AnalyticsSummary>>('/admin/analytics/summary', { params: { days } })
   return data.data

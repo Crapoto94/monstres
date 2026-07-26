@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.5.0',
+    date: '26 juillet 2026',
+    changes: [
+      "Référencement Google : domaine canonique monstres.app (l'ancien domaine redirige désormais vers lui), robots.txt et plan du site, page « pourquoi » et fiches Monstre lisibles par les moteurs de recherche sans exécuter l'application",
+      "Newsletter d'actualité (admin) : envoi manuel aux membres inscrits, dans la limite d'une fois par semaine",
+    ],
+  },
+  {
     version: '0.4.40',
     date: '26 juillet 2026',
     changes: [

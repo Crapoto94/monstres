@@ -10,13 +10,14 @@ export interface AuthUser {
   trustScore: number
   emailVerifiedAt: string | null
   emailNotifications: boolean
+  newsletterOptin: boolean
   phoneNumber: string | null
   whatsappNotifications: boolean
   createdAt: string
   onboardingCompletedAt: string | null
 }
 
-export async function register(payload: { name: string; email: string; password: string; confirmPassword: string }) {
+export async function register(payload: { name: string; email: string; password: string; confirmPassword: string; newsletterOptin?: boolean }) {
   const { data } = await api.post<ApiSuccess<AuthUser>>('/auth/register', payload)
   return data.data
 }

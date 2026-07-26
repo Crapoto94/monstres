@@ -44,7 +44,10 @@ export class AuthController {
     // path, secure, sameSite) correspondent exactement à ceux utilisés
     // pour le poser — sinon `clearCookie` échoue silencieusement et le
     // cookie de session original survit (déconnexion non persistante).
-    res.clearCookie(this.authService.getCookieName(), this.authService.getCookieOptions());
+    // ⚠️ On exclut `maxAge` car Express l'utilise pour recalculer
+    // `expires` → le cookie repart dans le futur au lieu d'être effacé.
+    const { maxAge: _maxAge, ...clearOptions } = this.authService.getCookieOptions();
+    res.clearCookie(this.authService.getCookieName(), clearOptions);
     return { loggedOut: true };
   }
 

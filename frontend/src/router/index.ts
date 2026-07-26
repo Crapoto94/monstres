@@ -85,6 +85,12 @@ export const router = createRouter({
           meta: { requiresAdmin: true },
         },
         {
+          path: 'newsletter',
+          name: 'admin-newsletter',
+          component: () => import('@/views/admin/AdminNewsletterView.vue'),
+          meta: { requiresAdmin: true },
+        },
+        {
           path: 'parametres',
           name: 'admin-settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),

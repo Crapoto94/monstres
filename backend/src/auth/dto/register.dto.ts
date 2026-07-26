@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -18,4 +18,8 @@ export class RegisterDto {
   @MinLength(8)
   @MaxLength(72)
   confirmPassword: string;
+
+  @IsOptional()
+  @IsBoolean()
+  newsletterOptin?: boolean;
 }

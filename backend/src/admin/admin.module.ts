@@ -26,6 +26,8 @@ import { AdminImportLogController } from './admin-import-log.controller';
 import { AdminImportLogService } from './admin-import-log.service';
 import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminAnalyticsService } from './admin-analytics.service';
+import { AdminNewsletterController } from './admin-newsletter.controller';
+import { AdminNewsletterService } from './admin-newsletter.service';
 
 @Module({
   imports: [UsersModule, CategoriesModule, EmailTemplatesModule],
@@ -44,6 +46,7 @@ import { AdminAnalyticsService } from './admin-analytics.service';
     AdminWhatsAppLogController,
     AdminImportLogController,
     AdminAnalyticsController,
+    AdminNewsletterController,
   ],
   providers: [
     AdminUsersService,
@@ -56,6 +59,7 @@ import { AdminAnalyticsService } from './admin-analytics.service';
     AdminWhatsAppLogService,
     AdminImportLogService,
     AdminAnalyticsService,
+    AdminNewsletterService,
   ],
 })
 export class AdminModule {}

@@ -3823,3 +3823,83 @@ par capture des styles calculés en clair et en sombre (`prefers-color-scheme`
 émulé). Bug de classification iPhone→macOS détecté par le test lui-même
 (UA iPhone réelle envoyée en test) puis corrigé. Build réel (backend +
 frontend) passés sans erreur. Version bumpée à `0.4.40`.
+
+## Référencement (SEO), v0.5.0
+
+Demande utilisateur : être trouvable sur Google en cherchant « les monstres
+appli » ou « les monstres ». État constaté avant intervention (vérifié en
+direct sur la prod, pas en théorie) :
+- `curl https://monstres.fbc.fr/robots.txt` et `/sitemap.xml` renvoyaient tous
+  les deux du **HTML** (le fallback SPA du frontend, code 200) — Google n'a
+  donc jamais pu ni découvrir les URLs du site, ni savoir ce qu'il avait le
+  droit d'indexer.
+- `monstres.fbc.fr` **et** `monstres.app` servaient le même site en 200 :
+  contenu dupliqué aux yeux de Google, qui répartit ses signaux entre les
+  deux domaines identiques au lieu de les cumuler sur un seul.
+- L'accueil n'avait **aucun `<h1>`** (le logo est une image) — rien à
+  indexer comme titre de page.
+- Le mécanisme déjà existant pour les robots de partage (`ShareController`,
+  Phase 11) servait un `<meta http-equiv="refresh">` **vers la même URL** —
+  correct pour Facebook (qui ne suit pas les redirections mais lit les
+  balises OG), mais aurait été une boucle de redirection pour Googlebot :
+  ne surtout pas y ajouter les moteurs de recherche sans le corriger d'abord.
+
+### Décisions (2 tranchées par l'utilisateur)
+- **Domaine canonique : `monstres.app`** (contient le mot-clé cible, plus
+  court). `monstres.fbc.fr`/`www.*` redirigent en 301. Coût accepté :
+  `FRONTEND_URL` à mettre à jour en prod (emails, liens de partage).
+- **Contenu visible sur l'accueil : titre + phrase courte**, pas un texte
+  masqué ni un bloc de présentation complet — Google indexe mieux le
+  contenu réellement visible, et l'utilisateur voulait un impact visuel
+  minimal.
+
+### Ce qui a été fait
+- **`SeoController`** (nouveau module `backend/src/seo/`) : `GET /robots.txt`
+  (disallow des pages privées : `/admin`, `/profil`, `/connexion`… ; sitemap
+  déclaré) et `GET /sitemap.xml` (pages fixes + tous les Monstres dont le
+  statut est public — jamais `PENDING_REVIEW`/`HIDDEN`). Les deux exclus du
+  préfixe `/api/v1` (voir `main.ts`) pour répondre sur les URLs standard.
+- **`ShareController` réécrit** : sert une vraie page HTML (titre, adresse,
+  photo, `<h1>`, JSON-LD `Product`) plutôt qu'une redirection immédiate.
+  `<link rel="canonical">` vers l'URL réelle. `noindex` automatique si le
+  statut du Monstre n'est pas public (repli de sécurité si une URL
+  `PENDING_REVIEW` fuitait quand même). Contenu strictement identique à
+  celui vu par un vrai visiteur — du rendu dynamique légitime, pas du
+  cloaking.
+- **Page `/pourquoi` prérendue** (nouvelle route `SeoController.mission()`) :
+  sert le **vrai contenu** du réglage `mission_content` (celui que l'admin
+  édite, affiché aux visiteurs) directement en HTML, pas une paraphrase —
+  c'est la page qui porte le vocabulaire sur lequel on veut être trouvé.
+- **`nginx.conf`** : domaine canonique + redirection 301 des autres ; ajout
+  des User-Agent de moteurs de recherche (Googlebot, Bingbot, Applebot…) à
+  la table de routage déjà existante pour les robots de partage ; routage
+  dédié pour `/robots.txt`, `/sitemap.xml` et `/pourquoi` vers le backend.
+- **`useSeo` (composable frontend)** : renseigne titre/description/canonical/
+  Open Graph **pour les vrais visiteurs** (la SPA), page par page — sans ça,
+  toutes les pages partagent le titre d'`index.html`. Branché sur l'accueil,
+  `/pourquoi`, `/carte`, `/archives`, `/communaute`, et la fiche Monstre
+  (titre/description/image dynamiques, tenus cohérents avec ce que
+  `ShareController` sert aux robots sur la même URL).
+- **`index.html`** : titre et description alignés sur le vocabulaire réel du
+  projet (meubles, électroménager, seconde vie, gratuit), JSON-LD
+  `WebApplication`, URL canonique.
+- **`<h1>` sur l'accueil** : « Les Monstres, l'appli des encombrants » +
+  phrase d'accroche, au-dessus de la liste — seul texte visible ajouté.
+
+### Restant à faire (nécessite un accès que je n'ai pas)
+- [ ] **Google Search Console** : ajouter et vérifier la propriété
+  `monstres.app`, soumettre `sitemap.xml`, demander l'indexation manuelle de
+  l'accueil pour accélérer la première exploration.
+- [ ] **DNS** : si `monstres.app` n'a pas déjà les mêmes enregistrements que
+  `monstres.fbc.fr`, les aligner avant d'activer la redirection 301.
+- [ ] Mettre à jour `FRONTEND_URL`/`.env` en prod vers `https://monstres.app`.
+
+### Testé
+Build réel (backend + frontend) passés sans erreur. Logique de routage
+nginx et de génération HTML relue mais **pas testée en conditions réelles**
+(pas d'environnement Docker local pour simuler le routage par domaine) —
+à vérifier en prod après déploiement : `curl -A Googlebot
+https://monstres.app/pourquoi`, `/robots.txt`, `/sitemap.xml`, et la
+redirection 301 de `monstres.fbc.fr`. Version bumpée à `0.5.0` (saut de
+mineure : regroupe aussi la fonctionnalité newsletter admin, terminée mais
+jamais finalisée par un bump de version).

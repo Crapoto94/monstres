@@ -8,9 +8,14 @@ const loading = ref(true)
 const emit = defineEmits<{ (e: 'stats-loaded', stats: DashboardStats): void }>()
 
 onMounted(async () => {
-  stats.value = await fetchDashboardStats()
-  loading.value = false
-  if (stats.value) emit('stats-loaded', stats.value)
+  try {
+    stats.value = await fetchDashboardStats()
+    if (stats.value) emit('stats-loaded', stats.value)
+  } catch {
+    // silencieux — les stats sont optionnelles
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 

@@ -105,6 +105,9 @@ model User {
   trustScore      Int      @default(100)
   // Consentement notifications email (§9 RGPD : "notifications (email oui/non)").
   emailNotifications Boolean @default(true)
+  // Consentement newsletter d'actualité : l'utilisateur est informé à la
+  // création de compte qu'il peut recevoir au maximum un message par semaine.
+  newsletterOptin    Boolean @default(false)
   // Notifications WhatsApp (opt-in explicite, désactivé tant qu'aucun numéro
   // n'est renseigné) via l'API WhatsApp Cloud de Meta.
   phoneNumber           String?

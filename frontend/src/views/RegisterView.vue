@@ -14,6 +14,7 @@ const name = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const newsletterOptin = ref(false)
 const submitting = ref(false)
 const localError = ref<string | null>(null)
 
@@ -25,7 +26,7 @@ async function onSubmit() {
   }
   submitting.value = true
   try {
-    await auth.register({ name: name.value, email: email.value, password: password.value, confirmPassword: confirmPassword.value })
+    await auth.register({ name: name.value, email: email.value, password: password.value, confirmPassword: confirmPassword.value, newsletterOptin: newsletterOptin.value })
     router.push('/profil')
   } catch {
     // l'erreur est déjà exposée via auth.error
@@ -102,6 +103,15 @@ const facebookTestMode = computed(() => route.query.fbtest === '1')
               autocomplete="new-password"
               class="rounded-xl border border-gray-200 px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950"
             />
+          </label>
+
+          <label class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              v-model="newsletterOptin"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-700"
+            />
+            <span>J'accepte de recevoir des informations sur l'actualité de l'appli (au maximum une fois par semaine).</span>
           </label>
 
           <p v-if="localError || auth.error" class="text-sm text-red-600 dark:text-red-400">{{ localError ?? auth.error }}</p>

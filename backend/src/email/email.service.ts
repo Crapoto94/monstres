@@ -152,7 +152,7 @@ export class EmailService {
     }
   }
 
-  private async wrapWithMasterTemplate(htmlContent: string): Promise<string> {
+  async wrapWithMasterTemplate(htmlContent: string): Promise<string> {
     try {
       const master = await this.prisma.emailTemplate.findUnique({ where: { key: 'master_template' } });
       if (!master) return htmlContent;
