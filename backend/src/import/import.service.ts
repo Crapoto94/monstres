@@ -25,6 +25,20 @@ export class ImportService {
     private readonly settings: SettingsService,
   ) {}
 
+  /** Définit l'avatar du compte robot d'import à partir d'une image uploadée. */
+  async setBotAvatar(photo: Express.Multer.File | undefined): Promise<{ avatar: string }> {
+    if (!photo) throw new BadRequestException('Photo manquante.');
+    this.imageService.validateFormat(photo.mimetype);
+    const botEmail = this.config.get<string>('IMPORT_BOT_EMAIL');
+    if (!botEmail) throw new BadRequestException('IMPORT_BOT_EMAIL non configuré.');
+    const bot = await this.prisma.user.findUnique({ where: { email: botEmail }, select: { id: true } });
+    if (!bot) throw new NotFoundException(`Compte robot introuvable (${botEmail}).`);
+    const avatar = await this.imageService.processAvatar(photo.buffer, bot.id);
+    await this.prisma.user.update({ where: { id: bot.id }, data: { avatar } });
+    this.logger.log(`Avatar du compte robot mis à jour (${avatar}).`);
+    return { avatar };
+  }
+
   /** Identifiants des posts déjà importés — permet à la routine de sauter tôt. */
   async knownExternalIds(): Promise<string[]> {
     const rows = await this.prisma.importedPost.findMany({

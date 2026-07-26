@@ -34,4 +34,11 @@ export class ImportController {
   ) {
     return this.importService.createFromFacebook(dto, photo);
   }
+
+  /** Définit l'avatar du compte robot d'import (image en multipart `photo`). */
+  @Post('bot-avatar')
+  @UseInterceptors(FileInterceptor('photo', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }))
+  setBotAvatar(@UploadedFile() photo: Express.Multer.File) {
+    return this.importService.setBotAvatar(photo);
+  }
 }
