@@ -22,6 +22,8 @@ import { AdminEmailLogController } from './admin-email-log.controller';
 import { AdminEmailLogService } from './admin-email-log.service';
 import { AdminWhatsAppLogController } from './admin-whatsapp-log.controller';
 import { AdminWhatsAppLogService } from './admin-whatsapp-log.service';
+import { AdminImportLogController } from './admin-import-log.controller';
+import { AdminImportLogService } from './admin-import-log.service';
 
 @Module({
   imports: [UsersModule, CategoriesModule, EmailTemplatesModule],
@@ -38,6 +40,7 @@ import { AdminWhatsAppLogService } from './admin-whatsapp-log.service';
     AdminAuditController,
     AdminEmailLogController,
     AdminWhatsAppLogController,
+    AdminImportLogController,
   ],
   providers: [
     AdminUsersService,
@@ -48,6 +51,7 @@ import { AdminWhatsAppLogService } from './admin-whatsapp-log.service';
     AdminAuditService,
     AdminEmailLogService,
     AdminWhatsAppLogService,
+    AdminImportLogService,
   ],
 })
 export class AdminModule {}

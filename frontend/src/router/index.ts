@@ -130,6 +130,12 @@ export const router = createRouter({
           component: () => import('@/views/admin/AdminWhatsAppLogView.vue'),
           meta: { requiresAdmin: true, requiresSuperAdmin: true },
         },
+        {
+          path: 'journal-import',
+          name: 'admin-import-log',
+          component: () => import('@/views/admin/AdminImportLogView.vue'),
+          meta: { requiresAdmin: true },
+        },
       ],
     },
   ],

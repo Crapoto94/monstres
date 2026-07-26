@@ -490,3 +490,25 @@ model ImportedPost {
   @@unique([source, externalId])
   @@map("imported_posts")
 }
+
+// Journal de chaque passage de la routine d'import (Facebook) : une ligne
+// par annonce examinée, regroupée par `runId` (un identifiant de cycle
+// généré par la routine elle-même à chaque exécution). Permet de voir en
+// admin non seulement ce qui a été importé, mais aussi ce qui a été
+// délibérément laissé de côté (doublon, trouvaille, erreur) — la routine
+// écrit une ligne par décision, y compris quand elle ne trouve rien de neuf.
+model ImportLogEntry {
+  id        String   @id @default(cuid())
+  runId     String
+  source    String   @default("facebook")
+  postId    String?
+  decision  String
+  reason    String?
+  title     String?
+  itemId    String?
+  createdAt DateTime @default(now())
+
+  @@index([runId])
+  @@index([createdAt])
+  @@map("import_log_entries")
+}

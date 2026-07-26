@@ -5,6 +5,7 @@ import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CreateFacebookImportDto } from './dto/create-facebook-import.dto';
+import { CreateImportLogEntryDto } from './dto/create-import-log-entry.dto';
 
 const SOURCE = 'facebook';
 
@@ -37,6 +38,28 @@ export class ImportService {
     await this.prisma.user.update({ where: { id: bot.id }, data: { avatar } });
     this.logger.log(`Avatar du compte robot mis à jour (${avatar}).`);
     return { avatar };
+  }
+
+  /**
+   * Journal du passage de la routine : une ligne par annonce examinée
+   * (importée, doublon, trouvaille écartée, erreur…), ou une ligne "run"
+   * quand le cycle n'a rien trouvé de neuf — pour que le passage lui-même
+   * reste visible en admin même sans import.
+   */
+  async logEntry(dto: CreateImportLogEntryDto): Promise<{ id: string }> {
+    const entry = await this.prisma.importLogEntry.create({
+      data: {
+        runId: dto.runId,
+        source: SOURCE,
+        decision: dto.decision,
+        postId: dto.postId ?? null,
+        reason: dto.reason ?? null,
+        title: dto.title ?? null,
+        itemId: dto.itemId ?? null,
+      },
+      select: { id: true },
+    });
+    return entry;
   }
 
   /** Identifiants des posts déjà importés — permet à la routine de sauter tôt. */

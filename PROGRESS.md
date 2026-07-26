@@ -7,8 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-26** (v0.4.36 — correctif changelog "Quoi
-de neuf" resté bloqué à v0.4.31)
+Dernière mise à jour : **2026-07-26** (v0.4.37 — journal du passage de la
+routine d'import, accessible en admin)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3625,3 +3625,57 @@ l'ajout d'une entrée dans `frontend/src/data/changelog.ts` doivent être
 faits ensemble à chaque push sur master — sinon la modale "Quoi de neuf"
 se fige silencieusement (aucune erreur, juste un contenu obsolète).
 Version bumpée à `0.4.36`.
+
+---
+
+## Journal de la routine d'import (v0.4.37)
+
+Demande utilisateur : un journal, accessible en admin, listant tous les
+passages ("occurrences") de la routine d'import Facebook et, pour chacun,
+les annonces trouvées avec leur état (importée, laissée de côté, etc.).
+
+### Décisions
+- **Nouvelle table `ImportLogEntry`** (`runId`, `source`, `postId?`,
+  `decision`, `reason?`, `title?`, `itemId?`, `createdAt`) — `runId` est
+  généré par **la routine elle-même** (pas le serveur) à chaque cycle, ce
+  qui regroupe naturellement toutes les lignes d'un même passage. La
+  routine écrit une ligne par annonce examinée (`imported`, `duplicate`,
+  `skipped_found`, `skipped_error`, `skipped_other`) **et** une ligne
+  `run` quand le cycle ne trouve rien de neuf — sans cette ligne "vide", un
+  passage sans import serait invisible dans le journal alors qu'il a bien
+  eu lieu.
+- **Écriture** : `POST /import/log` (même `ImportTokenGuard` que le reste
+  du module import — c'est la routine qui écrit, pas un utilisateur
+  connecté).
+- **Lecture** : `GET /admin/import-log/runs` (`JwtAuthGuard` + `RolesGuard`,
+  `ADMIN`/`SUPER_ADMIN` — accessible aux admins simples, pas réservé aux
+  super-admins comme les journaux mail/WhatsApp : moins sensible, plus
+  proche en esprit de la gestion des Monstres que des messages
+  personnels). Regroupement par `runId` fait en JS après un
+  `groupBy` Prisma (pas de comptage conditionnel par décision nativement
+  disponible en SQLite/Prisma) — volume attendu largement compatible
+  (un passage toutes les 30 min, quelques lignes chacun).
+- **Frontend** : `AdminImportLogView.vue` (nouvelle vue, route
+  `/admin/journal-import`, lien dans le menu admin) — liste de passages
+  repliables (même pattern que `AdminWhatsAppLogView.vue`), résumé par
+  décision en tête de ligne, détail par annonce une fois déplié (badge de
+  décision coloré, titre, `postId`, raison, lien "Voir" vers le Monstre si
+  importé).
+
+### Restant à faire
+- [ ] **Brancher réellement l'écriture du journal dans les instructions de
+      la routine planifiée** (`CronCreate`) : à ce stade, l'endpoint
+      `POST /import/log` existe et est testé manuellement, mais le prompt
+      de la routine récurrente doit être mis à jour pour l'appeler à
+      chaque annonce examinée (import réussi, doublon, trouvaille ignorée,
+      erreur) et une fois par cycle même sans rien trouver.
+
+### Testé en local
+4 lignes de log simulées via curl (1 run avec 3 décisions différentes +
+1 run vide) → vérifié dans l'admin (`/admin/journal-import`, compte de
+test promu `ADMIN`) : les 2 passages s'affichent avec le bon résumé
+("1 importée · 1 doublon · 1 trouvaille ignorée" / "Rien de neuf"), le
+détail déplié montre les 3 lignes avec badges/titre/postId/raison
+corrects, y compris l'exemple concret donné par l'utilisateur ("Trouve Rue
+Beaurepaire Paris" → badge "Trouvaille ignorée"). Build réel + `vue-tsc -b`
++ build backend passés sans erreur. Version bumpée à `0.4.37`.

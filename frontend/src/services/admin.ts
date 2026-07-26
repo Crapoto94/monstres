@@ -362,3 +362,28 @@ export async function fetchWhatsAppLog(params: { search?: string; status?: strin
   const { data } = await api.get<ApiSuccess<{ logs: AdminWhatsAppLogEntry[] } & Paginated>>('/admin/whatsapp-log', { params })
   return data.data
 }
+
+export interface AdminImportLogEntry {
+  id: string
+  runId: string
+  source: string
+  postId: string | null
+  decision: 'run' | 'imported' | 'duplicate' | 'skipped_found' | 'skipped_error' | 'skipped_other'
+  reason: string | null
+  title: string | null
+  itemId: string | null
+  createdAt: string
+}
+
+export interface AdminImportLogRun {
+  runId: string
+  startedAt: string
+  total: number
+  counts: Record<string, number>
+  entries: AdminImportLogEntry[]
+}
+
+export async function fetchImportLogRuns(params: { page?: number; pageSize?: number }) {
+  const { data } = await api.get<ApiSuccess<{ runs: AdminImportLogRun[] } & Paginated>>('/admin/import-log/runs', { params })
+  return data.data
+}

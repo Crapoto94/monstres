@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { CreateFacebookImportDto } from './dto/create-facebook-import.dto';
+import { CreateImportLogEntryDto } from './dto/create-import-log-entry.dto';
 import { ImportService } from './import.service';
 import { ImportTokenGuard } from './import-token.guard';
 
@@ -44,5 +45,11 @@ export class ImportController {
   @UseInterceptors(FileInterceptor('photo', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }))
   setBotAvatar(@UploadedFile() photo: Express.Multer.File) {
     return this.importService.setBotAvatar(photo);
+  }
+
+  /** Journal de passage de la routine — voir GET /admin/import-log côté lecture. */
+  @Post('log')
+  logEntry(@Body() dto: CreateImportLogEntryDto) {
+    return this.importService.logEntry(dto);
   }
 }
