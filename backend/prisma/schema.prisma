@@ -513,3 +513,30 @@ model ImportLogEntry {
   @@index([createdAt])
   @@map("import_log_entries")
 }
+
+// Statistiques de consultation (§ KPI admin). Volontairement anonymisé :
+// ni IP ni User-Agent bruts ne sont conservés, seulement les champs déjà
+// dérivés (pays/ville, OS, navigateur, type d'appareil). `visitorHash` est
+// un hachage salé qui change chaque jour (voir AnalyticsService) — il ne
+// permet de compter des visiteurs uniques que sur une même journée, jamais
+// de suivre une même personne d'un jour à l'autre. Reste dans le cadre déjà
+// annoncé sur /rgpd ("statistiques anonymisées du service").
+model PageView {
+  id          String   @id @default(cuid())
+  path        String
+  itemId      String?
+  userId      String?
+  visitorHash String
+  country     String?
+  city        String?
+  os          String
+  browser     String
+  deviceType  String
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+  @@index([visitorHash])
+  @@index([itemId])
+  @@map("page_views")
+}

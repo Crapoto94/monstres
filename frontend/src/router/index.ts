@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/auth'
+import { sendPageView } from '@/services/analytics'
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -136,6 +137,12 @@ export const router = createRouter({
           component: () => import('@/views/admin/AdminImportLogView.vue'),
           meta: { requiresAdmin: true },
         },
+        {
+          path: 'statistiques',
+          name: 'admin-analytics',
+          component: () => import('@/views/admin/AdminAnalyticsView.vue'),
+          meta: { requiresAdmin: true },
+        },
       ],
     },
   ],
@@ -167,4 +174,12 @@ router.beforeEach(async (to) => {
     return { path: '/tutoriel' }
   }
   return true
+})
+
+// KPI de consultation (§ admin) — exclut l'espace admin lui-même, qui n'est
+// pas du trafic à mesurer. Après beforeEach : ne compte que les navigations
+// qui aboutissent réellement (pas celles interceptées par une redirection).
+router.afterEach((to) => {
+  if (to.path.startsWith('/admin')) return
+  sendPageView(to.path, to.name === 'item-detail' ? String(to.params.id) : undefined)
 })

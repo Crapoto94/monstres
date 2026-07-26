@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.40',
+    date: '26 juillet 2026',
+    changes: [
+      "Nouvel écran « Statistiques » en admin : consultations, visiteurs uniques, systèmes d'exploitation, navigateurs, appareils et pays, sous forme anonymisée",
+      "Correctif : les visiteurs sur iPhone/iPad étaient classés à tort en macOS",
+    ],
+  },
+  {
     version: '0.4.39',
     date: '26 juillet 2026',
     changes: [

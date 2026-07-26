@@ -12,29 +12,10 @@ import { LoginDto } from './dto/login.dto';
 import type { JwtPayload } from './jwt.strategy';
 import type { OAuthProfile } from './google.strategy';
 import { getCookieName, getCookieOptions } from './cookie.util';
+import { getClientIp, parseUserAgent } from '../common/utils/request-info.util';
 import type { Request } from 'express';
 
 const PASSWORD_SALT_ROUNDS = 10;
-
-function parseUserAgent(ua: string | undefined): { os: string; browser: string } {
-  if (!ua) return { os: 'Inconnu', browser: 'Inconnu' };
-
-  let os = 'Autre';
-  if (ua.includes('Windows')) os = 'Windows';
-  else if (ua.includes('Mac OS')) os = 'macOS';
-  else if (ua.includes('Linux')) os = 'Linux';
-  else if (ua.includes('Android')) os = 'Android';
-  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
-
-  let browser = 'Autre';
-  if (ua.includes('Firefox/')) browser = 'Firefox';
-  else if (ua.includes('Edg/')) browser = 'Edge';
-  else if (ua.includes('OPR/') || ua.includes('Opera')) browser = 'Opera';
-  else if (ua.includes('Chrome/')) browser = 'Chrome';
-  else if (ua.includes('Safari/') && ua.includes('Version/')) browser = 'Safari';
-
-  return { os, browser };
-}
 
 @Injectable()
 export class AuthService {
@@ -64,9 +45,7 @@ export class AuthService {
     const ttlHours = await this.settings.getNumber('email_verification_token_ttl_hours', 24);
 
     const ua = request?.headers['user-agent'];
-    const ip = (request?.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-      ?? request?.socket?.remoteAddress
-      ?? null;
+    const ip = getClientIp(request);
     const { os, browser } = parseUserAgent(ua);
 
     const user = await this.prisma.user.create({
@@ -135,9 +114,7 @@ export class AuthService {
 
     // Enregistrer la dernière connexion
     const ua = request?.headers['user-agent'];
-    const ip = (request?.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
-      ?? request?.socket?.remoteAddress
-      ?? null;
+    const ip = getClientIp(request);
     const { os, browser } = parseUserAgent(ua);
 
     await this.prisma.user.update({

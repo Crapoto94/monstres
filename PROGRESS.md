@@ -3763,3 +3763,63 @@ supprime la boucle — c'est la façon propre de la remplacer sans doublon.
 Aucun risque fonctionnel à laisser deux machines tourner en parallèle
 (l'anti-doublon serveur via `ImportedPost` empêche les recréations), c'est
 seulement du travail inutile.
+
+## Statistiques de consultation (KPI admin, v0.4.40)
+
+Demande utilisateur : un écran admin de KPI sur les consultations — qui
+consulte, visiteurs uniques, localisation, OS.
+
+### Décisions
+- **Anonymisation par construction, pas par consentement** : la page `/rgpd`
+  déclarait déjà « les statistiques anonymisées du service » comme finalité —
+  donc pas de nouveau bandeau de consentement, à condition de rester dans ce
+  cadre. Nouveau modèle `PageView` : ni IP ni User-Agent brut n'y sont jamais
+  écrits, seulement les champs déjà dérivés (pays/ville, OS, navigateur,
+  type d'appareil). `visitorHash` = `sha256(ip|ua|jour|secret)` — le sel
+  change **chaque jour**, donc un même visiteur ne peut jamais être suivi
+  d'un jour à l'autre. Conséquence assumée : le comptage de "visiteurs
+  uniques" n'est exact que sur une seule journée ; sur une période plus
+  longue (7/30/90 jours), c'est une approximation par excès (un même
+  visiteur revenant plusieurs jours compte plusieurs fois). Affiché
+  explicitement comme tel dans l'UI.
+- **Suivi de toutes les pages** (pas seulement les fiches Monstre) via un
+  hook `router.afterEach` côté frontend qui envoie une balise
+  fire-and-forget (`POST /analytics/pageview`, jamais bloquante) — exclut
+  volontairement l'espace `/admin` lui-même (pas du trafic à mesurer).
+  `OptionalJwtAuthGuard` (déjà existant pour `/items`) permet de savoir qui
+  consulte quand la personne est connectée, sans l'exiger.
+- **Géolocalisation via MaxMind GeoLite2 auto-hébergée** (choix utilisateur,
+  face à un service externe qui aurait envoyé l'IP à un tiers) : base
+  `.mmdb` non fournie avec le dépôt, à télécharger via
+  `scripts/download-geolite2.sh` (nécessite un compte MaxMind gratuit + clé
+  de licence — voir `.env.example`, `GEOIP_DB_PATH`). Sans cette base,
+  `GeoIpService` log un avertissement au démarrage et retourne `null` pour
+  la localisation ; le reste des statistiques continue de fonctionner
+  normalement (dégradation gracieuse, pas de crash).
+- **Rétention** : `analytics_retention_days` (Setting, défaut 180 jours),
+  purge automatique via un `@Cron` quotidien — même pattern que
+  `archiveExpiredItems`.
+- **Correctif de bug préexistant découvert en testant** : `parseUserAgent`
+  (extrait de `auth.service.ts` vers `common/utils/request-info.util.ts`,
+  factorisation qui évite la duplication) classait tous les iPhone/iPad en
+  "macOS" — une UA iOS contient toujours la sous-chaîne "like Mac OS X", et
+  l'ordre de test vérifiait "Mac OS" avant "iPhone". Corrigé en inversant
+  l'ordre. Ce bug affectait aussi silencieusement `registrationOs`/
+  `lastLoginOs` sur `User` depuis le début.
+- **Agrégation en JS, pas en SQL** : même pattern que
+  `AdminImportLogService` — `findMany` puis `Map` en mémoire, pour rester
+  portable SQLite/PostgreSQL sans fonctions de date spécifiques à un moteur.
+  Volume attendu (trafic d'un site communautaire local) largement compatible.
+
+### Testé en local
+Bout en bout via un vrai navigateur (pas seulement curl) : balise envoyée à
+chaque navigation (`/`, `/carte`, `/profil`… → `201 Created`), tableau de
+bord admin affichant des données réelles (vues, visiteurs uniques,
+connectés/anonymes, tendance, pages/Monstres/utilisateurs les plus
+consultés, OS/navigateur/appareil/pays). Couleurs du graphique de tendance
+validées avec `scripts/validate_palette.js` de la skill dataviz (paire
+bleu/orange, six vérifications passées en clair ET en sombre) et vérifiées
+par capture des styles calculés en clair et en sombre (`prefers-color-scheme`
+émulé). Bug de classification iPhone→macOS détecté par le test lui-même
+(UA iPhone réelle envoyée en test) puis corrigé. Build réel (backend +
+frontend) passés sans erreur. Version bumpée à `0.4.40`.

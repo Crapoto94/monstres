@@ -31,6 +31,12 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     unit: 'h',
     placeholder: '24',
   },
+  analytics_retention_days: {
+    label: 'Rétention des statistiques',
+    description: 'Nombre de jours de conservation des données de consultation (KPI admin) avant purge automatique.',
+    unit: 'j',
+    placeholder: '180',
+  },
   max_user_subscriptions: {
     label: 'Zones surveillées max',
     description: 'Nombre maximum de zones d\'alerte qu\'un utilisateur peut créer. Chaque zone permet de recevoir des notifications quand un Monstre apparaît à proximité.',
@@ -166,6 +172,7 @@ const SECTIONS = [
   { title: '📸 Photos & Signalements', keys: ['max_photos_per_item', 'report_threshold', 'already_collected_threshold'] },
   { title: '⭐ Points & Classement', keys: ['points_creation', 'points_recuperation', 'points_validation', 'points_vote_utile', 'ranking_weight_distance', 'ranking_weight_popularity', 'ranking_weight_recency', 'ranking_weight_trust'] },
   { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
+  { title: '📊 Statistiques', keys: ['analytics_retention_days'] },
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode', 'geo_explanation_content'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
   { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email'] },

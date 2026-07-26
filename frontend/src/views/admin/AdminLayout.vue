@@ -28,6 +28,7 @@ const tabs = computed(() => [
         { to: '/admin/mails', label: 'Mails', badge: null },
         { to: '/admin/parametres', label: 'Paramètres', badge: null },
         { to: '/admin/journal-import', label: 'Journal import', badge: null },
+        { to: '/admin/statistiques', label: 'Statistiques', badge: null },
       ]
     : []),
   { to: '/admin/signalements', label: 'Signalements', badge: stats.value?.pendingReports ?? null },

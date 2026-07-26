@@ -11,3 +11,6 @@ coverage/
 # SQLite dev database
 /dev.db
 /dev.db-journal
+
+# Base GeoIP (téléchargée via scripts/download-geolite2.sh, voir .env.example)
+/data/*.mmdb

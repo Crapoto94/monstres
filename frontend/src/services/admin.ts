@@ -389,3 +389,35 @@ export async function fetchImportLogRuns(params: { page?: number; pageSize?: num
   const { data } = await api.get<ApiSuccess<{ runs: AdminImportLogRun[] } & Paginated>>('/admin/import-log/runs', { params })
   return data.data
 }
+
+export interface AnalyticsDailyPoint {
+  date: string
+  views: number
+  uniqueVisitors: number
+}
+
+export interface AnalyticsCount {
+  label: string
+  count: number
+}
+
+export interface AnalyticsSummary {
+  rangeDays: number
+  totalViews: number
+  uniqueVisitorsApprox: number
+  loggedInViews: number
+  anonymousViews: number
+  dailySeries: AnalyticsDailyPoint[]
+  topPages: { path: string; views: number }[]
+  topItems: { itemId: string; title: string | null; views: number }[]
+  topUsers: { userId: string; name: string | null; email: string | null; views: number }[]
+  byOs: AnalyticsCount[]
+  byBrowser: AnalyticsCount[]
+  byDevice: AnalyticsCount[]
+  byCountry: AnalyticsCount[]
+}
+
+export async function fetchAnalyticsSummary(days: number) {
+  const { data } = await api.get<ApiSuccess<AnalyticsSummary>>('/admin/analytics/summary', { params: { days } })
+  return data.data
+}
