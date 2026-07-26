@@ -11,6 +11,7 @@ const { PrismaClient } = require('../dist/generated/prisma/client');
 
 const DEFAULT_SETTINGS = [
   { key: 'reservation_duration_minutes', value: '60', type: 'INTEGER' },
+  { key: 'item_archive_after_hours', value: '24', type: 'INTEGER' },
   { key: 'max_photos_per_item', value: '3', type: 'INTEGER' },
   { key: 'max_user_subscriptions', value: '5', type: 'INTEGER' },
   { key: 'max_subscription_radius', value: '5000', type: 'INTEGER' },

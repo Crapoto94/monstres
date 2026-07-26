@@ -89,6 +89,17 @@ export async function fetchItems(params: FindItemsParams) {
   return data.data
 }
 
+export interface FindArchivedParams {
+  page?: number
+  pageSize?: number
+}
+
+/** Monstres archivés (24h après publication, sans interaction) — consultation historique. */
+export async function fetchArchivedItems(params: FindArchivedParams = {}) {
+  const { data } = await api.get<ApiSuccess<ItemsPage>>('/items/archived', { params })
+  return data.data
+}
+
 export async function fetchMyItems() {
   const { data } = await api.get<ApiSuccess<MyItems>>('/items/mine')
   return data.data

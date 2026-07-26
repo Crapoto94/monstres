@@ -17,6 +17,7 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { CreateItemDto } from './dto/create-item.dto';
 import { FindItemsQueryDto } from './dto/find-items-query.dto';
+import { FindArchivedQueryDto } from './dto/find-archived-query.dto';
 import { ItemsService } from './items.service';
 
 // Plafond technique du transport (multer) ; la limite métier réelle
@@ -60,6 +61,16 @@ export class ItemsController {
   @UseGuards(JwtAuthGuard)
   findMine(@CurrentUser() user: AuthenticatedUser) {
     return this.itemsService.findMine(user.id);
+  }
+
+  /** Doit être déclaré avant `GET /:id` pour ne pas être capté comme un id. */
+  @Get('archived')
+  @UseGuards(OptionalJwtAuthGuard)
+  findArchived(
+    @Query() query: FindArchivedQueryDto,
+    @CurrentUser() user: AuthenticatedUser | null,
+  ) {
+    return this.itemsService.findArchived(query, user);
   }
 
   @Get(':id')

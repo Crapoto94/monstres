@@ -4,16 +4,18 @@ import {
   Get,
   Post,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { CreateFacebookImportDto } from './dto/create-facebook-import.dto';
 import { ImportService } from './import.service';
 import { ImportTokenGuard } from './import-token.guard';
 
 // Plafond technique du transport (multer), aligné sur ItemsController.
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_UPLOAD_FILES = 10;
 
 @Controller('import')
 @UseGuards(ImportTokenGuard)
@@ -27,12 +29,14 @@ export class ImportController {
   }
 
   @Post('facebook')
-  @UseInterceptors(FileInterceptor('photo', { limits: { fileSize: MAX_FILE_SIZE_BYTES } }))
+  @UseInterceptors(
+    FilesInterceptor('photos', MAX_UPLOAD_FILES, { limits: { fileSize: MAX_FILE_SIZE_BYTES } }),
+  )
   createFromFacebook(
     @Body() dto: CreateFacebookImportDto,
-    @UploadedFile() photo: Express.Multer.File,
+    @UploadedFiles() photos: Express.Multer.File[],
   ) {
-    return this.importService.createFromFacebook(dto, photo);
+    return this.importService.createFromFacebook(dto, photos);
   }
 
   /** Définit l'avatar du compte robot d'import (image en multipart `photo`). */

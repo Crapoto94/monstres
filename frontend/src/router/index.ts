@@ -8,6 +8,7 @@ export const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/monstres/:id', name: 'item-detail', component: () => import('@/views/ItemDetailView.vue') },
     { path: '/carte', name: 'map', component: () => import('@/views/MapView.vue') },
+    { path: '/archives', name: 'archives', component: () => import('@/views/ArchivesView.vue') },
     {
       path: '/ajouter',
       name: 'add-item',

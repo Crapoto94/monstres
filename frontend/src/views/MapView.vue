@@ -3,37 +3,27 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-import { fetchItems } from '@/services/items'
+import monsterMarker from '@/assets/monster-marker.png'
+import { fetchItems, fetchArchivedItems } from '@/services/items'
 import { fetchSubscriptions } from '@/services/subscriptions'
 import { useAuthStore } from '@/stores/auth'
 
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-})
-
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522]
 
-// Couleurs alignées sur les badges de statut de HomeView.vue.
-const STATUS_COLORS: Record<string, string> = {
-  RESERVED: '#f59e0b', // amber-500
-  COLLECTED: '#22c55e', // green-500
-}
-const DEFAULT_COLOR = '#2a7877' // brand-600 (AVAILABLE)
+const ACTIVE_SIZE = 38
+const ARCHIVED_SIZE = 20 // "plus petits" sur la carte (demande utilisateur)
 
-function statusIcon(status: string): L.DivIcon {
-  const color = STATUS_COLORS[status] ?? DEFAULT_COLOR
+/** Icône monstre (fond noir détouré, voir frontend/src/assets/monster-marker.png).
+ * Les archives sont plus petites et légèrement estompées pour se distinguer
+ * des Monstres actifs, sans disparaître de la carte. */
+function monsterIcon(archived: boolean): L.DivIcon {
+  const size = archived ? ARCHIVED_SIZE : ACTIVE_SIZE
   return L.divIcon({
     className: '',
-    html: `<span style="background:${color}" class="block h-4 w-4 rounded-full border-2 border-white shadow-md"></span>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-    popupAnchor: [0, -8],
+    html: `<img src="${monsterMarker}" style="width:${size}px;height:${size}px;display:block;opacity:${archived ? 0.65 : 1};filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));" alt="" />`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   })
 }
 
@@ -65,10 +55,22 @@ onMounted(async () => {
   }
 
   try {
-    const result = await fetchItems({ pageSize: 50 })
-    for (const item of result.items) {
-      const marker = L.marker([item.latitude, item.longitude], { icon: statusIcon(item.status) }).addTo(map!)
+    const [activeResult, archivedResult] = await Promise.all([
+      fetchItems({ pageSize: 50 }),
+      fetchArchivedItems({ pageSize: 50 }),
+    ])
+
+    for (const item of activeResult.items) {
+      const marker = L.marker([item.latitude, item.longitude], { icon: monsterIcon(false) }).addTo(map!)
       marker.bindPopup(`<strong>${escapeHtml(item.title)}</strong>`)
+      marker.on('click', () => router.push(`/monstres/${item.id}`))
+    }
+
+    // Archives visibles mais plus petites (demande utilisateur) — même
+    // interaction (clic → détail en lecture seule).
+    for (const item of archivedResult.items) {
+      const marker = L.marker([item.latitude, item.longitude], { icon: monsterIcon(true) }).addTo(map!)
+      marker.bindPopup(`<strong>${escapeHtml(item.title)}</strong> <em>(archivé)</em>`)
       marker.on('click', () => router.push(`/monstres/${item.id}`))
     }
 

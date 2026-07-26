@@ -7,8 +7,9 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-26** (v0.4.34 — endpoint pour changer
-l'avatar du compte robot d'import)
+Dernière mise à jour : **2026-07-26** (v0.4.35 — cycle de vie du Monstre :
+archivage auto 24h, vue Archives, icône monstre sur la carte, import
+multi-photos)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3525,3 +3526,81 @@ tard si souhaité.
 - [ ] (option) Tag visuel « Importé de Facebook » dans l'admin.
 - [ ] Point de vigilance CGU/rythme si le volume d'imports augmente
       fortement (voir décisions d'architecture ci-dessus).
+
+---
+
+## Cycle de vie du Monstre : archivage automatique (v0.4.35)
+
+Demande utilisateur : un Monstre non récupéré doit s'archiver automatiquement
+24h après sa publication (plus visible dans la liste/carte "actifs"), rester
+consultable en lecture seule via un bouton Archives, apparaître plus petit
+sur la carte, et les marqueurs carte doivent utiliser un logo monstre
+(fond noir détouré) plutôt que le pin Leaflet par défaut. Au passage :
+l'import Facebook doit gérer plusieurs photos par post, et exclure les
+posts où quelqu'un annonce avoir *trouvé* un Monstre (pas une nouvelle
+annonce de dépôt).
+
+### Décisions
+- **Règle métier réglable** : durée dans `settings.item_archive_after_hours`
+  (défaut 24h, `SettingsService.getNumber`), exposée dans l'admin
+  (section "📍 Réservation & Abonnements") — pas de valeur en dur (règle
+  d'or CLAUDE.md).
+- **Job `@Cron(CronExpression.EVERY_HOUR)`** dans `ItemsService` (premier
+  vrai usage de `ScheduleModule`, importé depuis la Phase 0 mais jamais
+  utilisé jusqu'ici — l'ancien job d'expiration de réservation avait été
+  supprimé quand les réservations exclusives sont devenues des "intérêts"
+  non exclusifs sans expiration). Ne touche que `AVAILABLE`/`RESERVED` ;
+  `COLLECTED` reste un état terminal inchangé.
+- **Nouveau champ `Item.archivedAt`** (migration écrite à la main, comme
+  d'habitude en session non interactive) + **`GET /items/archived`**
+  (`ItemsService.findArchived`, doit être déclaré avant `GET /:id` dans le
+  contrôleur comme `mine`) : liste purement chronologique, pas de score de
+  classement (aucune interaction n'a plus de sens une fois archivé).
+  `findById`/`findRaw` ne filtre déjà pas par statut, donc `/monstres/:id`
+  fonctionnait déjà pour un item archivé sans changement backend — seul le
+  frontend masque les contrôles.
+- **Frontend** : `ArchivesView.vue` (nouvelle vue, route `/archives`) réutilise
+  le style de carte de `HomeView.vue` en version simplifiée (grisée,
+  `opacity-80`, `grayscale` sur la vignette, badge "Archivé"). Bouton d'accès
+  discret sur `HomeView.vue` (« 🗄️ Voir les archives »), pas dans le
+  `BottomNav` (resterait à 5 icônes). `ItemDetailView.vue` : nouveau
+  `computed isArchived`, masque bouton vote (remplacé par affichage statique),
+  bloc signalement, formulaire de commentaire (les commentaires existants
+  restent lisibles) — bannière explicite en haut de fiche. Les blocs
+  "intérêt"/"collecte" étaient déjà naturellement exclus (gate
+  `status === 'AVAILABLE'`), aucun changement nécessaire là.
+- **Icône monstre sur la carte** : `frontend/src/assets/monster-marker.png`,
+  généré depuis `media/WhatsApp Image 2026-07-25 at 18.54.19.jpeg` (fond
+  noir) via un script one-off (flood fill depuis les bords de l'image pour
+  ne détourer que le noir *connecté au bord*, pas les pupilles/traits noirs
+  internes au personnage — un simple seuillage global avait d'abord
+  supprimé les pupilles par erreur, corrigé). `MapView.vue` : marqueurs
+  actifs 38px pleine opacité, archivés 20px à 65% d'opacité (« plus petits »
+  demandé), les deux cliquables vers le détail. Le sélecteur de position dans
+  `AddItemView.vue` garde le pin Leaflet standard (rôle différent : indiquer
+  où on place son marqueur, pas afficher un Monstre existant).
+- **Import Facebook multi-photos** : `POST /import/facebook` accepte
+  maintenant `photos` (FilesInterceptor, jusqu'à 10) au lieu d'un unique
+  `photo` — un post avec plusieurs photos crée plusieurs `ItemPhoto`
+  (`order` séquentiel), exactement comme la création normale via
+  `AddItemView.vue`.
+- **Routine planifiée mise à jour** (`CronCreate`, job recréé) : distingue
+  explicitement un post "dépôt" (à importer) d'un post "trouvaille"
+  (quelqu'un annonce avoir déjà récupéré un objet ailleurs — ne doit
+  jamais être importé, ce n'est plus disponible). Exemple concret fourni
+  à la routine : « Trouve Rue Beaurepaire Paris » exclu. Instructions
+  aussi mises à jour pour télécharger *toutes* les photos d'un post
+  (une par rechargement de page, contrainte Chrome déjà documentée).
+
+### Testé en local
+Item de test à 30h → confirmé archivé après simulation du job (`status`
+passé à `ARCHIVED`, `archivedAt` renseigné) ; `GET /items/archived` le liste,
+`GET /items` ne le liste plus. Fiche détail testée **connecté mais email non
+vérifié** sur un item archivé : aucun bouton vote/intérêt/signalement/
+commentaire, juste la bannière — puis re-testé sur un item **actif** frais
+pour confirmer l'absence de régression (bouton intérêt, lien signaler,
+formulaire de commentaire tous présents). Carte : 9 marqueurs rendus, tailles
+38px/20px correctes, image chargée sans erreur (`complete: true`,
+512×487). Import multi-photos testé via curl (2 fichiers) → 2 `ItemPhoto`
+créées dans l'ordre. Build réel (`npm run build`) + `vue-tsc -b` + build
+backend passés sans erreur des deux côtés. Version bumpée à `0.4.35`.

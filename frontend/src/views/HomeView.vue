@@ -199,6 +199,15 @@ function coverPhoto(item: Item) {
         </button>
       </div>
 
+      <div class="mt-2 flex justify-end">
+        <RouterLink
+          to="/archives"
+          class="flex items-center gap-1 text-xs font-medium text-gray-500 hover:underline dark:text-gray-400"
+        >
+          🗄️ Voir les archives
+        </RouterLink>
+      </div>
+
       <p v-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <p v-else-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
       <p v-else-if="items.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">

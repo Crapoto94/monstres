@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomUUID } from 'node:crypto';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,6 +18,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { ReservationStatus, VoteType, NotificationType, UserRole } from '../generated/prisma/enums';
 import { CreateItemDto } from './dto/create-item.dto';
 import { FindItemsQueryDto } from './dto/find-items-query.dto';
+import { FindArchivedQueryDto } from './dto/find-archived-query.dto';
 
 type ItemWithRelations = NonNullable<
   Awaited<ReturnType<ItemsService['findRaw']>>
@@ -258,6 +260,54 @@ export class ItemsService {
       pageSize,
       total,
       totalPages,
+    };
+  }
+
+  /**
+   * Archivage automatique (demande utilisateur) : un Monstre non récupéré
+   * `item_archive_after_hours` heures (défaut 24) après sa publication passe
+   * en ARCHIVED — il disparaît de la liste/carte "actifs" mais reste
+   * consultable en lecture seule via `findArchived()`. Ne touche pas aux
+   * Monstres déjà COLLECTED (état déjà terminal). Toutes les heures : la
+   * règle porte sur des heures, pas besoin d'une granularité plus fine.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async archiveExpiredItems(): Promise<void> {
+    const hours = await this.settings.getNumber('item_archive_after_hours', 24);
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    await this.prisma.item.updateMany({
+      where: { status: { in: ['AVAILABLE', 'RESERVED'] }, createdAt: { lte: cutoff } },
+      data: { status: 'ARCHIVED', archivedAt: new Date() },
+    });
+  }
+
+  /**
+   * Liste des Monstres archivés (consultation historique, sans interaction
+   * ni classement — juste chronologique, les plus récemment archivés
+   * d'abord). Mêmes règles de vie privée que `findMany` (§9).
+   */
+  async findArchived(query: FindArchivedQueryDto, viewer: AuthenticatedUser | null) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+    const verified = await this.isViewerVerified(viewer);
+
+    const [items, total] = await Promise.all([
+      this.prisma.item.findMany({
+        where: { status: 'ARCHIVED' },
+        include: this.includeRelations(),
+        orderBy: [{ archivedAt: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.item.count({ where: { status: 'ARCHIVED' } }),
+    ]);
+
+    return {
+      items: items.map((item) => this.serialize(item, viewer, verified)),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
     };
   }
 

@@ -50,7 +50,7 @@ export class ImportService {
 
   async createFromFacebook(
     dto: CreateFacebookImportDto,
-    photo: Express.Multer.File | undefined,
+    photos: Express.Multer.File[] | undefined,
   ): Promise<{ status: 'created' | 'duplicate'; itemId: string | null }> {
     // Anti-doublon : si ce post a déjà été importé, on ne recrée rien.
     const existing = await this.prisma.importedPost.findUnique({
@@ -60,10 +60,10 @@ export class ImportService {
       return { status: 'duplicate', itemId: existing.itemId };
     }
 
-    if (!photo) {
-      throw new BadRequestException('Photo manquante.');
+    if (!photos || photos.length === 0) {
+      throw new BadRequestException('Au moins une photo est requise.');
     }
-    this.imageService.validateFormat(photo.mimetype);
+    photos.forEach((photo) => this.imageService.validateFormat(photo.mimetype));
 
     // Compte robot sous lequel les Monstres importés sont créés.
     const botEmail = this.config.get<string>('IMPORT_BOT_EMAIL');
@@ -95,7 +95,9 @@ export class ImportService {
     }
 
     const itemId = randomUUID();
-    const processed = await this.imageService.process(photo.buffer, itemId);
+    const processedPhotos = await Promise.all(
+      photos.map((photo) => this.imageService.process(photo.buffer, itemId)),
+    );
 
     // Publication immédiate (AVAILABLE) ou mise en attente de modération
     // (PENDING_REVIEW), pilotable via `settings` sans redéploiement — défaut :
@@ -113,7 +115,12 @@ export class ImportService {
         address,
         status: autoPublish ? 'AVAILABLE' : 'PENDING_REVIEW',
         photos: {
-          create: [{ type: 'LISTING', path: processed.path, thumbnailPath: processed.thumbnailPath, order: 0 }],
+          create: processedPhotos.map((photo, index) => ({
+            type: 'LISTING',
+            path: photo.path,
+            thumbnailPath: photo.thumbnailPath,
+            order: index,
+          })),
         },
       },
       select: { id: true },

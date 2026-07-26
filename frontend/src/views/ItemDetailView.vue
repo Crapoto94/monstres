@@ -157,6 +157,10 @@ const isMyItem = computed(() => {
   return auth.isAuthenticated && item.value?.user.id === auth.user?.id
 })
 
+// Archivage auto 24h après publication (côté serveur) : consultation seule,
+// plus aucune interaction (vote, intérêt, commentaire, signalement).
+const isArchived = computed(() => item.value?.status === 'ARCHIVED')
+
 const listingPhotos = computed(() => {
   return item.value?.photos.filter(p => p.type !== 'COLLECTION') ?? []
 })
@@ -282,7 +286,7 @@ async function handlePostComment() {
 }
 
 function canDeleteComment(comment: Comment): boolean {
-  if (!auth.isAuthenticated) return false
+  if (isArchived.value || !auth.isAuthenticated) return false
   return comment.user.id === auth.user?.id || auth.user?.role === 'ADMIN' || auth.user?.role === 'SUPER_ADMIN'
 }
 
@@ -313,7 +317,7 @@ async function handleDeleteComment(comment: Comment) {
         </RouterLink>
 
         <button
-          v-if="auth.isAuthenticated && !isMyItem"
+          v-if="!isArchived && auth.isAuthenticated && !isMyItem"
           type="button"
           :disabled="voting"
           class="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm transition-colors disabled:opacity-40"
@@ -375,6 +379,12 @@ async function handleDeleteComment(comment: Comment) {
             >
               ✓ Récupéré
             </span>
+            <span
+              v-if="isArchived"
+              class="rounded-full bg-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+            >
+              🗄️ Archivé
+            </span>
           </div>
           <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">{{ item.title }}</h1>
           <p class="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -382,6 +392,10 @@ async function handleDeleteComment(comment: Comment) {
             <span>🕐 {{ formatRelativeTime(item.createdAt) }}</span>
           </p>
         </div>
+
+        <p v-if="isArchived" class="rounded-xl bg-gray-100 p-3 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+          🗄️ Ce Monstre est archivé (24h après publication) — consultation seule, sans vote, intérêt ni commentaire.
+        </p>
 
         <!-- Déposant -->
         <div class="flex items-center gap-2.5 rounded-xl border border-gray-200 p-2.5 dark:border-gray-800">
@@ -497,7 +511,7 @@ async function handleDeleteComment(comment: Comment) {
         <p v-if="collectError" class="text-sm text-red-600 dark:text-red-400">{{ collectError }}</p>
 
         <!-- Signalement -->
-        <div v-if="auth.isAuthenticated && !isMyItem" class="text-sm">
+        <div v-if="!isArchived && auth.isAuthenticated && !isMyItem" class="text-sm">
           <p v-if="reported" class="text-xs text-gray-400 dark:text-gray-500">⚠ Signalement envoyé, merci.</p>
           <button
             v-else-if="!showReportForm"
@@ -576,7 +590,7 @@ async function handleDeleteComment(comment: Comment) {
             </li>
           </ul>
 
-          <form v-if="auth.isAuthenticated" class="mt-3 flex gap-2" @submit.prevent="handlePostComment">
+          <form v-if="!isArchived && auth.isAuthenticated" class="mt-3 flex gap-2" @submit.prevent="handlePostComment">
             <input
               v-model="commentContent"
               type="text"
@@ -592,7 +606,7 @@ async function handleDeleteComment(comment: Comment) {
               Envoyer
             </button>
           </form>
-          <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+          <p v-else-if="!isArchived" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
             <RouterLink to="/connexion" class="text-brand-600 underline dark:text-brand-400">Connecte-toi</RouterLink>
             pour commenter.
           </p>
