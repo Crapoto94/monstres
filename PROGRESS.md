@@ -3663,12 +3663,9 @@ les annonces trouvées avec leur état (importée, laissée de côté, etc.).
   importé).
 
 ### Restant à faire
-- [ ] **Brancher réellement l'écriture du journal dans les instructions de
-      la routine planifiée** (`CronCreate`) : à ce stade, l'endpoint
-      `POST /import/log` existe et est testé manuellement, mais le prompt
-      de la routine récurrente doit être mis à jour pour l'appeler à
-      chaque annonce examinée (import réussi, doublon, trouvaille ignorée,
-      erreur) et une fois par cycle même sans rien trouver.
+- [x] **Brancher réellement l'écriture du journal dans les instructions de
+      la routine planifiée** — fait, voir la section « Règles de
+      fonctionnement de la routine d'import » en fin de document.
 
 ### Testé en local
 4 lignes de log simulées via curl (1 run avec 3 décisions différentes +
@@ -3679,3 +3676,90 @@ détail déplié montre les 3 lignes avec badges/titre/postId/raison
 corrects, y compris l'exemple concret donné par l'utilisateur ("Trouve Rue
 Beaurepaire Paris" → badge "Trouvaille ignorée"). Build réel + `vue-tsc -b`
 + build backend passés sans erreur. Version bumpée à `0.4.37`.
+
+## Règles de fonctionnement de la routine d'import (v0.4.38–0.4.39)
+
+Ces règles n'existaient que dans le prompt de la tâche planifiée — elles
+disparaissaient donc avec la session qui l'exécutait. Elles sont consignées
+ici parce qu'elles sont le fruit de plusieurs dizaines de cycles réels et
+d'arbitrages produit de l'utilisateur.
+
+### Règles métier : quoi importer, quoi écarter
+
+Un Monstre est un **objet abandonné en rue, librement récupérable par
+n'importe qui**. Tout ce qui s'en écarte doit être journalisé mais pas
+importé. En cas de doute réel : ne pas importer.
+
+| Cas | Décision | Indices |
+|---|---|---|
+| Dépôt en rue avec adresse | `imported` | adresse précise (rue + ville), photo de l'objet in situ |
+| Trouvaille | `skipped_found` | verbes au passé (« j'ai trouvé », « récupéré », « pris »), aucune nouvelle adresse de dépôt. **Inclut les posts-vitrines de déco** montrant fièrement des meubles chinés |
+| Contact privé demandé | `skipped_other` | « MP », « message privé », « en DM », « contactez-moi » — l'objet n'est pas librement récupérable |
+| Don sur rendez-vous | `skipped_other` | « à venir récupérer chez moi », remise en main propre |
+| Adresse imprécise | `skipped_other` | quartier ou ville seule, sans rue |
+| Photos non pertinentes | `skipped_other` | captures d'écran d'un site marchand au lieu de l'objet réel |
+
+Cas concrets rencontrés : « Trouve Rue Beaurepaire Paris » (trouvaille) ;
+étagère en palissandre avec éléments « que j'ai trouvé » (post-vitrine, donc
+trouvaille) ; table à langer + biberons « à venir récupérer à Maisons-Alfort,
+quartier École Vétérinaire » (don sur RDV **et** adresse imprécise **et**
+photos issues de consobaby.com).
+
+### Extraction technique (Facebook)
+
+- **Identifiant de post** : lire l'URL du lightbox une fois la photo ouverte.
+  `set=gm.<id>` = post à **photo unique** ; `set=pcb.<id>` = post
+  **multi-photos**. C'est le moyen le plus fiable de savoir s'il faut
+  parcourir « Photo suivante » — l'absence de badge « +N » dans le fil n'est
+  **pas** un indicateur fiable (le post du buffet n'en avait pas et
+  contenait 3 photos).
+- **Ouvrir le lightbox** : un clic sur la référence d'élément échoue parfois
+  silencieusement. Le repli qui marche est un clic JS sur l'ancre parente :
+  `img.closest('a').click()`.
+- **Télécharger une photo** : dans une **seule** exécution `javascript_tool`,
+  prendre l'`<img>` de plus grand `naturalWidth` **à l'intérieur du dialog**,
+  puis `fetch(img.src)` → `blob` → `URL.createObjectURL` → `<a download>` →
+  `click()`. Contrairement à ce qui était supposé au départ, il n'est **pas**
+  nécessaire de recharger la page entre deux photos.
+- **Récupérer les URLs par le réseau** : `read_network_requests` filtré sur
+  `fbcdn` fonctionne quand la lecture du DOM est bloquée, mais attention —
+  les vraies photos de post sont en `t39.30808-6`, tandis que `t15.5256-10`
+  correspond aux vignettes de Reels suggérés (pièges : parapluie, Lidl…).
+- **Captures d'écran instables** : `Page.captureScreenshot` échoue ou expire
+  régulièrement sur un onglet Facebook chargé. Créer un onglet neuf
+  (`tabs_create_mcp`) restaure le fonctionnement. `get_page_text` et
+  `find` sont plus fiables que les captures pour piloter la routine.
+
+### Encodage des accents (piège Windows)
+
+Sous Windows, passer un champ accentué en **argument inline** de `curl -F`
+corrompt les accents (`é` → `?`) — deux Monstres ont dû être corrigés a
+posteriori via `backend/scripts/fix-import-encoding.js`. La méthode correcte
+est de passer par des **fichiers UTF-8** : `curl -F "title=<fichier.txt"`, en
+supprimant le saut de ligne final (`printf '%s' "$(cat f.txt)"`) et en
+vérifiant les octets au besoin (`od -c` doit montrer `303 240` pour `à`).
+Sur Linux, l'inline fonctionne normalement.
+
+### Traçabilité multi-machines
+
+Chaque appel à `POST /import/log` doit porter un champ **`machine`**
+(v0.4.39) identifiant la machine qui exécute le cycle — plusieurs machines
+peuvent tourner en parallèle et les passages seraient sinon indiscernables
+dans l'admin. Valeurs utilisées : `windows-pc-principal`,
+`vm-debian-proxmox`.
+
+### Où tourne la routine
+
+L'objectif est de ne plus dépendre du PC principal : une **VM Debian dédiée**
+sur le Proxmox (voir `infra/import-bot-vm/`) garde une session Chrome
+connectée à Facebook et une session `claude` en terminal. Attention au piège
+du **type de CPU Proxmox** documenté dans le README de ce dossier (`--cpu
+host` obligatoire).
+
+État à la fin de cette session : la boucle du PC Windows est **arrêtée**
+(`CronDelete`), la VM prend le relais. Les tâches planifiées étant
+liées à la session (`CronCreate` ne persiste pas sur disque), fermer `claude`
+supprime la boucle — c'est la façon propre de la remplacer sans doublon.
+Aucun risque fonctionnel à laisser deux machines tourner en parallèle
+(l'anti-doublon serveur via `ImportedPost` empêche les recréations), c'est
+seulement du travail inutile.
