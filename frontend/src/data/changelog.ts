@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.5.1',
+    date: '26 juillet 2026',
+    changes: [
+      "Console SQL admin : les requêtes d'écriture (INSERT, UPDATE, DELETE…) sont désormais autorisées, avec affichage du nombre de lignes affectées",
+      "Correction déconnexion : le cookie JWT est maintenant correctement effacé (clearCookie sans maxAge)",
+      "Correction écran admin : le tableau de bord ne reste plus bloqué sur « Chargement… » en cas d'erreur",
+      "Nettoyage du store auth : réinitialisation complète à la déconnexion",
+    ],
+  },
+  {
     version: '0.5.0',
     date: '26 juillet 2026',
     changes: [

@@ -7,6 +7,8 @@ const loading = ref(true)
 const sql = ref('')
 const result = ref<any[] | null>(null)
 const resultCount = ref(0)
+const affectedRows = ref<number | null>(null)
+const queryType = ref<'query' | 'exec' | null>(null)
 const executing = ref(false)
 const error = ref<string | null>(null)
 
@@ -26,10 +28,17 @@ async function onExecute() {
   executing.value = true
   error.value = null
   result.value = null
+  affectedRows.value = null
+  queryType.value = null
   try {
     const data = await execSql(sql.value.trim())
-    result.value = data.rows
-    resultCount.value = data.count
+    queryType.value = data.type
+    if (data.type === 'query') {
+      result.value = data.rows
+      resultCount.value = data.count
+    } else {
+      affectedRows.value = data.affected ?? 0
+    }
   } catch (e: any) {
     error.value = e.response?.data?.error?.message ?? 'Erreur SQL.'
   } finally {
@@ -64,7 +73,7 @@ function selectTable(name: string) {
       <textarea
         v-model="sql"
         rows="4"
-        placeholder="SELECT * FROM users LIMIT 10"
+        placeholder="SELECT * FROM users LIMIT 10 — ou INSERT, UPDATE, DELETE…"
         class="w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm dark:border-gray-700 dark:bg-gray-900"
       ></textarea>
 
@@ -80,6 +89,12 @@ function selectTable(name: string) {
 
     <p v-if="error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
 
+    <!-- Résultat d'écriture (INSERT/UPDATE/DELETE...) -->
+    <div v-if="queryType === 'exec'" class="mt-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+      ✅ Requête exécutée — <strong>{{ affectedRows }}</strong> ligne{{ affectedRows !== 1 ? 's' : '' }} affectée{{ affectedRows !== 1 ? 's' : '' }}.
+    </div>
+
+    <!-- Résultat de lecture (SELECT/PRAGMA...) -->
     <div v-if="result !== null" class="mt-4">
       <p class="text-sm text-gray-500 dark:text-gray-400">{{ resultCount }} résultat(s)</p>
 

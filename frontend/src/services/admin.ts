@@ -246,7 +246,7 @@ export async function listTables() {
 }
 
 export async function execSql(sql: string) {
-  const { data } = await api.post<ApiSuccess<{ rows: any[]; count: number }>>('/admin/sql/exec', { sql })
+  const { data } = await api.post<ApiSuccess<{ rows: any[] | null; count: number; affected?: number; type: 'query' | 'exec' }>>('/admin/sql/exec', { sql })
   return data.data
 }
 
