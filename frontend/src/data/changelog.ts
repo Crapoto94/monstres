@@ -6,6 +6,36 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '0.4.35',
+    date: '26 juillet 2026',
+    changes: [
+      'Un Monstre non récupéré est archivé automatiquement 24h après sa publication — retrouvable dans un nouvel onglet "Archives" (consultation seule)',
+      'Sur la carte, les Monstres sont affichés avec le logo de la mascotte ; les archives apparaissent en plus petit',
+      'Les Monstres relayés depuis Facebook peuvent désormais avoir plusieurs photos',
+    ],
+  },
+  {
+    version: '0.4.34',
+    date: '26 juillet 2026',
+    changes: [
+      'Le compte qui relaie les Monstres depuis notre groupe Facebook a maintenant son propre avatar (la mascotte)',
+    ],
+  },
+  {
+    version: '0.4.33',
+    date: '25 juillet 2026',
+    changes: [
+      'Les Monstres relayés depuis Facebook sont désormais visibles immédiatement, sans attendre de validation',
+    ],
+  },
+  {
+    version: '0.4.32',
+    date: '25 juillet 2026',
+    changes: [
+      'Premiers Monstres relayés automatiquement depuis notre groupe Facebook communautaire',
+    ],
+  },
+  {
     version: '0.4.31',
     date: '25 juillet 2026',
     changes: [

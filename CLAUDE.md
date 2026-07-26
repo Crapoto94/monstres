@@ -51,6 +51,11 @@ objets encombrants abandonnés dans la rue. Un objet abandonné = un **Monstre**
   (`HomeView.vue`, via `__APP_VERSION__` injecté par Vite au build) et dans
   `GET /api/v1/health` côté backend — c'est ce qui permet de vérifier ce qui
   est réellement déployé en prod. Ne pas oublier ce bump avant de committer.
+  **Ajouter aussi une entrée dans `frontend/src/data/changelog.ts`** en même
+  temps que le bump : la modale "Quoi de neuf" affiche `changelog[0].version`,
+  pas `__APP_VERSION__` — un bump sans entrée de changelog fige silencieusement
+  la modale sur l'ancienne version (aucune erreur, juste oublié 4 fois de
+  suite en session, voir PROGRESS.md correctif v0.4.36).
 
 ## Domaine & sous-domaines (racine `fbc.fr`)
 | Sous-domaine | Rôle |

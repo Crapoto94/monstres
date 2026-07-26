@@ -7,9 +7,8 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-26** (v0.4.35 — cycle de vie du Monstre :
-archivage auto 24h, vue Archives, icône monstre sur la carte, import
-multi-photos)
+Dernière mise à jour : **2026-07-26** (v0.4.36 — correctif changelog "Quoi
+de neuf" resté bloqué à v0.4.31)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -3604,3 +3603,25 @@ formulaire de commentaire tous présents). Carte : 9 marqueurs rendus, tailles
 512×487). Import multi-photos testé via curl (2 fichiers) → 2 `ItemPhoto`
 créées dans l'ordre. Build réel (`npm run build`) + `vue-tsc -b` + build
 backend passés sans erreur des deux côtés. Version bumpée à `0.4.35`.
+
+---
+
+## Correctif : « Quoi de neuf » resté bloqué à v0.4.31 (v0.4.36)
+
+Signalé par l'utilisateur après le déploiement de la v0.4.35 : la modale
+"Nouveautés" (`WhatsNewModal.vue`) affichait toujours "Version actuelle :
+v0.4.31". **Cause** : `WhatsNewModal.vue` affiche `changelog[0].version`
+(première entrée de `frontend/src/data/changelog.ts`) — ce n'est **pas**
+dérivé de `__APP_VERSION__` (la vraie version buildée). Plusieurs sessions
+d'affilée (0.4.32 à 0.4.35 : import Facebook, avatar du bot robot,
+archivage automatique) avaient oublié d'ajouter une entrée au changelog en
+même temps que le bump de version dans les `package.json` — écart pur
+d'oubli, pas un bug de logique.
+
+**Correctif** : entrées 0.4.32 à 0.4.35 ajoutées à `changelog.ts` (au-dessus
+de 0.4.31). **Point de vigilance pour toute session future** : le bump de
+version dans `backend/package.json` + `frontend/package.json` **et**
+l'ajout d'une entrée dans `frontend/src/data/changelog.ts` doivent être
+faits ensemble à chaque push sur master — sinon la modale "Quoi de neuf"
+se fige silencieusement (aucune erreur, juste un contenu obsolète).
+Version bumpée à `0.4.36`.
