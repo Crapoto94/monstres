@@ -431,8 +431,21 @@ export interface NewsletterResult {
   totalTarget: number
 }
 
+export interface NewsletterHistoryEntry {
+  subject: string
+  sentAt: string
+  sentCount: number
+  failedCount: number
+  totalRecipients: number
+}
+
 export async function fetchNewsletterStatus() {
   const { data } = await api.get<ApiSuccess<NewsletterStatus>>('/admin/newsletter/status')
+  return data.data
+}
+
+export async function fetchNewsletterHistory() {
+  const { data } = await api.get<ApiSuccess<NewsletterHistoryEntry[]>>('/admin/newsletter/history')
   return data.data
 }
 

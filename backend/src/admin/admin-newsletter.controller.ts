@@ -16,6 +16,11 @@ export class AdminNewsletterController {
     return this.newsletterService.getStatus();
   }
 
+  @Get('history')
+  getHistory() {
+    return this.newsletterService.getHistory();
+  }
+
   @Post('send')
   send(@Body() dto: SendNewsletterDto) {
     return this.newsletterService.send(dto);

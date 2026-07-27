@@ -19,6 +19,14 @@ export interface NewsletterResult {
   totalTarget: number;
 }
 
+export interface NewsletterHistoryEntry {
+  subject: string;
+  sentAt: string;
+  sentCount: number;
+  failedCount: number;
+  totalRecipients: number;
+}
+
 @Injectable()
 export class AdminNewsletterService {
   private readonly logger = new Logger(AdminNewsletterService.name);
@@ -53,6 +61,39 @@ export class AdminNewsletterService {
     }
 
     return { optedInCount, lastSentAt, frequencyDays, canSend, reason };
+  }
+
+  async getHistory(): Promise<NewsletterHistoryEntry[]> {
+    const logs = await this.prisma.emailLog.findMany({
+      where: { templateKey: 'newsletter' },
+      select: { subject: true, status: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    });
+
+    const campaigns: NewsletterHistoryEntry[] = [];
+
+    for (const log of logs) {
+      const logTime = log.createdAt.getTime();
+      const existing = campaigns.find(
+        (c) => c.subject === log.subject && Math.abs(new Date(c.sentAt).getTime() - logTime) < 60 * 60 * 1000,
+      );
+      if (existing) {
+        existing.totalRecipients++;
+        if (log.status === 'SENT') existing.sentCount++;
+        else if (log.status === 'FAILED') existing.failedCount++;
+      } else {
+        campaigns.push({
+          subject: log.subject,
+          sentAt: log.createdAt.toISOString(),
+          sentCount: log.status === 'SENT' ? 1 : 0,
+          failedCount: log.status === 'FAILED' ? 1 : 0,
+          totalRecipients: 1,
+        });
+      }
+    }
+
+    return campaigns;
   }
 
   async send(dto: SendNewsletterDto): Promise<NewsletterResult> {
