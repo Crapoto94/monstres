@@ -595,7 +595,7 @@ function resetAndGoHome() {
             :disabled="ressourceriesLoading"
             @click="openRessourceries"
           >
-            {{ ressourceriesLoading ? '⏳ Recherche…' : '♻️ Trouve une déchèterie' }}
+            {{ ressourceriesLoading ? '⏳ Recherche…' : '♻️ Trouve une ressourcerie' }}
           </button>
         </div>
 
@@ -624,7 +624,7 @@ function resetAndGoHome() {
                   >✕</button>
                 </div>
                 <p v-if="ressourceriesLoading" class="text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
-                <p v-else-if="nearbyRessourceries.length === 0" class="text-sm text-gray-500 dark:text-gray-400">Aucune déchèterie trouvée à proximité.</p>
+                <p v-else-if="nearbyRessourceries.length === 0" class="text-sm text-gray-500 dark:text-gray-400">Aucune ressourcerie trouvée à proximité.</p>
                 <ul v-else class="flex flex-col gap-2">
                   <li
                     v-for="r in nearbyRessourceries"
