@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateFacebookImportDto } from './dto/create-facebook-import.dto';
 import { CreateImportLogEntryDto } from './dto/create-import-log-entry.dto';
 
@@ -24,6 +25,7 @@ export class ImportService {
     private readonly imageService: ImageService,
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   /** Définit l'avatar du compte robot d'import à partir d'une image uploadée. */
@@ -152,6 +154,18 @@ export class ImportService {
 
     await this.prisma.importedPost.create({
       data: { source: SOURCE, externalId: dto.postId, itemId: item.id },
+    });
+
+    // Notifie les abonnés dont une zone surveillée couvre ce nouveau Monstre.
+    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+    const firstPhoto = processedPhotos[0];
+    await this.subscriptions.notifyNearbySubscribers({
+      id: item.id,
+      title: dto.title,
+      latitude,
+      longitude,
+      userId: bot.id,
+      photoUrl: firstPhoto ? `${imgBaseUrl}/${firstPhoto.thumbnailPath ?? firstPhoto.path}` : null,
     });
 
     this.logger.log(
