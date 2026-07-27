@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.0',
+    date: '27 juillet 2026',
+    changes: [
+      "Version officielle 1.0.0",
+      "Newsletter : éditeur WYSIWYG (gras, italique, listes, liens, images) — les retours à la ligne et le formatage sont désormais correctement interprétés",
+    ],
+  },
+  {
     version: '0.5.1',
     date: '26 juillet 2026',
     changes: [

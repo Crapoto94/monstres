@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { fetchNewsletterStatus, sendNewsletter, type NewsletterStatus } from '@/services/admin'
 
 const status = ref<NewsletterStatus | null>(null)
@@ -98,19 +100,20 @@ function formatDate(iso: string | null) {
       </label>
 
       <label class="flex flex-col gap-1 text-sm text-gray-700 dark:text-gray-300">
-        Contenu HTML
-        <textarea
-          v-model="htmlContent"
-          required
-          rows="12"
-          placeholder="<p>Écris ton message ici…</p>"
-          class="rounded-xl border border-gray-200 px-3 py-2.5 font-mono text-xs leading-relaxed focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950"
-        />
+        Contenu
+        <div class="newsletter-editor overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+          <QuillEditor
+            v-model:content="htmlContent"
+            content-type="html"
+            :options="{ theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link', 'image'], ['clean']] } }"
+            style="min-height: 250px"
+          />
+        </div>
       </label>
 
       <div class="rounded-lg bg-gray-50 p-3 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
         <p class="font-medium text-gray-700 dark:text-gray-300">Aperçu</p>
-        <div class="mt-1 max-w-none" v-html="htmlContent || '<em>Aucun contenu</em>'" />
+        <div class="mt-1 html-content max-w-none" v-html="htmlContent || '<em>Aucun contenu</em>'" />
       </div>
 
       <button
@@ -123,3 +126,30 @@ function formatDate(iso: string | null) {
     </form>
   </div>
 </template>
+
+<style>
+.newsletter-editor .ql-toolbar.ql-snow {
+  border-radius: 0.5rem 0.5rem 0 0;
+  border-color: var(--color-gray-200);
+}
+.newsletter-editor .ql-container.ql-snow {
+  border-radius: 0 0 0.5rem 0.5rem;
+  border-color: var(--color-gray-200);
+  font-family: inherit;
+}
+:root.dark .newsletter-editor .ql-toolbar.ql-snow {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-900);
+}
+:root.dark .newsletter-editor .ql-container.ql-snow {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-950);
+  color: var(--color-gray-100);
+}
+:root.dark .newsletter-editor .ql-stroke {
+  stroke: var(--color-gray-300);
+}
+:root.dark .newsletter-editor .ql-fill {
+  fill: var(--color-gray-300);
+}
+</style>
