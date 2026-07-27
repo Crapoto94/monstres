@@ -44,7 +44,7 @@ interface Ressourcerie {
   lat: number
   lng: number
   source: 'gogocompact' | 'emmaus'
-  distance?: number
+  distance: number
 }
 const nearbyRessourceries = ref<Ressourcerie[]>([])
 const ressourceriesLoading = ref(false)
