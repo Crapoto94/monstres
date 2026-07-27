@@ -18,7 +18,10 @@ export class SettingsController {
       facebookGroupUrl: await this.settingsService.getString('facebook_group_url', ''),
       betaModeEnabled: await this.settingsService.getBoolean('beta_mode_enabled', true),
       geoExplanationContent: await this.settingsService.getString('geo_explanation_content', ''),
-      addItemDisclaimerContent: await this.settingsService.getString('add_item_disclaimer_content', ''),
+      addItemDisclaimerContent: await this.settingsService.getString(
+        'add_item_disclaimer_content',
+        '<p><strong>⚠️ Important :</strong> Les Monstres sert uniquement à signaler des objets déjà présents. Ne dépose pas d\'encombrants sur la voie publique : les dépôts sauvages sont interdits. Pour te débarrasser d\'un objet, utilise les solutions autorisées (déchetterie, collecte des encombrants, ressourcerie, etc.).</p>',
+      ),
     };
   }
 }

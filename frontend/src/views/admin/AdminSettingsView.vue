@@ -335,6 +335,21 @@ async function onSave(setting: AdminSetting) {
                 Cmd/Ctrl + Entrée pour sauvegarder.
                 Aperçu sur <RouterLink :to="previewRoute(key)" target="_blank" class="text-brand-600 underline dark:text-brand-400">{{ previewRoute(key) }} ↗</RouterLink>.
               </p>
+              <div class="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  :disabled="busyKey === key || !hasChanged(key)"
+                  class="rounded-lg px-4 py-1.5 text-sm font-medium transition-all disabled:opacity-40"
+                  :class="savedKey === key
+                    ? 'bg-green-600 text-white'
+                    : hasChanged(key)
+                      ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'"
+                  @click="onSave(settingByKey(key)!)"
+                >
+                  {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : 'Sauvegarder' }}
+                </button>
+              </div>
             </template>
 
             <!-- TEXT / NUMBER input -->
