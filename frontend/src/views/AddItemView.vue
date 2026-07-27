@@ -44,7 +44,7 @@ interface Ressourcerie {
   lat: number
   lng: number
   source: 'gogocompact' | 'emmaus'
-  distance: number
+  distance?: number
 }
 const nearbyRessourceries = ref<Ressourcerie[]>([])
 const ressourceriesLoading = ref(false)
@@ -449,7 +449,7 @@ function resetAndGoHome() {
           class="flex items-center justify-between text-xs text-brand-700 dark:text-brand-300"
         >
           <span>{{ r.name }}</span>
-          <span class="text-brand-500 dark:text-brand-400">{{ Math.round(r.distance) }} km</span>
+          <span class="text-brand-500 dark:text-brand-400">{{ Math.round(r.distance ?? 0) }} km</span>
         </li>
       </ul>
       <p class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
