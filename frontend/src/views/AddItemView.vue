@@ -48,6 +48,7 @@ interface Ressourcerie {
 }
 const nearbyRessourceries = ref<Ressourcerie[]>([])
 const ressourceriesLoading = ref(false)
+const showRessourceriesPopup = ref(false)
 
 // Partage groupe Facebook (§ settings `facebook_share_enabled`/`facebook_group_url`) :
 // Facebook ne permet pas de poster automatiquement dans un groupe via l'API
@@ -176,6 +177,27 @@ async function reverseGeocode(lat: number, lng: number) {
   }
 }
 
+const POSITION_CACHE_KEY = 'monstres_last_position'
+const POSITION_CACHE_TTL = 2 * 60 * 1000 // 2 minutes
+
+function getCachedPosition(): { lat: number; lng: number } | null {
+  try {
+    const raw = localStorage.getItem(POSITION_CACHE_KEY)
+    if (!raw) return null
+    const { lat, lng, ts } = JSON.parse(raw)
+    if (Date.now() - ts > POSITION_CACHE_TTL) return null
+    return { lat, lng }
+  } catch {
+    return null
+  }
+}
+
+function cachePosition(lat: number, lng: number) {
+  try {
+    localStorage.setItem(POSITION_CACHE_KEY, JSON.stringify({ lat, lng, ts: Date.now() }))
+  } catch { /* ignore */ }
+}
+
 function locateMe() {
   if (!navigator.geolocation) return
   locating.value = true
@@ -186,6 +208,7 @@ function locateMe() {
       setPosition(lat, lng)
       reverseGeocode(lat, lng)
       locating.value = false
+      cachePosition(lat, lng)
       fetchNearbyRessourceries(lat, lng)
     },
     () => {
@@ -324,6 +347,13 @@ async function fetchNearbyRessourceries(userLat: number, userLng: number) {
   }
 }
 
+function openRessourceries() {
+  showRessourceriesPopup.value = true
+  if (nearbyRessourceries.value.length === 0 && latitude.value && longitude.value) {
+    fetchNearbyRessourceries(latitude.value, longitude.value)
+  }
+}
+
 onMounted(async () => {
   categories.value = await fetchCategories()
   try {
@@ -334,7 +364,14 @@ onMounted(async () => {
   } catch {
     // silencieux — la case de partage reste simplement masquée
   }
-  locateMe()
+
+  const cached = getCachedPosition()
+  if (cached) {
+    setPosition(cached.lat, cached.lng)
+    fetchNearbyRessourceries(cached.lat, cached.lng)
+  } else {
+    locateMe()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -549,33 +586,69 @@ function resetAndGoHome() {
         />
 
         <div
-          v-if="nearbyRessourceries.length > 0"
-          class="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-800 dark:bg-brand-950/50"
+          v-if="latitude && longitude"
+          class="flex flex-col gap-2"
         >
-          <p class="text-sm font-medium text-brand-800 dark:text-brand-200">
-            🔄 Ressourceries et recycleries à proximité
-          </p>
-          <ul class="mt-2 flex flex-col gap-2">
-            <li
-              v-for="r in nearbyRessourceries"
-              :key="`${r.name}-${r.lat}-${r.lng}`"
-              class="flex items-center justify-between text-xs text-brand-700 dark:text-brand-300"
-            >
-              <span class="flex-1">{{ r.name }} <span class="text-brand-500 dark:text-brand-400">· {{ Math.round(r.distance ?? 0) }} km</span></span>
-              <a
-                :href="`https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=15/${r.lat}/${r.lng}`"
-                target="_blank"
-                rel="noopener"
-                class="ml-2 shrink-0 rounded-lg bg-brand-600 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-brand-700"
-              >
-                Y aller
-              </a>
-            </li>
-          </ul>
-          <p class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
-            Tu peux y déposer ton objet en toute légalité.
-          </p>
+          <button
+            type="button"
+            class="self-start rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-100 dark:bg-brand-950 dark:text-brand-400 dark:hover:bg-brand-900"
+            :disabled="ressourceriesLoading"
+            @click="openRessourceries"
+          >
+            {{ ressourceriesLoading ? '⏳ Recherche…' : '♻️ Trouve une déchèterie' }}
+          </button>
         </div>
+
+        <!-- Popup ressourceries -->
+        <Teleport to="body">
+          <Transition
+            enter-active-class="duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="duration-150 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+          >
+            <div
+              v-if="showRessourceriesPopup"
+              class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4"
+              @click.self="showRessourceriesPopup = false"
+            >
+              <div class="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl dark:bg-gray-900 sm:rounded-2xl">
+                <div class="mb-3 flex items-center justify-between">
+                  <h3 class="text-base font-semibold text-gray-900 dark:text-white">♻️ Déchèteries & ressourceries</h3>
+                  <button
+                    type="button"
+                    class="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    @click="showRessourceriesPopup = false"
+                  >✕</button>
+                </div>
+                <p v-if="ressourceriesLoading" class="text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+                <p v-else-if="nearbyRessourceries.length === 0" class="text-sm text-gray-500 dark:text-gray-400">Aucune déchèterie trouvée à proximité.</p>
+                <ul v-else class="flex flex-col gap-2">
+                  <li
+                    v-for="r in nearbyRessourceries"
+                    :key="`${r.name}-${r.lat}-${r.lng}`"
+                    class="flex items-center justify-between text-sm text-brand-700 dark:text-brand-300"
+                  >
+                    <span class="flex-1">{{ r.name }} <span class="text-brand-500 dark:text-brand-400">· {{ Math.round(r.distance ?? 0) }} km</span></span>
+                    <a
+                      :href="`geo:${r.lat},${r.lng}?q=${r.lat},${r.lng}`"
+                      target="_blank"
+                      rel="noopener"
+                      class="ml-2 shrink-0 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-700"
+                    >
+                      Y aller
+                    </a>
+                  </li>
+                </ul>
+                <p v-if="nearbyRessourceries.length > 0" class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
+                  Tu peux y déposer ton objet en toute légalité.
+                </p>
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
       </div>
 
       <!-- Étape 2 : Position -->

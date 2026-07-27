@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.2',
+    date: '27 juillet 2026',
+    changes: [
+      "Page « Ajouter » : les ressourceries et recycleries s'affichent dans une popup dédiée (bouton « Trouve une déchèterie »)",
+      "Le bouton « Y aller » des ressourceries ouvre désormais directement l'app GPS du téléphone (comme pour les Monstres)",
+      "Position en cache 2 minutes : les ressourceries s'affichent instantanément quand on navigue vers la page « Ajouter »",
+    ],
+  },
+  {
     version: '1.0.1',
     date: '27 juillet 2026',
     changes: [
