@@ -429,34 +429,6 @@ function resetAndGoHome() {
   <section class="flex flex-1 flex-col p-4 pb-24">
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Ajouter un Monstre</h1>
 
-    <div
-      v-if="disclaimerContent"
-      class="html-content mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
-      v-html="disclaimerContent"
-    />
-
-    <div
-      v-if="nearbyRessourceries.length > 0"
-      class="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-800 dark:bg-brand-950/50"
-    >
-      <p class="text-sm font-medium text-brand-800 dark:text-brand-200">
-        🔄 Ressourceries et recycleries à proximité
-      </p>
-      <ul class="mt-2 flex flex-col gap-1.5">
-        <li
-          v-for="r in nearbyRessourceries"
-          :key="`${r.name}-${r.lat}-${r.lng}`"
-          class="flex items-center justify-between text-xs text-brand-700 dark:text-brand-300"
-        >
-          <span>{{ r.name }}</span>
-          <span class="text-brand-500 dark:text-brand-400">{{ Math.round(r.distance ?? 0) }} km</span>
-        </li>
-      </ul>
-      <p class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
-        Tu peux y déposer ton objet en toute légalité.
-      </p>
-    </div>
-
     <div v-if="publishedItem" class="mt-6 flex flex-col gap-4">
       <div class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
         <p class="text-sm font-medium text-green-700 dark:text-green-300">
@@ -569,6 +541,41 @@ function resetAndGoHome() {
 
         <p v-if="resizingPhotos" class="text-sm text-gray-500 dark:text-gray-400">⏳ Optimisation de la photo…</p>
         <p v-if="photoError" class="text-sm text-red-600 dark:text-red-400">{{ photoError }}</p>
+
+        <div
+          v-if="disclaimerContent"
+          class="html-content rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+          v-html="disclaimerContent"
+        />
+
+        <div
+          v-if="nearbyRessourceries.length > 0"
+          class="rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-800 dark:bg-brand-950/50"
+        >
+          <p class="text-sm font-medium text-brand-800 dark:text-brand-200">
+            🔄 Ressourceries et recycleries à proximité
+          </p>
+          <ul class="mt-2 flex flex-col gap-2">
+            <li
+              v-for="r in nearbyRessourceries"
+              :key="`${r.name}-${r.lat}-${r.lng}`"
+              class="flex items-center justify-between text-xs text-brand-700 dark:text-brand-300"
+            >
+              <span class="flex-1">{{ r.name }} <span class="text-brand-500 dark:text-brand-400">· {{ Math.round(r.distance ?? 0) }} km</span></span>
+              <a
+                :href="`https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=15/${r.lat}/${r.lng}`"
+                target="_blank"
+                rel="noopener"
+                class="ml-2 shrink-0 rounded-lg bg-brand-600 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-brand-700"
+              >
+                Y aller
+              </a>
+            </li>
+          </ul>
+          <p class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
+            Tu peux y déposer ton objet en toute légalité.
+          </p>
+        </div>
       </div>
 
       <!-- Étape 2 : Position -->
