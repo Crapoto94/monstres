@@ -133,11 +133,11 @@ export class SeoController {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>C'est quoi, un Monstre ? | Les Monstres</title>
+  <title>C'est quoi, un Monstre ? | Les monstres - L'appli</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <link rel="canonical" href="${escapeHtml(url)}" />
   <meta property="og:type" content="article" />
-  <meta property="og:site_name" content="Les Monstres" />
+  <meta property="og:site_name" content="Les monstres - L'appli" />
   <meta property="og:title" content="C'est quoi, un Monstre ?" />
   <meta property="og:description" content="${escapeHtml(description)}" />
   <meta property="og:url" content="${escapeHtml(url)}" />

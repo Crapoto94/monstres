@@ -1,6 +1,6 @@
 import { onUnmounted, watchEffect, type MaybeRefOrGetter, toValue } from 'vue'
 
-const SITE_NAME = 'Les Monstres'
+const SITE_NAME = "Les monstres - L'appli"
 const SITE_URL = 'https://monstres.app'
 
 /** Valeurs de repli : celles écrites en dur dans index.html (accueil). */

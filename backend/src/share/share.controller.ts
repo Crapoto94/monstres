@@ -105,7 +105,7 @@ export class ShareController {
     const safeTitle = escapeHtml(title);
     const safeDescription = escapeHtml(description);
     const safeUrl = escapeHtml(url);
-    const pageTitle = `${safeTitle}${address ? ` — ${escapeHtml(address)}` : ''} | Les Monstres`;
+    const pageTitle = `${safeTitle}${address ? ` — ${escapeHtml(address)}` : ''} | Les monstres - L'appli`;
 
     // Schema.org : aide Google à comprendre qu'il s'agit d'un objet donné,
     // localisé et daté, plutôt que d'une page générique.
@@ -135,7 +135,7 @@ export class ShareController {
   <meta name="description" content="${safeDescription}" />
   <link rel="canonical" href="${safeUrl}" />
   ${indexable ? '' : '<meta name="robots" content="noindex, follow" />\n  '}<meta property="og:type" content="article" />
-  <meta property="og:site_name" content="Les Monstres" />
+  <meta property="og:site_name" content="Les monstres - L'appli" />
   <meta property="og:title" content="${safeTitle}" />
   <meta property="og:description" content="${safeDescription}" />
   <meta property="og:url" content="${safeUrl}" />

@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.1',
+    date: '27 juillet 2026',
+    changes: [
+      "Référencement Google : nom de site affiché dans les résultats de recherche mis à jour en « Les monstres - L'appli » (title, og:site_name, JSON-LD) sur le frontend et les pages pré-rendues côté backend (pourquoi, fiche Monstre)",
+    ],
+  },
+  {
     version: '1.0.0',
     date: '27 juillet 2026',
     changes: [
