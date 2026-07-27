@@ -194,7 +194,10 @@ function meta(key: string): SettingMeta {
 }
 function isBoolean(type: string) { return type === 'BOOLEAN' }
 function isTextarea(key: string) { return key.endsWith('_content') || key === 'legal_notices' }
-function hasChanged(key: string) { return drafts.value[key] !== settingByKey(key)?.value }
+function hasChanged(key: string) {
+  const existing = settingByKey(key)
+  return existing ? drafts.value[key] !== existing.value : (drafts.value[key] ?? '').trim().length > 0
+}
 function settingByKey(key: string): AdminSetting | undefined { return settings.value.find((s) => s.key === key) }
 
 
@@ -204,12 +207,19 @@ const PREVIEW_ROUTES: Record<string, string> = {
   rgpd_content: '/rgpd',
   data_deletion_content: '/suppression',
 }
+const DEFAULTS: Record<string, string> = {
+  add_item_disclaimer_content: '<p><strong>⚠️ Important :</strong> Les Monstres sert uniquement à signaler des objets déjà présents. Ne dépose pas d\'encombrants sur la voie publique : les dépôts sauvages sont interdits.</p>',
+}
+
 function previewRoute(key: string) { return PREVIEW_ROUTES[key] ?? '/' }
 
 async function load() {
   loading.value = true
   settings.value = await fetchAdminSettings()
   drafts.value = Object.fromEntries(settings.value.map((s) => [s.key, s.value]))
+  for (const [key, defaultValue] of Object.entries(DEFAULTS)) {
+    if (!(key in drafts.value)) drafts.value[key] = defaultValue
+  }
   loading.value = false
 }
 
@@ -221,18 +231,24 @@ function onToggleBoolean(setting: AdminSetting) {
   onSave(setting)
 }
 
-async function onSave(setting: AdminSetting) {
-  const value = drafts.value[setting.key]
-  if (value === setting.value) return
-  busyKey.value = setting.key
+async function onSave(keyOrSetting: AdminSetting | string) {
+  const key = typeof keyOrSetting === 'string' ? keyOrSetting : keyOrSetting.key
+  const value = drafts.value[key]
+  const existing = settingByKey(key)
+  if (existing && value === existing.value) return
+  busyKey.value = key
   actionError.value = null
   savedKey.value = null
   try {
-    const updated = await updateSetting(setting.key, value)
-    const index = settings.value.findIndex((s) => s.key === setting.key)
-    if (index !== -1) settings.value[index] = updated
-    savedKey.value = setting.key
-    setTimeout(() => { if (savedKey.value === setting.key) savedKey.value = null }, 2000)
+    const updated = await updateSetting(key, value)
+    const index = settings.value.findIndex((s) => s.key === key)
+    if (index !== -1) {
+      settings.value[index] = updated
+    } else {
+      settings.value.push(updated)
+    }
+    savedKey.value = key
+    setTimeout(() => { if (savedKey.value === key) savedKey.value = null }, 2000)
   } catch (e: any) {
     actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
@@ -322,8 +338,8 @@ async function onSave(setting: AdminSetting) {
                   v-model="drafts[key]"
                   rows="14"
                   class="w-full resize-y border-0 px-3 py-2.5 font-mono text-xs leading-relaxed text-gray-800 focus:outline-none dark:bg-gray-900 dark:text-gray-200"
-                  @keyup.meta.enter="onSave(settingByKey(key)!)"
-                  @keyup.ctrl.enter="onSave(settingByKey(key)!)"
+                  @keyup.meta.enter="onSave(key)"
+                  @keyup.ctrl.enter="onSave(key)"
                 />
                 <div
                   v-else
@@ -345,7 +361,7 @@ async function onSave(setting: AdminSetting) {
                     : hasChanged(key)
                       ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
                       : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'"
-                  @click="onSave(settingByKey(key)!)"
+                  @click="onSave(key)"
                 >
                   {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : 'Sauvegarder' }}
                 </button>
@@ -359,7 +375,7 @@ async function onSave(setting: AdminSetting) {
                 type="text"
                 :placeholder="meta(key).placeholder"
                 class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
-                @keyup.enter="onSave(settingByKey(key)!)"
+                @keyup.enter="onSave(key)"
               />
             </div>
 
@@ -374,7 +390,7 @@ async function onSave(setting: AdminSetting) {
                   : hasChanged(key)
                     ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
                     : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'"
-                @click="onSave(settingByKey(key)!)"
+                @click="onSave(key)"
               >
                 {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : 'Sauvegarder' }}
               </button>

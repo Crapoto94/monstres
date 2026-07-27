@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.3',
+    date: '27 juillet 2026',
+    changes: [
+      "Correction : le bouton « Sauvegarder » du disclaimer page « Ajouter » fonctionne désormais correctement (le setting est créé en base au premier enregistrement)",
+    ],
+  },
+  {
     version: '1.0.2',
     date: '27 juillet 2026',
     changes: [
