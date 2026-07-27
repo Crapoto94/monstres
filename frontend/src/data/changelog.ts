@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.5',
+    date: '27 juillet 2026',
+    changes: [
+      "Ressourceries : bouton « ? » pour voir les détails (adresse, téléphone, site, horaires…)",
+      "Itinéraire : les liens « Y aller » ouvrent OpenStreetMap sur PC (au lieu du geo: qui ne marchait pas)",
+    ],
+  },
+  {
     version: '1.0.4',
     date: '27 juillet 2026',
     changes: [

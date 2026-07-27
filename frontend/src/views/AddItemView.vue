@@ -43,12 +43,21 @@ interface Ressourcerie {
   name: string
   lat: number
   lng: number
-  source: 'gogocompact' | 'emmaus'
+  source: 'gogofull' | 'emmaus'
   distance?: number
+  address?: string
+  phone?: string
+  email?: string
+  website?: string
+  categories?: string[]
+  thumb?: string
+  permalink?: string
+  openingHours?: string
 }
 const nearbyRessourceries = ref<Ressourcerie[]>([])
 const ressourceriesLoading = ref(false)
 const showRessourceriesPopup = ref(false)
+const selectedRessourcerie = ref<Ressourcerie | null>(null)
 
 // Partage groupe Facebook (§ settings `facebook_share_enabled`/`facebook_group_url`) :
 // Facebook ne permet pas de poster automatiquement dans un groupe via l'API
@@ -300,7 +309,7 @@ async function fetchNearbyRessourceries(userLat: number, userLng: number) {
   ressourceriesLoading.value = true
   try {
     const [gogoData, emmausData] = await Promise.allSettled([
-      fetch('https://ressourceries.gogocarto.fr/api/elements?ontology=gogocompact').then((r) => r.json()),
+      fetch('https://ressourceries.gogocarto.fr/api/elements?ontology=gogofull').then((r) => r.json()),
       fetch('https://www.emmaus-france.org/boutiquesjson.php').then((r) => r.json()),
     ])
 
@@ -308,22 +317,44 @@ async function fetchNearbyRessourceries(userLat: number, userLng: number) {
 
     if (gogoData.status === 'fulfilled' && Array.isArray(gogoData.value?.data)) {
       for (const entry of gogoData.value.data) {
-        const name = entry[1]?.[0]
-        const lat = entry[2]
-        const lng = entry[3]
+        const name = entry.name
+        const lat = entry.geo?.latitude
+        const lng = entry.geo?.longitude
         if (name && typeof lat === 'number' && typeof lng === 'number') {
-          all.push({ name, lat, lng, source: 'gogocompact' })
+          all.push({
+            name,
+            lat,
+            lng,
+            source: 'gogofull',
+            address: entry.address?.customFormatedAddress,
+            categories: entry.categories,
+            website: entry.url,
+            phone: entry.phone,
+          })
         }
       }
     }
 
-    if (emmausData.status === 'fulfilled' && Array.isArray(emmausData.value)) {
-      for (const entry of emmausData.value) {
-        const name = entry.nom || entry.name
-        const lat = parseFloat(entry.latitude || entry.lat)
-        const lng = parseFloat(entry.longitude || entry.lng || entry.lon)
+    if (emmausData.status === 'fulfilled' && emmausData.value?.listsrc) {
+      for (const entry of emmausData.value.listsrc) {
+        const name = entry.title
+        const gpsParts = entry.gps?.split(',')
+        const lat = gpsParts ? parseFloat(gpsParts[0]) : NaN
+        const lng = gpsParts ? parseFloat(gpsParts[1]) : NaN
         if (name && !isNaN(lat) && !isNaN(lng)) {
-          all.push({ name, lat, lng, source: 'emmaus' })
+          all.push({
+            name,
+            lat,
+            lng,
+            source: 'emmaus',
+            address: entry.adresse,
+            phone: entry.telephone,
+            email: entry.email,
+            website: entry.url,
+            thumb: entry.thumb,
+            permalink: entry.permalink,
+            openingHours: extractEmmausHours(entry),
+          })
         }
       }
     }
@@ -344,6 +375,36 @@ async function fetchNearbyRessourceries(userLat: number, userLng: number) {
     // silencieux
   } finally {
     ressourceriesLoading.value = false
+  }
+}
+
+function extractEmmausHours(entry: Record<string, unknown>): string {
+  const days: { key: string; label: string }[] = [
+    { key: 'h_1', label: 'Lun' },
+    { key: 'h_2', label: 'Mar' },
+    { key: 'h_3', label: 'Mer' },
+    { key: 'h_4', label: 'Jeu' },
+    { key: 'h_5', label: 'Ven' },
+    { key: 'h_6', label: 'Sam' },
+    { key: 'h_7', label: 'Dim' },
+  ]
+  const lines: string[] = []
+  for (const d of days) {
+    const am = entry[`${d.key}_am_begin`]
+    const pm = entry[`${d.key}_pm_end`]
+    if (am && pm) {
+      lines.push(`${d.label} ${am}–${pm}`)
+    }
+  }
+  return lines.join(' · ')
+}
+
+function goToItinerary(lat: number, lng: number) {
+  const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  if (isMobile) {
+    window.open(`geo:${lat},${lng}?q=${lat},${lng}`, '_blank')
+  } else {
+    window.open(`https://www.openstreetmap.org/directions?from=&to=${lat}%2C${lng}`, '_blank')
   }
 }
 
@@ -631,17 +692,74 @@ function resetAndGoHome() {
                     :key="`${r.name}-${r.lat}-${r.lng}`"
                     class="flex items-center justify-between text-sm text-brand-700 dark:text-brand-300"
                   >
-                    <span class="flex-1">{{ r.name }} <span class="text-brand-500 dark:text-brand-400">· {{ Math.round(r.distance ?? 0) }} km</span></span>
-                    <a
-                      :href="`geo:${r.lat},${r.lng}?q=${r.lat},${r.lng}`"
-                      target="_blank"
-                      rel="noopener"
+                    <span class="flex min-w-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-600 transition-colors hover:bg-brand-200 dark:bg-brand-800 dark:text-brand-300 dark:hover:bg-brand-700"
+                        title="Détails"
+                        @click="selectedRessourcerie = r"
+                      >?</button>
+                      <span class="truncate">{{ r.name }}</span>
+                      <span class="shrink-0 text-brand-500 dark:text-brand-400">· {{ Math.round(r.distance ?? 0) }} km</span>
+                    </span>
+                    <button
+                      type="button"
                       class="ml-2 shrink-0 rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-700"
+                      @click="goToItinerary(r.lat, r.lng)"
                     >
                       Y aller
-                    </a>
+                    </button>
                   </li>
                 </ul>
+                <!-- Détail d'une ressourcerie -->
+                <Transition
+                  enter-active-class="duration-200 ease-out"
+                  enter-from-class="opacity-0"
+                  enter-to-class="opacity-100"
+                  leave-active-class="duration-150 ease-in"
+                  leave-from-class="opacity-100"
+                  leave-to-class="opacity-0"
+                >
+                  <div
+                    v-if="selectedRessourcerie"
+                    class="mt-2 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm dark:border-brand-800 dark:bg-brand-950"
+                  >
+                    <div class="mb-2 flex items-start justify-between gap-2">
+                      <h4 class="font-semibold text-gray-900 dark:text-white">{{ selectedRessourcerie.name }}</h4>
+                      <button
+                        type="button"
+                        class="shrink-0 rounded-lg p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        @click="selectedRessourcerie = null"
+                      >✕</button>
+                    </div>
+                    <div class="flex flex-col gap-1.5 text-gray-600 dark:text-gray-400">
+                      <p v-if="selectedRessourcerie.distance">
+                        📍 {{ Math.round(selectedRessourcerie.distance) }} km
+                      </p>
+                      <p v-if="selectedRessourcerie.address">
+                        🏠 {{ selectedRessourcerie.address }}
+                      </p>
+                      <p v-if="selectedRessourcerie.phone">
+                        📞 <a :href="`tel:${selectedRessourcerie.phone}`" class="text-brand-600 hover:underline dark:text-brand-400">{{ selectedRessourcerie.phone }}</a>
+                      </p>
+                      <p v-if="selectedRessourcerie.email">
+                        ✉️ <a :href="`mailto:${selectedRessourcerie.email}`" class="text-brand-600 hover:underline dark:text-brand-400">{{ selectedRessourcerie.email }}</a>
+                      </p>
+                      <p v-if="selectedRessourcerie.website">
+                        🌐 <a :href="selectedRessourcerie.website" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">Site web</a>
+                      </p>
+                      <p v-if="selectedRessourcerie.permalink">
+                        🔗 <a :href="selectedRessourcerie.permalink" target="_blank" rel="noopener" class="text-brand-600 hover:underline dark:text-brand-400">Page Emmaüs</a>
+                      </p>
+                      <p v-if="selectedRessourcerie.categories?.length">
+                        🏷️ {{ selectedRessourcerie.categories.join(', ') }}
+                      </p>
+                      <p v-if="selectedRessourcerie.openingHours">
+                        🕐 {{ selectedRessourcerie.openingHours }}
+                      </p>
+                    </div>
+                  </div>
+                </Transition>
                 <p v-if="nearbyRessourceries.length > 0" class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
                   Tu peux y déposer ton objet en toute légalité.
                 </p>

@@ -312,6 +312,15 @@ async function handleDeleteComment(comment: Comment) {
     // silencieux
   }
 }
+
+function goToItinerary(lat: number, lng: number) {
+  const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  if (isMobile) {
+    window.open(`geo:${lat},${lng}?q=${lat},${lng}`, '_blank')
+  } else {
+    window.open(`https://www.openstreetmap.org/directions?from=&to=${lat}%2C${lng}`, '_blank')
+  }
+}
 </script>
 
 <template>
@@ -434,15 +443,14 @@ async function handleDeleteComment(comment: Comment) {
           <template v-if="auth.isAuthenticated && auth.user?.emailVerifiedAt">
             <span v-if="shortAddress" class="text-gray-700 dark:text-gray-300">{{ shortAddress }}</span>
             <span v-else class="text-gray-400 dark:text-gray-500">Adresse non renseignée.</span>
-            <a
+            <button
               v-if="item.latitude && item.longitude"
-              :href="`geo:${item.latitude},${item.longitude}?q=${item.latitude},${item.longitude}`"
-              target="_blank"
-              rel="noopener"
+              type="button"
               class="ml-auto flex-shrink-0 rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-brand-700"
+              @click="goToItinerary(item.latitude, item.longitude)"
             >
               🧭 Y aller
-            </a>
+            </button>
           </template>
           <span v-else-if="auth.isAuthenticated" class="text-gray-400 dark:text-gray-500">
             Valide ton email pour voir l'adresse.
