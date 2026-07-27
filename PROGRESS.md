@@ -7,8 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-26** (v0.4.37 — journal du passage de la
-routine d'import, accessible en admin)
+Dernière mise à jour : **2026-07-27** (v1.0.1 — disclaimer page Ajouter + ressourceries à proximité)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -17,6 +16,10 @@ paliers, ajustement automatique de trustScore, badges, tests automatisés).
 Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
+
+### Récap v1.0.0 → v1.0.1 (2026-07-27)
+- **v1.0.0** : version officielle. Newsletter WYSIWYG (QuillEditor), correctif formatage gras/retours à la ligne, sidebar admin fond noir, historique des envois newsletter (volet de droite).
+- **v1.0.1** : page « Ajouter » — avertissement admin-éditable (déclarer ≠ déposer, dépôt interdit), affichage des ressourceries/recycleries à proximité (gogocompact + Emmaüs, top 5 par distance Haversine). Nouveau setting `add_item_disclaimer_content` éditable depuis Admin > Contenu.
 
 ⚠️ **`backend/.env` local contient une vraie clé `BREVO_API_KEY`** (pas
 juste un exemple) : toute action qui déclenche une notification email
