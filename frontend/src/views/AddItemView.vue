@@ -35,6 +35,20 @@ const submitting = ref(false)
 const submitError = ref<string | null>(null)
 const publishedItem = ref<Item | null>(null)
 
+// Disclaimer admin-éditable
+const disclaimerContent = ref('')
+
+// Ressourceries à proximité
+interface Ressourcerie {
+  name: string
+  lat: number
+  lng: number
+  source: 'gogocompact' | 'emmaus'
+  distance?: number
+}
+const nearbyRessourceries = ref<Ressourcerie[]>([])
+const ressourceriesLoading = ref(false)
+
 // Partage groupe Facebook (§ settings `facebook_share_enabled`/`facebook_group_url`) :
 // Facebook ne permet pas de poster automatiquement dans un groupe via l'API
 // (permission `publish_to_groups` quasi impossible à obtenir depuis 2018) —
@@ -172,6 +186,7 @@ function locateMe() {
       setPosition(lat, lng)
       reverseGeocode(lat, lng)
       locating.value = false
+      fetchNearbyRessourceries(lat, lng)
     },
     () => {
       locating.value = false
@@ -237,6 +252,9 @@ function selectAddress(result: AddressResult) {
   addressQuery.value = result.shortLabel
   addressResults.value = []
   setPosition(result.lat, result.lon)
+  if (nearbyRessourceries.value.length === 0) {
+    fetchNearbyRessourceries(result.lat, result.lon)
+  }
 }
 
 // Étape 3 — Informations
@@ -245,16 +263,78 @@ const description = ref('')
 const categoryId = ref('')
 const categories = ref<Category[]>([])
 
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+async function fetchNearbyRessourceries(userLat: number, userLng: number) {
+  ressourceriesLoading.value = true
+  try {
+    const [gogoData, emmausData] = await Promise.allSettled([
+      fetch('https://ressourceries.gogocarto.fr/api/elements?ontology=gogocompact').then((r) => r.json()),
+      fetch('https://www.emmaus-france.org/boutiquesjson.php').then((r) => r.json()),
+    ])
+
+    const all: Ressourcerie[] = []
+
+    if (gogoData.status === 'fulfilled' && Array.isArray(gogoData.value?.data)) {
+      for (const entry of gogoData.value.data) {
+        const name = entry[1]?.[0]
+        const lat = entry[2]
+        const lng = entry[3]
+        if (name && typeof lat === 'number' && typeof lng === 'number') {
+          all.push({ name, lat, lng, source: 'gogocompact' })
+        }
+      }
+    }
+
+    if (emmausData.status === 'fulfilled' && Array.isArray(emmausData.value)) {
+      for (const entry of emmausData.value) {
+        const name = entry.nom || entry.name
+        const lat = parseFloat(entry.latitude || entry.lat)
+        const lng = parseFloat(entry.longitude || entry.lng || entry.lon)
+        if (name && !isNaN(lat) && !isNaN(lng)) {
+          all.push({ name, lat, lng, source: 'emmaus' })
+        }
+      }
+    }
+
+    const withDistance = all
+      .map((r) => ({ ...r, distance: haversineDistance(userLat, userLng, r.lat, r.lng) }))
+      .filter((r) => r.distance < 100)
+      .sort((a, b) => a.distance - b.distance)
+
+    const seen = new Set<string>()
+    nearbyRessourceries.value = withDistance.filter((r) => {
+      const key = r.name.toLowerCase().trim()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).slice(0, 5)
+  } catch {
+    // silencieux
+  } finally {
+    ressourceriesLoading.value = false
+  }
+}
+
 onMounted(async () => {
   categories.value = await fetchCategories()
-  locateMe()
   try {
     const settings = await fetchPublicSettings()
     facebookGroupUrl.value = settings.facebookGroupUrl
     facebookShareEnabled.value = settings.facebookShareEnabled
+    disclaimerContent.value = settings.addItemDisclaimerContent
   } catch {
     // silencieux — la case de partage reste simplement masquée
   }
+  locateMe()
 })
 
 onBeforeUnmount(() => {
@@ -348,6 +428,34 @@ function resetAndGoHome() {
 <template>
   <section class="flex flex-1 flex-col p-4 pb-24">
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Ajouter un Monstre</h1>
+
+    <div
+      v-if="disclaimerContent"
+      class="html-content mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+      v-html="disclaimerContent"
+    />
+
+    <div
+      v-if="nearbyRessourceries.length > 0"
+      class="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-800 dark:bg-brand-950/50"
+    >
+      <p class="text-sm font-medium text-brand-800 dark:text-brand-200">
+        🔄 Ressourceries et recycleries à proximité
+      </p>
+      <ul class="mt-2 flex flex-col gap-1.5">
+        <li
+          v-for="r in nearbyRessourceries"
+          :key="`${r.name}-${r.lat}-${r.lng}`"
+          class="flex items-center justify-between text-xs text-brand-700 dark:text-brand-300"
+        >
+          <span>{{ r.name }}</span>
+          <span class="text-brand-500 dark:text-brand-400">{{ Math.round(r.distance) }} km</span>
+        </li>
+      </ul>
+      <p class="mt-2 text-[11px] text-brand-600/70 dark:text-brand-400/70">
+        Tu peux y déposer ton objet en toute légalité.
+      </p>
+    </div>
 
     <div v-if="publishedItem" class="mt-6 flex flex-col gap-4">
       <div class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">

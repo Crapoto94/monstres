@@ -6,6 +6,7 @@ export interface PublicSettings {
   facebookGroupUrl: string
   betaModeEnabled: boolean
   geoExplanationContent: string
+  addItemDisclaimerContent: string
 }
 
 export async function fetchPublicSettings(): Promise<PublicSettings> {

@@ -18,6 +18,7 @@ export class SettingsController {
       facebookGroupUrl: await this.settingsService.getString('facebook_group_url', ''),
       betaModeEnabled: await this.settingsService.getBoolean('beta_mode_enabled', true),
       geoExplanationContent: await this.settingsService.getString('geo_explanation_content', ''),
+      addItemDisclaimerContent: await this.settingsService.getString('add_item_disclaimer_content', ''),
     };
   }
 }

@@ -171,6 +171,10 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     label: 'Suppression des données',
     description: 'Contenu HTML de la page /suppression. Instructions pour supprimer son compte.',
   },
+  add_item_disclaimer_content: {
+    label: 'Avertissement page "Ajouter"',
+    description: 'Texte affiché au début de la page de déclaration d\'un Monstre. Rappelle qu\'il s\'agit de déclarer un objet existant (et non de le déposer) et propose des ressourceries à proximité. HTML autorisé.',
+  },
 }
 
 const SECTIONS = [
@@ -182,7 +186,7 @@ const SECTIONS = [
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode', 'geo_explanation_content'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
   { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email', 'newsletter_frequency_days'] },
-  { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content'] },
+  { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content', 'add_item_disclaimer_content'] },
 ]
 
 function meta(key: string): SettingMeta {

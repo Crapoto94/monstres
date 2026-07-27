@@ -9,7 +9,8 @@ export const changelog: ChangelogEntry[] = [
     version: '1.0.1',
     date: '27 juillet 2026',
     changes: [
-      "Référencement Google : nom de site affiché dans les résultats de recherche mis à jour en « Les monstres - L'appli » (title, og:site_name, JSON-LD) sur le frontend et les pages pré-rendues côté backend (pourquoi, fiche Monstre)",
+      "Page « Ajouter » : avertissement éditable en admin rappelant qu'il s'agit de déclarer un Monstre existant (et non de déposer un objet) — dépôt sur l'espace public interdit",
+      "Page « Ajouter » : affichage des ressourceries et recycleries à proximité (données gogocompact + Emmaüs)",
     ],
   },
   {
@@ -18,6 +19,7 @@ export const changelog: ChangelogEntry[] = [
     changes: [
       "Version officielle 1.0.0",
       "Newsletter : éditeur WYSIWYG (gras, italique, listes, liens, images) — les retours à la ligne et le formatage sont désormais correctement interprétés",
+      "Référencement Google : nom de site affiché dans les résultats de recherche mis à jour en « Les monstres - L'appli » (title, og:site_name, JSON-LD)",
     ],
   },
   {
