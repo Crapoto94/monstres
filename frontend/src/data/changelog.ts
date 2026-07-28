@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.7',
+    date: '28 juillet 2026',
+    changes: [
+      'Admin emails : correction de l\'édition des templates (le QuillEditor supprimait les variables {{variable}} dans les attributs HTML)',
+      'Footer des emails : lien actualisé vers monstres.app',
+    ],
+  },
+  {
     version: '1.0.6',
     date: '28 juillet 2026',
     changes: [

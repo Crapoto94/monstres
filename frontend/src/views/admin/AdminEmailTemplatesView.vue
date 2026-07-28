@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { api, type ApiSuccess } from '@/services/api'
 
 interface EmailTemplate {
@@ -208,12 +206,12 @@ async function loadPreview() {
         <div>
           <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Contenu HTML</label>
           <div class="mt-1 overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700">
-            <QuillEditor
-              v-model:content="form.htmlContent"
-              content-type="html"
-              :options="{ theme: 'snow', modules: { toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link', 'image'], ['clean']] } }"
-              style="min-height: 200px"
-            />
+            <textarea
+              v-model="form.htmlContent"
+              class="min-h-[200px] w-full resize-y border-0 bg-gray-900 px-3 py-2 font-mono text-xs leading-relaxed text-gray-100 outline-none"
+              placeholder="<div>Contenu HTML du template…</div>"
+              rows="12"
+            ></textarea>
           </div>
         </div>
         <div>

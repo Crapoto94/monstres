@@ -99,7 +99,7 @@ const DEFAULT_EMAIL_TEMPLATES = [
     </div>
     <div style="text-align:center;padding:16px 20px;border-top:1px solid #f0f0f0;color:#9ca3af;font-size:12px;">
       <p style="margin:0 0 4px;">Les Monstres — réemploi d'objets encombrants</p>
-      <p style="margin:0;"><a href="{{frontend_url}}" style="color:#7c3aed;text-decoration:none;">monstres.fbc.fr</a></p>
+      <p style="margin:0;"><a href="{{frontend_url}}" style="color:#7c3aed;text-decoration:none;">monstres.app</a></p>
     </div>
   </div>
 </div>`,
@@ -250,7 +250,7 @@ async function main() {
 <p><em>En vigueur à compter du ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</em></p>
 
 <h3>1. Objet</h3>
-<p>Les présentes Conditions Générales d'Utilisation (les « <strong>CGU</strong> ») régissent l'utilisation de l'application Les Monstres (l'« <strong>Application</strong> »), accessible via le site <a href="https://monstres.fbc.fr">monstres.fbc.fr</a> et les applications mobiles associées.</p>
+<p>Les présentes Conditions Générales d'Utilisation (les « <strong>CGU</strong> ») régissent l'utilisation de l'application Les Monstres (l'« <strong>Application</strong> »), accessible via le site <a href="https://monstres.app">monstres.app</a> et les applications mobiles associées.</p>
 <p>Les Monstres est une plateforme communautaire permettant aux utilisateurs de <strong>repérer, partager et récupérer les objets encombrants abandonnés dans la rue</strong>. Un objet abandonné est appelé un « <strong>Monstre</strong> ».</p>
 <p>L'utilisation de l'Application implique l'acceptation sans réserve des présentes CGU.</p>
 
@@ -384,7 +384,7 @@ async function main() {
       value: `<h2>Depuis l'application</h2>
 <p>Tu peux à tout moment supprimer définitivement ton compte et tes données depuis ton profil :</p>
 <ol>
-  <li>Connecte-toi à ton compte sur <strong>monstres.fbc.fr</strong>.</li>
+  <li>Connecte-toi à ton compte sur <strong>monstres.app</strong>.</li>
   <li>Rends-toi sur la page <strong>Mon profil</strong>.</li>
   <li>Clique sur le bouton <strong>« Supprimer mon compte »</strong> en bas de page.</li>
   <li>Confirme la suppression : elle est immédiate et irréversible.</li>
