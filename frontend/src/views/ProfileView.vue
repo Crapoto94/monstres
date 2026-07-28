@@ -588,6 +588,12 @@ async function onDeleteAccount() {
           📄 Mentions légales
         </RouterLink>
         <RouterLink
+          to="/cgu"
+          class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          📜 Conditions Générales d'Utilisation
+        </RouterLink>
+        <RouterLink
           to="/rgpd"
           class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
         >

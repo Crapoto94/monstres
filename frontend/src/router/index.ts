@@ -25,6 +25,7 @@ export const router = createRouter({
     },
     { path: '/communaute', name: 'community', component: () => import('@/views/CommunityView.vue') },
     { path: '/mentions-legales', name: 'legal-notices', component: () => import('@/views/LegalView.vue') },
+    { path: '/cgu', name: 'legal-cgu', component: () => import('@/views/CguView.vue') },
     { path: '/rgpd', name: 'legal-rgpd', component: () => import('@/views/RgpdView.vue') },
     { path: '/pourquoi', name: 'mission', component: () => import('@/views/MissionView.vue') },
     {

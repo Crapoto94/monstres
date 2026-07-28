@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.6',
+    date: '28 juillet 2026',
+    changes: [
+      "Conditions Générales d'Utilisation : nouvelle page /cgu avec 14 articles, éditable depuis Admin → Paramètres",
+      "Communauté : les membres sont triés alphabétiquement, barre de recherche par nom, les pseudos admin sont masqués",
+    ],
+  },
+  {
     version: '1.0.5',
     date: '27 juillet 2026',
     changes: [

@@ -34,6 +34,7 @@ export interface CommunityMember {
   id: string;
   name: string;
   avatar: string | null;
+  role: string;
   score: number;
   createdAt: Date;
   itemsCreated: number;
@@ -148,16 +149,25 @@ export class UsersService {
 
   /**
    * Annuaire de la communauté ("Nous") : chaque membre avec ses stats
-   * publiques. Demande utilisateur — pas dans une phase précise du cahier
-   * des charges, mais dans l'esprit du profil public (§10) et des
-   * statistiques "meilleurs contributeurs" prévues côté admin (§14).
+   * publiques. Les admins sont exclus de l'annuaire public.
+   * Tri alphabétique par nom. Recherche optionnelle par nom/pseudo.
    */
-  async findCommunity(): Promise<CommunityMember[]> {
+  async findCommunity(search?: string): Promise<CommunityMember[]> {
+    const where: Record<string, unknown> = {
+      role: { notIn: ['ADMIN', 'SUPER_ADMIN'] },
+    };
+
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
     const users = await this.prisma.user.findMany({
+      where,
       select: {
         id: true,
         name: true,
         avatar: true,
+        role: true,
         score: true,
         createdAt: true,
         _count: {
@@ -167,7 +177,7 @@ export class UsersService {
           },
         },
       },
-      orderBy: { score: 'desc' },
+      orderBy: { name: 'asc' },
     });
 
     return Promise.all(
@@ -181,6 +191,7 @@ export class UsersService {
           id: user.id,
           name: user.name,
           avatar: this.resolveAvatar(user.avatar),
+          role: user.role,
           score: user.score,
           createdAt: user.createdAt,
           itemsCreated: user._count.items,

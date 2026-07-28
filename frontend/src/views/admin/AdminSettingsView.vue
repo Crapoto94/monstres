@@ -163,6 +163,10 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     label: 'Mentions légales',
     description: 'Contenu HTML de la page /mentions-legales. Visible depuis le profil utilisateur.',
   },
+  cgu_content: {
+    label: 'Conditions Générales d\'Utilisation',
+    description: 'Contenu HTML de la page /cgu. Visible depuis le profil utilisateur.',
+  },
   rgpd_content: {
     label: 'Politique de confidentialité (RGPD)',
     description: 'Contenu HTML de la page /rgpd. Visible depuis le profil utilisateur.',
@@ -186,7 +190,7 @@ const SECTIONS = [
   { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode', 'geo_explanation_content'] },
   { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
   { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email', 'newsletter_frequency_days'] },
-  { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'rgpd_content', 'data_deletion_content', 'add_item_disclaimer_content'] },
+  { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'cgu_content', 'rgpd_content', 'data_deletion_content', 'add_item_disclaimer_content'] },
 ]
 
 function meta(key: string): SettingMeta {
@@ -204,6 +208,7 @@ function settingByKey(key: string): AdminSetting | undefined { return settings.v
 const PREVIEW_ROUTES: Record<string, string> = {
   mission_content: '/pourquoi',
   legal_notices: '/mentions-legales',
+  cgu_content: '/cgu',
   rgpd_content: '/rgpd',
   data_deletion_content: '/suppression',
 }

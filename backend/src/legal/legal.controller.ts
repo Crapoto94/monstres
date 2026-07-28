@@ -28,4 +28,10 @@ export class LegalController {
     const content = await this.settingsService.getString('mission_content', '');
     return { content };
   }
+
+  @Get('cgu')
+  async getCgu() {
+    const content = await this.settingsService.getString('cgu_content', '');
+    return { content };
+  }
 }

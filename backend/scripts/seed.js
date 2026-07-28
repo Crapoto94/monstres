@@ -245,6 +245,95 @@ async function main() {
       type: 'JSON',
     },
     {
+      key: 'cgu_content',
+      value: `<h2>Conditions Générales d'Utilisation</h2>
+<p><em>En vigueur à compter du ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</em></p>
+
+<h3>1. Objet</h3>
+<p>Les présentes Conditions Générales d'Utilisation (les « <strong>CGU</strong> ») régissent l'utilisation de l'application Les Monstres (l'« <strong>Application</strong> »), accessible via le site <a href="https://monstres.fbc.fr">monstres.fbc.fr</a> et les applications mobiles associées.</p>
+<p>Les Monstres est une plateforme communautaire permettant aux utilisateurs de <strong>repérer, partager et récupérer les objets encombrants abandonnés dans la rue</strong>. Un objet abandonné est appelé un « <strong>Monstre</strong> ».</p>
+<p>L'utilisation de l'Application implique l'acceptation sans réserve des présentes CGU.</p>
+
+<h3>2. Définitions</h3>
+<ul>
+  <li><strong>Utilisateur</strong> : toute personne physique naviguant sur l'Application ou utilisant ses services, qu'elle soit inscrite ou non.</li>
+  <li><strong>Membre</strong> : tout Utilisateur disposant d'un compte personnel sur l'Application.</li>
+  <li><strong>Monstre</strong> : tout objet encombrant abandonné dans la rue, signalé par un Membre via l'Application.</li>
+  <li><strong>Publication</strong> : l'action de signaler un Monstre en ajoutant une photo, un titre et une localisation.</li>
+  <li><strong>Réservation</strong> : l'action de réserver temporairement un Monstre pour indiquer l'intention de le récupérer.</li>
+  <li><strong>Récupération</strong> : la récupération effective d'un Monstre par un Membre.</li>
+</ul>
+
+<h3>3. Inscription</h3>
+<p>L'inscription est gratuite. Tout Membre doit fournir un nom, une adresse email valide et un mot de passe. Une vérification par email est requise pour activer le compte.</p>
+<p>Chaque Membre s'engage à ne posséder qu'un seul compte. La création de comptes multiples est interdite et peut entraîner la suppression de l'ensemble des comptes associés.</p>
+<p>Les identifiants de connexion sont personnels et confidentiels. Le Membre est seul responsable de l'utilisation de son compte.</p>
+
+<h3>4. Fonctionnement du service</h3>
+<p>L'Application permet aux Membres de :</p>
+<ul>
+  <li><strong>Publier</strong> un Monstre : ajouter une photo, un titre et une localisation GPS pour signaler un objet abandonné.</li>
+  <li><strong>Consulter</strong> la carte et la liste des Monstres à proximité.</li>
+  <li><strong>Voter</strong> pour indiquer qu'un Monstre « vaut le déplacement ».</li>
+  <li><strong>Réserver</strong> temporairement un Monstre pour signaler son intention de le récupérer.</li>
+  <li><strong>Récupérer</strong> un Monstre et confirmer la récupération.</li>
+  <li><strong>Commenter</strong> un Monstre pour donner des informations complémentaires.</li>
+</ul>
+<p>Les Monstres agit uniquement comme <strong>intermédiaire technique</strong> de mise en relation. L'Application ne garantit pas la disponibilité, l'état ou la conformité des objets signalés.</p>
+
+<h3>5. Engagements des Membres</h3>
+<p>En utilisant l'Application, chaque Membre s'engage à :</p>
+<ul>
+  <li>Fournir des <strong>informations exactes</strong> et honnêtes lors de la publication d'un Monstre.</li>
+  <li>Publier des <strong>photos fidèles</strong> à l'état réel de l'objet.</li>
+  <li>Respecter la <strong>localisation</strong> réelle du Monstre.</li>
+  <li>Ne pas publier de contenu <strong>illélicite, injurieux, diffamatoire ou contraire aux bonnes mœurs</strong>.</li>
+  <li>Ne pas publier de <strong>doublons</strong> ou de Monstres déjà signalés.</li>
+  <li>Ne pas utiliser l'Application à des fins <strong>commerciales ou de revente</strong>.</li>
+  <li>Respecter les autres Membres et adopter un comportement <strong>bienveillant</strong>.</li>
+</ul>
+
+<h3>6. Publications et contenu</h3>
+<p>Le contenu publié par les Membres (photos, titres, commentaires) reste leur propriété. En publiant du contenu sur l'Application, le Membre accorde à Les Monstres une licence non exclusive d'utilisation, reproduite et représentée, aux seules fins de fonctionnement et de promotion du service.</p>
+<p>Les Monstres se réserve le droit de supprimer tout contenu qui ne respecterait pas les présentes CGU, sans préavis ni indemnité.</p>
+<p>Les photos doivent être prises par le Membre lui-même. Toute utilisation de photos empruntées ou téléchargées sur internet est interdite.</p>
+
+<h3>7. Réservation et récupération</h3>
+<p>La réservation d'un Monstre est <strong>temporaire et non engageante</strong>. Elle indique simplement l'intention du Membre de récupérer l'objet. Passé un certain délai, la réservation expire automatiquement et le Monstre redevient disponible.</p>
+<p>La récupération d'un Monstre se fait <strong>en totalité à la charge et responsabilité</strong> du Membre récupérateur. Les Monstres décline toute responsabilité en cas d'accident, de dommage ou de litige survenu lors de la récupération.</p>
+
+<h3>8. Score et récompenses</h3>
+<p>L'Application propose un système de score et de badges récompensant l'activité communautaire (publications, récupérations, votes reçus). Les règles d'attribution des points et des badges peuvent évoluer sans préavis.</p>
+<p>Le score et les badges n'ont aucune valeur monétaire et ne peuvent être échangés contre des contreparties.</p>
+
+<h3>9. Modération et sanctions</h3>
+<p>Les Monstres peut, à tout moment et sans préavis :</p>
+<ul>
+  <li>Supprimer un contenu non conforme aux présentes CGU.</li>
+  <li>Suspendre temporairement un compte en cas de manquement répété.</li>
+  <li>Supprimer définitivement un compte en cas de comportement grave ou frauduleux.</li>
+</ul>
+<p>Tout Membre dispose d'un droit de réponse avant toute mesure de sanction définitive, sauf en cas d'urgence ou de contenu manifestement illicite.</p>
+
+<h3>10. Protection des données personnelles</h3>
+<p>Les données personnelles des Membres sont traitées conformément au Règlement Général sur la Protection des Données (RGPD). Pour plus de détails, consulte notre <a href="/rgpd">Politique de confidentialité</a>.</p>
+<p>Tu peux exercer tes droits (accès, rectification, suppression) depuis les paramètres de ton compte ou en nous contactant via l'Application.</p>
+
+<h3>11. Propriété intellectuelle</h3>
+<p>L'Application Les Monstres, son code, sa charte graphique, ses logos et tout autre élément constitutif sont la propriété exclusive de Les Monstres. Toute reproduction, même partielle, est interdite sans autorisation préalable.</p>
+
+<h3>12. Responsabilité</h3>
+<p>Les Monstres agit comme <strong>intermédiaire technique</strong>. L'Application ne vend, ne donne pas et ne garantit aucun objet. Les relations entre Membres (échanges, récupérations) n'engagent que les parties concernées.</p>
+<p>Les Monstres ne saurait être tenu responsable des dommages directs ou indirects résultant de l'utilisation de l'Application, de l'inexactitude des informations publiées par les Membres, ou des objets récupérés.</p>
+
+<h3>13. Modification des CGU</h3>
+<p>Les Monstres se réserve le droit de modifier les présentes CGU à tout moment. Les Membres seront informés de toute modification substantielle. La poursuite de l'utilisation de l'Application après modification vaut acceptation des nouvelles CGU.</p>
+
+<h3>14. Droit applicable</h3>
+<p>Les présentes CGU sont soumises au droit français. En cas de litige, les tribunaux français seront seuls compétents.</p>`,
+      type: 'JSON',
+    },
+    {
       key: 'rgpd_content',
       value: `<h2>Politique de confidentialité (RGPD)</h2>
 <h3>1. Données collectées</h3>

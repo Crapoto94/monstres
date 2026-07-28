@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { fetchCommunity, type CommunityMember } from '@/services/community'
 import { useSeo } from '@/composables/useSeo'
 
@@ -11,10 +11,20 @@ useSeo({
 
 const members = ref<CommunityMember[]>([])
 const loading = ref(true)
+const search = ref('')
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-onMounted(async () => {
-  members.value = await fetchCommunity()
+async function loadMembers(term?: string) {
+  loading.value = true
+  members.value = await fetchCommunity(term)
   loading.value = false
+}
+
+onMounted(() => loadMembers())
+
+watch(search, (value) => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadMembers(value || undefined), 300)
 })
 
 function formatJoinDate(isoDate: string): string {
@@ -31,7 +41,23 @@ function isImageAvatar(avatar: string | null): boolean {
     <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Nous</h1>
     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Les membres de la communauté Les Monstres.</p>
 
+    <div class="relative mt-4">
+      <input
+        v-model="search"
+        type="text"
+        placeholder="Rechercher un membre…"
+        class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-brand-400 dark:focus:ring-brand-400"
+      />
+      <svg class="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </div>
+
     <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+
+    <p v-else-if="members.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+      Aucun membre trouvé.
+    </p>
 
     <ul v-else class="mt-4 flex flex-col gap-3">
       <li

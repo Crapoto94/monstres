@@ -4,6 +4,7 @@ export interface CommunityMember {
   id: string
   name: string
   avatar: string | null
+  role: string
   score: number
   createdAt: string
   itemsCreated: number
@@ -12,7 +13,9 @@ export interface CommunityMember {
   votesReceived: number
 }
 
-export async function fetchCommunity() {
-  const { data } = await api.get<ApiSuccess<CommunityMember[]>>('/users')
+export async function fetchCommunity(search?: string) {
+  const params: Record<string, string> = {}
+  if (search) params.search = search
+  const { data } = await api.get<ApiSuccess<CommunityMember[]>>('/users', { params })
   return data.data
 }

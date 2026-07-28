@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseGuards,
@@ -21,6 +22,7 @@ import { getCookieName, getCookieOptions } from '../auth/cookie.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { UpdateAvatarDto } from './dto/update-avatar.dto';
+import { CommunityQueryDto } from './dto/community-query.dto';
 import { UsersService } from './users.service';
 import { ImageService } from '../images/image.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -83,8 +85,8 @@ export class UsersController {
   }
 
   @Get()
-  getCommunity() {
-    return this.usersService.findCommunity();
+  getCommunity(@Query() query: CommunityQueryDto) {
+    return this.usersService.findCommunity(query.search);
   }
 
   @Get(':id')
