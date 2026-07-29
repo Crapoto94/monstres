@@ -58,9 +58,10 @@ export class AdminTestEmailController {
       });
     } catch (error) {
       const msg = (error as Error).message;
-      if (msg === 'EMAIL_SMTP_CONNECT_FAILED') {
+      if (msg.startsWith('EMAIL_SMTP_CONNECT_FAILED:')) {
+        const detail = msg.slice(msg.indexOf(':') + 1).trim();
         throw new BadRequestException(
-          'Connexion au serveur SMTP impossible. Vérifie le host, le port et les identifiants.',
+          `Connexion SMTP impossible : ${detail}. Vérifie le host, le port et les identifiants.`,
         );
       }
       if (msg === 'EMAIL_RECIPIENT_REJECTED') {

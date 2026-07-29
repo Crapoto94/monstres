@@ -177,16 +177,17 @@ export class EmailService {
     try {
       await transporter.verify();
     } catch (error) {
-      this.logger.error(`Échec connexion SMTP: ${(error as Error).message}`);
+      const smtpErr = (error as Error).message;
+      this.logger.error(`Échec connexion SMTP: ${smtpErr}`);
       await this.logEmail({
         to,
         subject,
         htmlContent,
         templateKey,
         status: 'FAILED',
-        error: `Connexion SMTP refusée: ${(error as Error).message}`,
+        error: `Connexion SMTP refusée: ${smtpErr}`,
       });
-      throw new Error('EMAIL_SMTP_CONNECT_FAILED');
+      throw new Error(`EMAIL_SMTP_CONNECT_FAILED: ${smtpErr}`);
     }
 
     try {
