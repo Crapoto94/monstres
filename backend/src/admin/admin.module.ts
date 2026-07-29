@@ -28,6 +28,8 @@ import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminNewsletterController } from './admin-newsletter.controller';
 import { AdminNewsletterService } from './admin-newsletter.service';
+import { AdminCommentsController } from './admin-comments.controller';
+import { AdminCommentsService } from './admin-comments.service';
 import { AdminTestEmailController } from './admin-test-email.controller';
 
 @Module({
@@ -48,6 +50,7 @@ import { AdminTestEmailController } from './admin-test-email.controller';
     AdminImportLogController,
     AdminAnalyticsController,
     AdminNewsletterController,
+    AdminCommentsController,
     AdminTestEmailController,
   ],
   providers: [
@@ -62,6 +65,7 @@ import { AdminTestEmailController } from './admin-test-email.controller';
     AdminImportLogService,
     AdminAnalyticsService,
     AdminNewsletterService,
+    AdminCommentsService,
   ],
 })
 export class AdminModule {}

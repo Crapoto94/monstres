@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.12',
+    date: '30 juillet 2026',
+    changes: [
+      'Admin → Commentaires : nouvelle page listant tous les commentaires par date, avec modération (suppression)',
+      'Admin → Utilisateurs : nouvelles colonnes commentaires, zones d\'alerte, mails d\'alerte',
+      'Admin → Statistiques : les comptes supprimés affichent « Utilisateur·ice parti·e » au lieu d\'un ID brut',
+    ],
+  },
+  {
     version: '1.0.11',
     date: '29 juillet 2026',
     changes: [

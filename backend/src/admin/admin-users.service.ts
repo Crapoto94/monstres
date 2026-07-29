@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
@@ -23,7 +28,12 @@ export class AdminUsersService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
     const where = query.search
-      ? { OR: [{ name: { contains: query.search } }, { email: { contains: query.search } }] }
+      ? {
+          OR: [
+            { name: { contains: query.search } },
+            { email: { contains: query.search } },
+          ],
+        }
       : {};
 
     const [users, total] = await Promise.all([
@@ -49,7 +59,15 @@ export class AdminUsersService {
           registrationOs: true,
           registrationBrowser: true,
           loginCount: true,
-          _count: { select: { items: true, reports: true } },
+          _count: {
+            select: {
+              items: true,
+              reports: true,
+              comments: true,
+              subscriptions: true,
+              notifications: { where: { type: 'NEW_ITEM_NEARBY' } },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
@@ -65,25 +83,47 @@ export class AdminUsersService {
       where: { userId: { in: userIds } },
       _count: { id: true },
     });
-    const submittedMap = new Map(submittedCounts.map((r) => [r.userId, r._count.id]));
-    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+    const submittedMap = new Map(
+      submittedCounts.map((r) => [r.userId, r._count.id]),
+    );
+    const imgBaseUrl = this.config.get<string>(
+      'IMG_BASE_URL',
+      'http://localhost:3000/uploads',
+    );
     const usersWithSubmitted = users.map((u) => ({
       ...u,
       avatar: resolveAvatarUrl(u.avatar, imgBaseUrl),
       reportsSubmitted: submittedMap.get(u.id) ?? 0,
     }));
 
-    return { users: usersWithSubmitted, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+    return {
+      users: usersWithSubmitted,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { _count: { select: { items: true, reservations: true, votes: true, comments: true } } },
+      include: {
+        _count: {
+          select: {
+            items: true,
+            reservations: true,
+            votes: true,
+            comments: true,
+          },
+        },
+      },
     });
     if (!user) throw new NotFoundException('Utilisateur introuvable.');
 
-    const reportsReceived = await this.prisma.report.count({ where: { item: { userId: id } } });
+    const reportsReceived = await this.prisma.report.count({
+      where: { item: { userId: id } },
+    });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _password, ...safe } = user;
 
@@ -95,37 +135,57 @@ export class AdminUsersService {
     this.assertCanModerate(actingUser, target);
 
     // Seul un SUPER_ADMIN peut accorder ou retirer un rôle ADMIN/SUPER_ADMIN.
-    if ((ELEVATED_ROLES.includes(role) || ELEVATED_ROLES.includes(target.role)) && actingUser.role !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Seul un Super Administrateur peut gérer les rôles administrateurs.');
+    if (
+      (ELEVATED_ROLES.includes(role) || ELEVATED_ROLES.includes(target.role)) &&
+      actingUser.role !== 'SUPER_ADMIN'
+    ) {
+      throw new ForbiddenException(
+        'Seul un Super Administrateur peut gérer les rôles administrateurs.',
+      );
     }
 
-    const updated = await this.prisma.user.update({ where: { id }, data: { role } });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { role },
+    });
     return this.usersService.toSafeUser(updated);
   }
 
   async suspend(id: string, actingUser: AuthenticatedUser) {
     const target = await this.findOrThrow(id);
     this.assertCanModerate(actingUser, target);
-    const updated = await this.prisma.user.update({ where: { id }, data: { suspendedAt: new Date() } });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { suspendedAt: new Date() },
+    });
     return this.usersService.toSafeUser(updated);
   }
 
   async unsuspend(id: string) {
     await this.findOrThrow(id);
-    const updated = await this.prisma.user.update({ where: { id }, data: { suspendedAt: null } });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { suspendedAt: null },
+    });
     return this.usersService.toSafeUser(updated);
   }
 
   async ban(id: string, actingUser: AuthenticatedUser) {
     const target = await this.findOrThrow(id);
     this.assertCanModerate(actingUser, target);
-    const updated = await this.prisma.user.update({ where: { id }, data: { bannedAt: new Date() } });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { bannedAt: new Date() },
+    });
     return this.usersService.toSafeUser(updated);
   }
 
   async unban(id: string) {
     await this.findOrThrow(id);
-    const updated = await this.prisma.user.update({ where: { id }, data: { bannedAt: null } });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { bannedAt: null },
+    });
     return this.usersService.toSafeUser(updated);
   }
 
@@ -134,12 +194,21 @@ export class AdminUsersService {
     const target = await this.findOrThrow(id);
     this.assertCanModerate(actingUser, target);
     if (actingUser.role !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Seul un Super Administrateur peut supprimer un compte.');
+      throw new ForbiddenException(
+        'Seul un Super Administrateur peut supprimer un compte.',
+      );
     }
 
-    const itemIds = (await this.prisma.item.findMany({ where: { userId: id }, select: { id: true } })).map((i) => i.id);
+    const itemIds = (
+      await this.prisma.item.findMany({
+        where: { userId: id },
+        select: { id: true },
+      })
+    ).map((i) => i.id);
     await this.prisma.user.delete({ where: { id } });
-    await Promise.all(itemIds.map((itemId) => this.imageService.deleteItemPhotos(itemId)));
+    await Promise.all(
+      itemIds.map((itemId) => this.imageService.deleteItemPhotos(itemId)),
+    );
 
     return { deleted: true };
   }
@@ -166,12 +235,22 @@ export class AdminUsersService {
   }
 
   /** §5 : un admin ne peut pas s'auto-modérer, ni modérer un pair de rang égal ou supérieur sans être SUPER_ADMIN. */
-  private assertCanModerate(actingUser: AuthenticatedUser, target: { id: string; role: UserRole }) {
+  private assertCanModerate(
+    actingUser: AuthenticatedUser,
+    target: { id: string; role: UserRole },
+  ) {
     if (target.id === actingUser.id) {
-      throw new BadRequestException('Vous ne pouvez pas effectuer cette action sur votre propre compte.');
+      throw new BadRequestException(
+        'Vous ne pouvez pas effectuer cette action sur votre propre compte.',
+      );
     }
-    if (ELEVATED_ROLES.includes(target.role) && actingUser.role !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Seul un Super Administrateur peut modérer un compte administrateur.');
+    if (
+      ELEVATED_ROLES.includes(target.role) &&
+      actingUser.role !== 'SUPER_ADMIN'
+    ) {
+      throw new ForbiddenException(
+        'Seul un Super Administrateur peut modérer un compte administrateur.',
+      );
     }
   }
 }
