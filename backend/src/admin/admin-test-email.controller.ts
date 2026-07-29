@@ -1,4 +1,10 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { IsEmail } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -44,12 +50,29 @@ export class AdminTestEmailController {
         .replace(/\{\{frontend_url\}\}/g, frontendUrl);
     }
 
-    await this.emailService.send({
-      to: dto.to,
-      subject: 'Test email — Les Monstres',
-      htmlContent: html || '<p>Email de test — configuration OK.</p>',
-    });
+    try {
+      await this.emailService.send({
+        to: dto.to,
+        subject: 'Test email — Les Monstres',
+        htmlContent: html || '<p>Email de test — configuration OK.</p>',
+      });
+    } catch (error) {
+      const msg = (error as Error).message;
+      if (msg === 'EMAIL_SMTP_CONNECT_FAILED') {
+        throw new BadRequestException(
+          'Connexion au serveur SMTP impossible. Vérifie le host, le port et les identifiants.',
+        );
+      }
+      if (msg === 'EMAIL_RECIPIENT_REJECTED') {
+        throw new BadRequestException(
+          "Le serveur SMTP a rejeté le destinataire. Vérifie que l'adresse de l'expéditeur (smtp_from_email) utilise un domaine accepté par ton serveur mail.",
+        );
+      }
+      throw new BadRequestException(
+        `Échec de l'envoi: ${msg}. Vérifie la configuration SMTP.`,
+      );
+    }
 
-    return { success: true, message: 'Email de test envoyé.' };
+    return { success: true, message: 'Email de test envoyé avec succès.' };
   }
 }

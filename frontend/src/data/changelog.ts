@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.10',
+    date: '29 juillet 2026',
+    changes: [
+      'Email SMTP : vérification de connexion avant envoi (transporter.verify)',
+      'Email SMTP : détection des destinataires rejetés par le serveur',
+      'Test email : messages d\'erreur précis selon la cause (connexion, auth, expéditeur rejeté)',
+    ],
+  },
+  {
     version: '1.0.9',
     date: '29 juillet 2026',
     changes: [

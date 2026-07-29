@@ -175,12 +175,47 @@ export class EmailService {
     });
 
     try {
-      await transporter.sendMail({
+      await transporter.verify();
+    } catch (error) {
+      this.logger.error(`Échec connexion SMTP: ${(error as Error).message}`);
+      await this.logEmail({
+        to,
+        subject,
+        htmlContent,
+        templateKey,
+        status: 'FAILED',
+        error: `Connexion SMTP refusée: ${(error as Error).message}`,
+      });
+      throw new Error('EMAIL_SMTP_CONNECT_FAILED');
+    }
+
+    try {
+      const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to,
         subject,
         html: htmlContent,
       });
+
+      const rejected = Array.isArray(info.rejected) ? info.rejected : [];
+      if (rejected.length > 0) {
+        this.logger.warn(
+          `SMTP a rejeté certains destinataires: ${rejected.join(', ')}`,
+        );
+        await this.logEmail({
+          to,
+          subject,
+          htmlContent,
+          templateKey,
+          status: 'FAILED',
+          error: `Destinataire rejeté par le serveur SMTP: ${rejected.join(', ')}`,
+        });
+        throw new Error('EMAIL_RECIPIENT_REJECTED');
+      }
+
+      this.logger.log(
+        `Email envoyé via SMTP (${host}:${port}) — réponse: ${info.response}`,
+      );
       await this.logEmail({
         to,
         subject,
@@ -189,6 +224,7 @@ export class EmailService {
         status: 'SENT',
       });
     } catch (error) {
+      if ((error as Error).message === 'EMAIL_RECIPIENT_REJECTED') throw error;
       this.logger.error(`Échec envoi SMTP: ${(error as Error).message}`);
       await this.logEmail({
         to,
