@@ -1,263 +1,471 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { fetchAdminSettings, updateSetting, type AdminSetting } from '@/services/admin'
+import { onMounted, ref } from "vue";
+import {
+  fetchAdminSettings,
+  updateSetting,
+  sendTestEmail,
+  type AdminSetting,
+} from "@/services/admin";
 
-const settings = ref<AdminSetting[]>([])
-const loading = ref(true)
-const drafts = ref<Record<string, string>>({})
-const busyKey = ref<string | null>(null)
-const actionError = ref<string | null>(null)
-const savedKey = ref<string | null>(null)
-const previewHtml = ref(false)
-const previewingKey = ref<string | null>(null)
+const settings = ref<AdminSetting[]>([]);
+const loading = ref(true);
+const drafts = ref<Record<string, string>>({});
+const busyKey = ref<string | null>(null);
+const actionError = ref<string | null>(null);
+const savedKey = ref<string | null>(null);
+const previewHtml = ref(false);
+const previewingKey = ref<string | null>(null);
 
 interface SettingMeta {
-  label: string
-  description: string
-  unit?: string
-  placeholder?: string
+  label: string;
+  description: string;
+  unit?: string;
+  placeholder?: string;
 }
 
 const SETTINGS_META: Record<string, SettingMeta> = {
   reservation_duration_minutes: {
-    label: 'Durée de réservation',
-    description: 'Temps (en minutes) pendant lequel une réservation reste active. Passé ce délai, la réservation expire automatiquement et le Monstre redevient disponible.',
-    unit: 'min',
-    placeholder: '60',
+    label: "Durée de réservation",
+    description:
+      "Temps (en minutes) pendant lequel une réservation reste active. Passé ce délai, la réservation expire automatiquement et le Monstre redevient disponible.",
+    unit: "min",
+    placeholder: "60",
   },
   item_archive_after_hours: {
-    label: 'Archivage automatique',
-    description: 'Nombre d\'heures après publication au bout desquelles un Monstre non récupéré passe automatiquement en archive (consultation seule, plus d\'interaction, visible en plus petit sur la carte).',
-    unit: 'h',
-    placeholder: '24',
+    label: "Archivage automatique",
+    description:
+      "Nombre d'heures après publication au bout desquelles un Monstre non récupéré passe automatiquement en archive (consultation seule, plus d'interaction, visible en plus petit sur la carte).",
+    unit: "h",
+    placeholder: "24",
   },
   analytics_retention_days: {
-    label: 'Rétention des statistiques',
-    description: 'Nombre de jours de conservation des données de consultation (KPI admin) avant purge automatique.',
-    unit: 'j',
-    placeholder: '180',
+    label: "Rétention des statistiques",
+    description:
+      "Nombre de jours de conservation des données de consultation (KPI admin) avant purge automatique.",
+    unit: "j",
+    placeholder: "180",
   },
   max_user_subscriptions: {
-    label: 'Zones surveillées max',
-    description: 'Nombre maximum de zones d\'alerte qu\'un utilisateur peut créer. Chaque zone permet de recevoir des notifications quand un Monstre apparaît à proximité.',
-    placeholder: '5',
+    label: "Zones surveillées max",
+    description:
+      "Nombre maximum de zones d'alerte qu'un utilisateur peut créer. Chaque zone permet de recevoir des notifications quand un Monstre apparaît à proximité.",
+    placeholder: "5",
   },
   max_subscription_radius: {
-    label: 'Rayon max des alertes',
-    description: 'Distance maximale (en mètres) du rayon de surveillance d\'une zone. Un Monstre dans ce rayon déclenche une notification.',
-    unit: 'm',
-    placeholder: '5000',
+    label: "Rayon max des alertes",
+    description:
+      "Distance maximale (en mètres) du rayon de surveillance d'une zone. Un Monstre dans ce rayon déclenche une notification.",
+    unit: "m",
+    placeholder: "5000",
   },
   max_photos_per_item: {
-    label: 'Photos par Monstre',
-    description: 'Nombre maximum de photos qu\'un utilisateur peut ajouter lors de la publication d\'un Monstre.',
-    placeholder: '3',
+    label: "Photos par Monstre",
+    description:
+      "Nombre maximum de photos qu'un utilisateur peut ajouter lors de la publication d'un Monstre.",
+    placeholder: "3",
   },
   report_threshold: {
-    label: 'Seuil de signalement',
-    description: 'Nombre de signalements différents nécessaires pour masquer automatiquement un Monstre de la carte. Utile pour modérer les contenus inappropriés.',
-    placeholder: '3',
+    label: "Seuil de signalement",
+    description:
+      "Nombre de signalements différents nécessaires pour masquer automatiquement un Monstre de la carte. Utile pour modérer les contenus inappropriés.",
+    placeholder: "3",
   },
   already_collected_threshold: {
     label: 'Seuil "déjà récupéré"',
-    description: 'Nombre de signalements "déjà récupéré" nécessaires pour clôturer automatiquement un Monstre et le marquer comme COLLECTED.',
-    placeholder: '3',
+    description:
+      'Nombre de signalements "déjà récupéré" nécessaires pour clôturer automatiquement un Monstre et le marquer comme COLLECTED.',
+    placeholder: "3",
   },
   points_creation: {
-    label: 'Points de création',
-    description: 'Nombre de points gagnés par un utilisateur quand il publie un nouveau Monstre. Ces points alimentent le score de confiance.',
-    placeholder: '5',
+    label: "Points de création",
+    description:
+      "Nombre de points gagnés par un utilisateur quand il publie un nouveau Monstre. Ces points alimentent le score de confiance.",
+    placeholder: "5",
   },
   points_recuperation: {
-    label: 'Points de récupération',
-    description: 'Nombre de points gagnés quand un utilisateur récupère réellement un Monstre (après validation du dépôt).',
-    placeholder: '10',
+    label: "Points de récupération",
+    description:
+      "Nombre de points gagnés quand un utilisateur récupère réellement un Monstre (après validation du dépôt).",
+    placeholder: "10",
   },
   points_validation: {
-    label: 'Points de validation',
-    description: 'Nombre de points gagnés quand un utilisateur valide la récupération d\'un Monstre par un autre membre.',
-    placeholder: '5',
+    label: "Points de validation",
+    description:
+      "Nombre de points gagnés quand un utilisateur valide la récupération d'un Monstre par un autre membre.",
+    placeholder: "5",
   },
   points_vote_utile: {
-    label: 'Points de vote utile',
-    description: 'Nombre de points gagnés quand le vote d\'un utilisateur est jugé utile par la communauté.',
-    placeholder: '1',
+    label: "Points de vote utile",
+    description:
+      "Nombre de points gagnés quand le vote d'un utilisateur est jugé utile par la communauté.",
+    placeholder: "1",
   },
   ranking_weight_distance: {
-    label: 'Poids : distance',
-    description: 'Influence de la distance dans le calcul du score de classement (0 = pas d\'influence, 1 = poids maximum). La somme des 4 poids doit être égale à 1.',
-    placeholder: '0.5',
+    label: "Poids : distance",
+    description:
+      "Influence de la distance dans le calcul du score de classement (0 = pas d'influence, 1 = poids maximum). La somme des 4 poids doit être égale à 1.",
+    placeholder: "0.5",
   },
   ranking_weight_popularity: {
-    label: 'Poids : popularité',
-    description: 'Influence du nombre de votes/intérêts dans le score de classement.',
-    placeholder: '0.25',
+    label: "Poids : popularité",
+    description:
+      "Influence du nombre de votes/intérêts dans le score de classement.",
+    placeholder: "0.25",
   },
   ranking_weight_recency: {
-    label: 'Poids : fraîcheur',
-    description: 'Influence de l\'ancienneté du Monstre dans le score de classement. Plus c\'est récent, mieux c\'est classé.',
-    placeholder: '0.15',
+    label: "Poids : fraîcheur",
+    description:
+      "Influence de l'ancienneté du Monstre dans le score de classement. Plus c'est récent, mieux c'est classé.",
+    placeholder: "0.15",
   },
   ranking_weight_trust: {
-    label: 'Poids : confiance',
-    description: 'Influence du score de confiance du déposant dans le classement. Les déposants fiables sont mieux positionnés.',
-    placeholder: '0.1',
+    label: "Poids : confiance",
+    description:
+      "Influence du score de confiance du déposant dans le classement. Les déposants fiables sont mieux positionnés.",
+    placeholder: "0.1",
   },
   email_verification_token_ttl_hours: {
-    label: 'Validité lien vérification',
-    description: 'Durée de validité (en heures) du lien envoyé par email pour vérifier son compte. Passé ce délai, le lien expiré doit être régénéré.',
-    unit: 'h',
-    placeholder: '24',
+    label: "Validité lien vérification",
+    description:
+      "Durée de validité (en heures) du lien envoyé par email pour vérifier son compte. Passé ce délai, le lien expiré doit être régénéré.",
+    unit: "h",
+    placeholder: "24",
   },
   password_reset_token_ttl_minutes: {
-    label: 'Validité lien mot de passe',
-    description: 'Durée de validité (en minutes) du lien de réinitialisation du mot de passe envoyé par email.',
-    unit: 'min',
-    placeholder: '60',
+    label: "Validité lien mot de passe",
+    description:
+      "Durée de validité (en minutes) du lien de réinitialisation du mot de passe envoyé par email.",
+    unit: "min",
+    placeholder: "60",
   },
   pwa_enabled: {
-    label: 'Installation PWA',
-    description: 'Active le bouton "Installer l\'application" dans le profil. Permet aux utilisateurs d\'ajouter Les Monstres à leur écran d\'accueil comme une app native.',
+    label: "Installation PWA",
+    description:
+      "Active le bouton \"Installer l'application\" dans le profil. Permet aux utilisateurs d'ajouter Les Monstres à leur écran d'accueil comme une app native.",
   },
   beta_mode_enabled: {
-    label: 'Bandeau version bêta',
-    description: 'Affiche un bandeau en haut de l\'appli (masqué en admin) prévenant que c\'est une version bêta et que les Monstres affichés ne sont peut-être pas réels. À désactiver à l\'ouverture officielle.',
+    label: "Bandeau version bêta",
+    description:
+      "Affiche un bandeau en haut de l'appli (masqué en admin) prévenant que c'est une version bêta et que les Monstres affichés ne sont peut-être pas réels. À désactiver à l'ouverture officielle.",
   },
   whatsapp_test_mode: {
-    label: 'Mode test WhatsApp',
-    description: 'En mode test, les notifications WhatsApp sont simulées en base sans être réellement envoyées. Utile pour le développement.',
+    label: "Mode test WhatsApp",
+    description:
+      "En mode test, les notifications WhatsApp sont simulées en base sans être réellement envoyées. Utile pour le développement.",
   },
   facebook_share_enabled: {
-    label: 'Partage groupe Facebook',
-    description: 'Propose une case "Partager dans le groupe Facebook" (cochée par défaut) à la publication d\'un Monstre. Facebook ne permet pas de poster automatiquement dans un groupe : ça copie le texte du Monstre dans le presse-papier et ouvre le groupe, à l\'utilisateur de coller et publier.',
+    label: "Partage groupe Facebook",
+    description:
+      "Propose une case \"Partager dans le groupe Facebook\" (cochée par défaut) à la publication d'un Monstre. Facebook ne permet pas de poster automatiquement dans un groupe : ça copie le texte du Monstre dans le presse-papier et ouvre le groupe, à l'utilisateur de coller et publier.",
   },
   facebook_group_url: {
-    label: 'URL du groupe Facebook',
-    description: 'Lien du groupe Facebook cible (ex. https://www.facebook.com/groups/xxxxxxxxxx). Mettre le groupe de test pendant le développement, le vrai groupe en production.',
-    placeholder: 'https://www.facebook.com/groups/...',
+    label: "URL du groupe Facebook",
+    description:
+      "Lien du groupe Facebook cible (ex. https://www.facebook.com/groups/xxxxxxxxxx). Mettre le groupe de test pendant le développement, le vrai groupe en production.",
+    placeholder: "https://www.facebook.com/groups/...",
   },
   new_user_admin_notification_enabled: {
-    label: 'Alerte nouvel inscrit',
-    description: 'Envoie un email à l\'administrateur à chaque nouvelle inscription sur l\'application.',
+    label: "Alerte nouvel inscrit",
+    description:
+      "Envoie un email à l'administrateur à chaque nouvelle inscription sur l'application.",
   },
   admin_notification_email: {
-    label: 'Email de notification admin',
-    description: 'Adresse email qui reçoit les alertes (nouveaux inscrits, etc.). Par défaut : admin@fbc.fr.',
-    placeholder: 'admin@fbc.fr',
+    label: "Email de notification admin",
+    description:
+      "Adresse email qui reçoit les alertes (nouveaux inscrits, etc.). Par défaut : admin@fbc.fr.",
+    placeholder: "admin@fbc.fr",
   },
   newsletter_frequency_days: {
-    label: 'Fréquence newsletter',
-    description: 'Nombre de jours minimum entre deux envois de newsletter. Permet de respecter l\'engagement "au maximum une fois par semaine" annoncé à l\'inscription.',
-    unit: 'j',
-    placeholder: '7',
+    label: "Fréquence newsletter",
+    description:
+      "Nombre de jours minimum entre deux envois de newsletter. Permet de respecter l'engagement \"au maximum une fois par semaine\" annoncé à l'inscription.",
+    unit: "j",
+    placeholder: "7",
   },
   geo_explanation_content: {
-    label: 'Explication activation GPS',
-    description: 'Texte affiché dans la fenêtre d\'explication quand un utilisateur clique sur le bouton GPS sur la page d\'accueil. HTML autorisé.',
+    label: "Explication activation GPS",
+    description:
+      "Texte affiché dans la fenêtre d'explication quand un utilisateur clique sur le bouton GPS sur la page d'accueil. HTML autorisé.",
   },
   mission_content: {
-    label: 'Contenu de la page /pourquoi',
-    description: 'Contenu HTML affiché sur la page "Pourquoi Les Monstres". Utilise les balises &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;. Si vide, un contenu par défaut est affiché.',
+    label: "Contenu de la page /pourquoi",
+    description:
+      'Contenu HTML affiché sur la page "Pourquoi Les Monstres". Utilise les balises &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;. Si vide, un contenu par défaut est affiché.',
   },
   legal_notices: {
-    label: 'Mentions légales',
-    description: 'Contenu HTML de la page /mentions-legales. Visible depuis le profil utilisateur.',
+    label: "Mentions légales",
+    description:
+      "Contenu HTML de la page /mentions-legales. Visible depuis le profil utilisateur.",
   },
   cgu_content: {
-    label: 'Conditions Générales d\'Utilisation',
-    description: 'Contenu HTML de la page /cgu. Visible depuis le profil utilisateur.',
+    label: "Conditions Générales d'Utilisation",
+    description:
+      "Contenu HTML de la page /cgu. Visible depuis le profil utilisateur.",
   },
   rgpd_content: {
-    label: 'Politique de confidentialité (RGPD)',
-    description: 'Contenu HTML de la page /rgpd. Visible depuis le profil utilisateur.',
+    label: "Politique de confidentialité (RGPD)",
+    description:
+      "Contenu HTML de la page /rgpd. Visible depuis le profil utilisateur.",
   },
   data_deletion_content: {
-    label: 'Suppression des données',
-    description: 'Contenu HTML de la page /suppression. Instructions pour supprimer son compte.',
+    label: "Suppression des données",
+    description:
+      "Contenu HTML de la page /suppression. Instructions pour supprimer son compte.",
   },
   add_item_disclaimer_content: {
     label: 'Avertissement page "Ajouter"',
-    description: 'Texte affiché au début de la page de déclaration d\'un Monstre. Rappelle qu\'il s\'agit de déclarer un objet existant (et non de le déposer) et propose des ressourceries à proximité. HTML autorisé.',
+    description:
+      "Texte affiché au début de la page de déclaration d'un Monstre. Rappelle qu'il s'agit de déclarer un objet existant (et non de le déposer) et propose des ressourceries à proximité. HTML autorisé.",
   },
-}
+  email_provider: {
+    label: "Fournisseur email",
+    description:
+      "Choix du service d'envoi des emails transactionnels (vérification, mot de passe, notifications).",
+  },
+  brevo_api_key: {
+    label: "Clé API Brevo",
+    description:
+      "Clé d'API Brevo pour l'envoi d'emails. Créer une clé sur app.brevo.com/settings/keys/api.",
+  },
+  brevo_sender_email: {
+    label: "Expéditeur Brevo",
+    description: "Adresse email d'expédition utilisée par Brevo.",
+    placeholder: "noreply@monstres.app",
+  },
+  brevo_sender_name: {
+    label: "Nom expéditeur Brevo",
+    description: "Nom affiché comme expéditeur des emails Brevo.",
+    placeholder: "Les monstres l'appli",
+  },
+  smtp_host: {
+    label: "Serveur SMTP",
+    description: "Adresse du serveur SMTP (ex. smtp.fbc.fr).",
+    placeholder: "smtp.fbc.fr",
+  },
+  smtp_port: {
+    label: "Port SMTP",
+    description: "Port du serveur SMTP (587 pour STARTTLS, 465 pour SSL).",
+    placeholder: "587",
+  },
+  smtp_secure: {
+    label: "SMTP SSL/TLS",
+    description:
+      "Utiliser une connexion SSL/TLS sécurisée (port 465). Décocher pour STARTTLS (port 587).",
+  },
+  smtp_user: {
+    label: "Utilisateur SMTP",
+    description: "Nom d'utilisateur pour l'authentification SMTP.",
+  },
+  smtp_pass: {
+    label: "Mot de passe SMTP",
+    description: "Mot de passe pour l'authentification SMTP.",
+  },
+  smtp_from_email: {
+    label: "Expéditeur SMTP",
+    description: "Adresse email d'expédition.",
+    placeholder: "noreply@monstres.app",
+  },
+  smtp_from_name: {
+    label: "Nom expéditeur SMTP",
+    description: "Nom affiché comme expéditeur des emails.",
+    placeholder: "Les monstres l'appli",
+  },
+};
 
 const SECTIONS = [
-  { title: '📍 Réservation & Abonnements', keys: ['reservation_duration_minutes', 'item_archive_after_hours', 'max_user_subscriptions', 'max_subscription_radius'] },
-  { title: '📸 Photos & Signalements', keys: ['max_photos_per_item', 'report_threshold', 'already_collected_threshold'] },
-  { title: '⭐ Points & Classement', keys: ['points_creation', 'points_recuperation', 'points_validation', 'points_vote_utile', 'ranking_weight_distance', 'ranking_weight_popularity', 'ranking_weight_recency', 'ranking_weight_trust'] },
-  { title: '🔒 Sécurité', keys: ['email_verification_token_ttl_hours', 'password_reset_token_ttl_minutes'] },
-  { title: '📊 Statistiques', keys: ['analytics_retention_days'] },
-  { title: '⚙️ Fonctionnalités', keys: ['pwa_enabled', 'beta_mode_enabled', 'whatsapp_test_mode', 'geo_explanation_content'] },
-  { title: '📘 Partage Facebook', keys: ['facebook_share_enabled', 'facebook_group_url'] },
-  { title: '🔔 Notifications', keys: ['new_user_admin_notification_enabled', 'admin_notification_email', 'newsletter_frequency_days'] },
-  { title: '📝 Contenu', keys: ['mission_content', 'legal_notices', 'cgu_content', 'rgpd_content', 'data_deletion_content', 'add_item_disclaimer_content'] },
-]
+  {
+    title: "📍 Réservation & Abonnements",
+    keys: [
+      "reservation_duration_minutes",
+      "item_archive_after_hours",
+      "max_user_subscriptions",
+      "max_subscription_radius",
+    ],
+  },
+  {
+    title: "📸 Photos & Signalements",
+    keys: [
+      "max_photos_per_item",
+      "report_threshold",
+      "already_collected_threshold",
+    ],
+  },
+  {
+    title: "⭐ Points & Classement",
+    keys: [
+      "points_creation",
+      "points_recuperation",
+      "points_validation",
+      "points_vote_utile",
+      "ranking_weight_distance",
+      "ranking_weight_popularity",
+      "ranking_weight_recency",
+      "ranking_weight_trust",
+    ],
+  },
+  {
+    title: "🔒 Sécurité",
+    keys: [
+      "email_verification_token_ttl_hours",
+      "password_reset_token_ttl_minutes",
+    ],
+  },
+  { title: "📊 Statistiques", keys: ["analytics_retention_days"] },
+  {
+    title: "⚙️ Fonctionnalités",
+    keys: [
+      "pwa_enabled",
+      "beta_mode_enabled",
+      "whatsapp_test_mode",
+      "geo_explanation_content",
+    ],
+  },
+  {
+    title: "📘 Partage Facebook",
+    keys: ["facebook_share_enabled", "facebook_group_url"],
+  },
+  {
+    title: "🔔 Notifications",
+    keys: [
+      "new_user_admin_notification_enabled",
+      "admin_notification_email",
+      "newsletter_frequency_days",
+    ],
+  },
+  {
+    title: "📧 Email",
+    keys: [
+      "email_provider",
+      "brevo_api_key",
+      "brevo_sender_email",
+      "brevo_sender_name",
+      "smtp_host",
+      "smtp_port",
+      "smtp_secure",
+      "smtp_user",
+      "smtp_pass",
+      "smtp_from_email",
+      "smtp_from_name",
+    ],
+  },
+  {
+    title: "📝 Contenu",
+    keys: [
+      "mission_content",
+      "legal_notices",
+      "cgu_content",
+      "rgpd_content",
+      "data_deletion_content",
+      "add_item_disclaimer_content",
+    ],
+  },
+];
 
 function meta(key: string): SettingMeta {
-  return SETTINGS_META[key] ?? { label: key, description: '' }
+  return SETTINGS_META[key] ?? { label: key, description: "" };
 }
-function isBoolean(type: string) { return type === 'BOOLEAN' }
-function isTextarea(key: string) { return key.endsWith('_content') || key === 'legal_notices' }
+function isBoolean(type: string) {
+  return type === "BOOLEAN";
+}
+function isTextarea(key: string) {
+  return key.endsWith("_content") || key === "legal_notices";
+}
 function hasChanged(key: string) {
-  const existing = settingByKey(key)
-  return existing ? drafts.value[key] !== existing.value : (drafts.value[key] ?? '').trim().length > 0
+  const existing = settingByKey(key);
+  return existing
+    ? drafts.value[key] !== existing.value
+    : (drafts.value[key] ?? "").trim().length > 0;
 }
-function settingByKey(key: string): AdminSetting | undefined { return settings.value.find((s) => s.key === key) }
-
+function settingByKey(key: string): AdminSetting | undefined {
+  return settings.value.find((s) => s.key === key);
+}
 
 const PREVIEW_ROUTES: Record<string, string> = {
-  mission_content: '/pourquoi',
-  legal_notices: '/mentions-legales',
-  cgu_content: '/cgu',
-  rgpd_content: '/rgpd',
-  data_deletion_content: '/suppression',
-}
+  mission_content: "/pourquoi",
+  legal_notices: "/mentions-legales",
+  cgu_content: "/cgu",
+  rgpd_content: "/rgpd",
+  data_deletion_content: "/suppression",
+};
 const DEFAULTS: Record<string, string> = {
-  add_item_disclaimer_content: '<p><strong>⚠️ Important :</strong> Les Monstres sert uniquement à signaler des objets déjà présents. Ne dépose pas d\'encombrants sur la voie publique : les dépôts sauvages sont interdits.</p>',
-}
+  add_item_disclaimer_content:
+    "<p><strong>⚠️ Important :</strong> Les Monstres sert uniquement à signaler des objets déjà présents. Ne dépose pas d'encombrants sur la voie publique : les dépôts sauvages sont interdits.</p>",
+};
 
-function previewRoute(key: string) { return PREVIEW_ROUTES[key] ?? '/' }
+function previewRoute(key: string) {
+  return PREVIEW_ROUTES[key] ?? "/";
+}
 
 async function load() {
-  loading.value = true
-  settings.value = await fetchAdminSettings()
-  drafts.value = Object.fromEntries(settings.value.map((s) => [s.key, s.value]))
+  loading.value = true;
+  settings.value = await fetchAdminSettings();
+  drafts.value = Object.fromEntries(
+    settings.value.map((s) => [s.key, s.value]),
+  );
   for (const [key, defaultValue] of Object.entries(DEFAULTS)) {
-    if (!(key in drafts.value)) drafts.value[key] = defaultValue
+    if (!(key in drafts.value)) drafts.value[key] = defaultValue;
   }
-  loading.value = false
+  loading.value = false;
 }
 
-onMounted(load)
+onMounted(load);
 
 /** Les toggles booléens se sauvegardent immédiatement au clic (comme les autres toggles de l'appli), pas de bouton "Sauvegarder" séparé. */
 function onToggleBoolean(setting: AdminSetting) {
-  drafts.value[setting.key] = drafts.value[setting.key] === 'true' ? 'false' : 'true'
-  onSave(setting)
+  drafts.value[setting.key] =
+    drafts.value[setting.key] === "true" ? "false" : "true";
+  onSave(setting);
 }
 
 async function onSave(keyOrSetting: AdminSetting | string) {
-  const key = typeof keyOrSetting === 'string' ? keyOrSetting : keyOrSetting.key
-  const value = drafts.value[key]
-  const existing = settingByKey(key)
-  if (existing && value === existing.value) return
-  busyKey.value = key
-  actionError.value = null
-  savedKey.value = null
+  const key =
+    typeof keyOrSetting === "string" ? keyOrSetting : keyOrSetting.key;
+  const value = drafts.value[key];
+  const existing = settingByKey(key);
+  if (existing && value === existing.value) return;
+  busyKey.value = key;
+  actionError.value = null;
+  savedKey.value = null;
   try {
-    const updated = await updateSetting(key, value)
-    const index = settings.value.findIndex((s) => s.key === key)
+    const updated = await updateSetting(key, value);
+    const index = settings.value.findIndex((s) => s.key === key);
     if (index !== -1) {
-      settings.value[index] = updated
+      settings.value[index] = updated;
     } else {
-      settings.value.push(updated)
+      settings.value.push(updated);
     }
-    savedKey.value = key
-    setTimeout(() => { if (savedKey.value === key) savedKey.value = null }, 2000)
+    savedKey.value = key;
+    setTimeout(() => {
+      if (savedKey.value === key) savedKey.value = null;
+    }, 2000);
   } catch (e: any) {
-    actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
+    actionError.value =
+      e.response?.data?.error?.message ?? "Action impossible.";
   } finally {
-    busyKey.value = null
+    busyKey.value = null;
+  }
+}
+
+const testEmailTo = ref("");
+const testSending = ref(false);
+const testResult = ref<"ok" | "err" | null>(null);
+const testMessage = ref("");
+
+async function onTestEmail() {
+  if (!testEmailTo.value) return;
+  testSending.value = true;
+  testResult.value = null;
+  testMessage.value = "";
+  try {
+    await sendTestEmail(testEmailTo.value);
+    testResult.value = "ok";
+    testMessage.value = "Email de test envoyé avec succès.";
+  } catch (e: any) {
+    testResult.value = "err";
+    testMessage.value =
+      e.response?.data?.error?.message ?? e.message ?? "Échec de l'envoi.";
+  } finally {
+    testSending.value = false;
   }
 }
 </script>
@@ -265,143 +473,522 @@ async function onSave(keyOrSetting: AdminSetting | string) {
 <template>
   <div class="max-w-2xl">
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Paramètres modifiables sans redéploiement. Les changements sont appliqués immédiatement.
+      Paramètres modifiables sans redéploiement. Les changements sont appliqués
+      immédiatement.
     </p>
 
-    <p v-if="actionError" class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+    <p
+      v-if="actionError"
+      class="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+    >
       {{ actionError }}
     </p>
 
-    <p v-if="loading" class="mt-6 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+    <p v-if="loading" class="mt-6 text-sm text-gray-500 dark:text-gray-400">
+      Chargement…
+    </p>
 
     <template v-else>
-      <div v-for="section in SECTIONS" :key="section.title" class="mt-8 first:mt-4">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ section.title }}</h3>
+      <div
+        v-for="section in SECTIONS"
+        :key="section.title"
+        class="mt-8 first:mt-4"
+      >
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {{ section.title }}
+        </h3>
 
-        <div class="mt-3 flex flex-col gap-4">
+        <!-- Section spéciale Email : sélecteur de provider + champs conditionnels + test -->
+        <div v-if="section.title === '📧 Email'" class="mt-3">
           <div
-            v-for="key in section.keys"
-            :key="key"
             class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
           >
-            <!-- Header: label + key badge -->
             <div class="flex items-center gap-2">
-              <label class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ meta(key).label }}</label>
-              <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 dark:bg-gray-800 dark:text-gray-500">
-                {{ key }}
-              </span>
-              <span v-if="meta(key).unit" class="ml-auto text-xs text-gray-400 dark:text-gray-500">
-                en {{ meta(key).unit }}
-              </span>
-            </div>
-
-            <!-- Description -->
-            <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ meta(key).description }}</p>
-
-            <!-- BOOLEAN toggle : sauvegarde immédiate au clic -->
-            <div v-if="isBoolean(settingByKey(key)?.type ?? '')" class="mt-3">
-              <button
-                type="button"
-                :disabled="busyKey === key"
-                class="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-wait disabled:opacity-60"
-                :class="drafts[key] === 'true' ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'"
-                @click="onToggleBoolean(settingByKey(key)!)"
+              <label
+                class="text-sm font-medium text-gray-800 dark:text-gray-200"
+                >Fournisseur email</label
               >
-                <span
-                  class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
-                  :class="drafts[key] === 'true' ? 'translate-x-[22px]' : 'translate-x-[4px]'"
-                />
-              </button>
-              <span class="ml-2 text-sm" :class="drafts[key] === 'true' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'">
-                {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : drafts[key] === 'true' ? 'Activé' : 'Désactivé' }}
-              </span>
+              <span
+                class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                >email_provider</span
+              >
             </div>
-
-            <!-- TEXTAREA (content fields) -->
-            <template v-else-if="isTextarea(key)">
-              <div class="mt-3 overflow-hidden rounded-lg border border-gray-300 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 dark:border-gray-700 dark:focus-within:border-brand-500">
-                <div class="flex items-center border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800">
-                  <button
-                    type="button"
-                    class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
-                    :class="!(previewHtml && previewingKey === key) ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'"
-                    @click="previewHtml = false; previewingKey = key"
-                  >
-                    HTML
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
-                    :class="(previewHtml && previewingKey === key) ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'"
-                    @click="previewHtml = true; previewingKey = key"
-                  >
-                    Aperçu
-                  </button>
-                </div>
-                <textarea
-                  v-if="!(previewHtml && previewingKey === key)"
-                  v-model="drafts[key]"
-                  rows="14"
-                  class="w-full resize-y border-0 px-3 py-2.5 font-mono text-xs leading-relaxed text-gray-800 focus:outline-none dark:bg-gray-900 dark:text-gray-200"
-                  @keyup.meta.enter="onSave(key)"
-                  @keyup.ctrl.enter="onSave(key)"
+            <p
+              class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+            >
+              {{ meta("email_provider").description }}
+            </p>
+            <div class="mt-3 flex gap-4">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="email_provider"
+                  value="brevo"
+                  v-model="drafts.email_provider"
+                  @change="onSave('email_provider')"
+                  class="text-brand-600"
                 />
-                <div
-                  v-else
-                  class="html-content min-h-[200px] max-w-none px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300"
-                  v-html="drafts[key] || '<p class=\'text-gray-400\'>Aucun contenu</p>'"
+                <span
+                  class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  :class="
+                    drafts.email_provider === 'brevo' ? 'text-brand-600' : ''
+                  "
+                  >Brevo</span
+                >
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="email_provider"
+                  value="smtp"
+                  v-model="drafts.email_provider"
+                  @change="onSave('email_provider')"
+                  class="text-brand-600"
+                />
+                <span
+                  class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  :class="
+                    drafts.email_provider === 'smtp' ? 'text-brand-600' : ''
+                  "
+                  >SMTP</span
+                >
+              </label>
+            </div>
+          </div>
+
+          <!-- Champs Brevo (visibles si provider = brevo) -->
+          <template v-if="drafts.email_provider === 'brevo'">
+            <div
+              v-for="key in [
+                'brevo_api_key',
+                'brevo_sender_email',
+                'brevo_sender_name',
+              ]"
+              :key="key"
+              class="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div class="flex items-center gap-2">
+                <label
+                  class="text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >{{ meta(key).label }}</label
+                >
+                <span
+                  class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                  >{{ key }}</span
+                >
+              </div>
+              <p
+                class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+              >
+                {{ meta(key).description }}
+              </p>
+              <div class="mt-3 flex items-center gap-2">
+                <input
+                  v-model="drafts[key]"
+                  type="text"
+                  :placeholder="meta(key).placeholder"
+                  class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
+                  @keyup.enter="onSave(key)"
                 />
               </div>
-              <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-                Cmd/Ctrl + Entrée pour sauvegarder.
-                Aperçu sur <RouterLink :to="previewRoute(key)" target="_blank" class="text-brand-600 underline dark:text-brand-400">{{ previewRoute(key) }} ↗</RouterLink>.
-              </p>
-              <div class="mt-2 flex justify-end">
+              <div class="mt-3 flex justify-end">
                 <button
                   type="button"
                   :disabled="busyKey === key || !hasChanged(key)"
                   class="rounded-lg px-4 py-1.5 text-sm font-medium transition-all disabled:opacity-40"
-                  :class="savedKey === key
-                    ? 'bg-green-600 text-white'
-                    : hasChanged(key)
-                      ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
-                      : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'"
+                  :class="
+                    savedKey === key
+                      ? 'bg-green-600 text-white'
+                      : hasChanged(key)
+                        ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
+                        : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                  "
                   @click="onSave(key)"
                 >
-                  {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : 'Sauvegarder' }}
+                  {{
+                    busyKey === key
+                      ? "…"
+                      : savedKey === key
+                        ? "✓ Sauvegardé"
+                        : "Sauvegarder"
+                  }}
                 </button>
               </div>
-            </template>
-
-            <!-- TEXT / NUMBER input -->
-            <div v-else class="mt-3 flex items-center gap-2">
-              <input
-                v-model="drafts[key]"
-                type="text"
-                :placeholder="meta(key).placeholder"
-                class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
-                @keyup.enter="onSave(key)"
-              />
             </div>
+          </template>
 
-            <!-- Save button (for non-boolean, non-textarea) -->
-            <div v-if="!isBoolean(settingByKey(key)?.type ?? '') && !isTextarea(key)" class="mt-3 flex justify-end">
+          <!-- Champs SMTP (visibles si provider = smtp) -->
+          <template v-if="drafts.email_provider === 'smtp'">
+            <div
+              v-for="key in [
+                'smtp_host',
+                'smtp_port',
+                'smtp_user',
+                'smtp_pass',
+                'smtp_from_email',
+                'smtp_from_name',
+              ]"
+              :key="key"
+              class="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div class="flex items-center gap-2">
+                <label
+                  class="text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >{{ meta(key).label }}</label
+                >
+                <span
+                  class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                  >{{ key }}</span
+                >
+              </div>
+              <p
+                class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+              >
+                {{ meta(key).description }}
+              </p>
+              <div class="mt-3 flex items-center gap-2">
+                <input
+                  v-model="drafts[key]"
+                  :type="key === 'smtp_pass' ? 'password' : 'text'"
+                  :placeholder="meta(key).placeholder"
+                  class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
+                  @keyup.enter="onSave(key)"
+                />
+              </div>
+              <div class="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  :disabled="busyKey === key || !hasChanged(key)"
+                  class="rounded-lg px-4 py-1.5 text-sm font-medium transition-all disabled:opacity-40"
+                  :class="
+                    savedKey === key
+                      ? 'bg-green-600 text-white'
+                      : hasChanged(key)
+                        ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
+                        : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                  "
+                  @click="onSave(key)"
+                >
+                  {{
+                    busyKey === key
+                      ? "…"
+                      : savedKey === key
+                        ? "✓ Sauvegardé"
+                        : "Sauvegarder"
+                  }}
+                </button>
+              </div>
+            </div>
+            <!-- smtp_secure toggle -->
+            <div
+              class="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div class="flex items-center gap-2">
+                <label
+                  class="text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >{{ meta("smtp_secure").label }}</label
+                >
+                <span
+                  class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                  >smtp_secure</span
+                >
+              </div>
+              <p
+                class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+              >
+                {{ meta("smtp_secure").description }}
+              </p>
+              <div class="mt-3">
+                <button
+                  type="button"
+                  :disabled="busyKey === 'smtp_secure'"
+                  class="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-wait disabled:opacity-60"
+                  :class="
+                    drafts.smtp_secure === 'true'
+                      ? 'bg-brand-600'
+                      : 'bg-gray-300 dark:bg-gray-700'
+                  "
+                  @click="
+                    drafts.smtp_secure =
+                      drafts.smtp_secure === 'true' ? 'false' : 'true';
+                    onSave('smtp_secure');
+                  "
+                >
+                  <span
+                    class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                    :class="
+                      drafts.smtp_secure === 'true'
+                        ? 'translate-x-[22px]'
+                        : 'translate-x-[4px]'
+                    "
+                  />
+                </button>
+                <span
+                  class="ml-2 text-sm"
+                  :class="
+                    drafts.smtp_secure === 'true'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                  "
+                >
+                  {{
+                    busyKey === "smtp_secure"
+                      ? "…"
+                      : savedKey === "smtp_secure"
+                        ? "✓ Sauvegardé"
+                        : drafts.smtp_secure === "true"
+                          ? "SSL/TLS"
+                          : "STARTTLS"
+                  }}
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <!-- Test email -->
+          <div
+            class="mt-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          >
+            <label class="text-sm font-medium text-gray-800 dark:text-gray-200"
+              >Tester l'envoi</label
+            >
+            <p
+              class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+            >
+              Envoie un email de test pour vérifier que la configuration
+              fonctionne.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <input
+                v-model="testEmailTo"
+                type="email"
+                placeholder="adresse@exemple.fr"
+                class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
+                @keyup.enter="onTestEmail"
+              />
               <button
                 type="button"
-                :disabled="busyKey === key || !hasChanged(key)"
-                class="rounded-lg px-4 py-1.5 text-sm font-medium transition-all disabled:opacity-40"
-                :class="savedKey === key
-                  ? 'bg-green-600 text-white'
-                  : hasChanged(key)
-                    ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
-                    : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'"
-                @click="onSave(key)"
+                :disabled="testSending || !testEmailTo"
+                class="flex-shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
+                @click="onTestEmail"
               >
-                {{ busyKey === key ? '…' : savedKey === key ? '✓ Sauvegardé' : 'Sauvegarder' }}
+                {{ testSending ? "…" : "Envoyer" }}
               </button>
             </div>
+            <p
+              v-if="testMessage"
+              class="mt-2 text-xs"
+              :class="
+                testResult === 'ok'
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              "
+            >
+              {{ testMessage }}
+            </p>
           </div>
         </div>
+
+        <!-- Sections génériques (toutes sauf Email) -->
+        <template v-else>
+          <div class="mt-3 flex flex-col gap-4">
+            <div
+              v-for="key in section.keys"
+              :key="key"
+              class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div class="flex items-center gap-2">
+                <label
+                  class="text-sm font-medium text-gray-800 dark:text-gray-200"
+                  >{{ meta(key).label }}</label
+                >
+                <span
+                  class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                  >{{ key }}</span
+                >
+                <span
+                  v-if="meta(key).unit"
+                  class="ml-auto text-xs text-gray-400 dark:text-gray-500"
+                  >en {{ meta(key).unit }}</span
+                >
+              </div>
+              <p
+                class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+              >
+                {{ meta(key).description }}
+              </p>
+
+              <div v-if="isBoolean(settingByKey(key)?.type ?? '')" class="mt-3">
+                <button
+                  type="button"
+                  :disabled="busyKey === key"
+                  class="relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-wait disabled:opacity-60"
+                  :class="
+                    drafts[key] === 'true'
+                      ? 'bg-brand-600'
+                      : 'bg-gray-300 dark:bg-gray-700'
+                  "
+                  @click="onToggleBoolean(settingByKey(key)!)"
+                >
+                  <span
+                    class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                    :class="
+                      drafts[key] === 'true'
+                        ? 'translate-x-[22px]'
+                        : 'translate-x-[4px]'
+                    "
+                  />
+                </button>
+                <span
+                  class="ml-2 text-sm"
+                  :class="
+                    drafts[key] === 'true'
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-gray-400 dark:text-gray-500'
+                  "
+                >
+                  {{
+                    busyKey === key
+                      ? "…"
+                      : savedKey === key
+                        ? "✓ Sauvegardé"
+                        : drafts[key] === "true"
+                          ? "Activé"
+                          : "Désactivé"
+                  }}
+                </span>
+              </div>
+
+              <template v-else-if="isTextarea(key)">
+                <div
+                  class="mt-3 overflow-hidden rounded-lg border border-gray-300 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 dark:border-gray-700 dark:focus-within:border-brand-500"
+                >
+                  <div
+                    class="flex items-center border-b border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-800"
+                  >
+                    <button
+                      type="button"
+                      class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
+                      :class="
+                        !(previewHtml && previewingKey === key)
+                          ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                      "
+                      @click="
+                        previewHtml = false;
+                        previewingKey = key;
+                      "
+                    >
+                      HTML
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded px-2 py-0.5 text-xs font-medium transition-colors"
+                      :class="
+                        previewHtml && previewingKey === key
+                          ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                      "
+                      @click="
+                        previewHtml = true;
+                        previewingKey = key;
+                      "
+                    >
+                      Aperçu
+                    </button>
+                  </div>
+                  <textarea
+                    v-if="!(previewHtml && previewingKey === key)"
+                    v-model="drafts[key]"
+                    rows="14"
+                    class="w-full resize-y border-0 px-3 py-2.5 font-mono text-xs leading-relaxed text-gray-800 focus:outline-none dark:bg-gray-900 dark:text-gray-200"
+                    @keyup.meta.enter="onSave(key)"
+                    @keyup.ctrl.enter="onSave(key)"
+                  />
+                  <div
+                    v-else
+                    class="html-content min-h-[200px] max-w-none px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300"
+                    v-html="
+                      drafts[key] ||
+                      '<p class=\'text-gray-400\'>Aucun contenu</p>'
+                    "
+                  />
+                </div>
+                <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+                  Cmd/Ctrl + Entrée pour sauvegarder. Aperçu sur
+                  <RouterLink
+                    :to="previewRoute(key)"
+                    target="_blank"
+                    class="text-brand-600 underline dark:text-brand-400"
+                    >{{ previewRoute(key) }} ↗</RouterLink
+                  >.
+                </p>
+                <div class="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    :disabled="busyKey === key || !hasChanged(key)"
+                    class="rounded-lg px-4 py-1.5 text-sm font-medium transition-all disabled:opacity-40"
+                    :class="
+                      savedKey === key
+                        ? 'bg-green-600 text-white'
+                        : hasChanged(key)
+                          ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
+                          : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                    "
+                    @click="onSave(key)"
+                  >
+                    {{
+                      busyKey === key
+                        ? "…"
+                        : savedKey === key
+                          ? "✓ Sauvegardé"
+                          : "Sauvegarder"
+                    }}
+                  </button>
+                </div>
+              </template>
+
+              <div v-else class="mt-3 flex items-center gap-2">
+                <input
+                  v-model="drafts[key]"
+                  type="text"
+                  :placeholder="meta(key).placeholder"
+                  class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
+                  @keyup.enter="onSave(key)"
+                />
+              </div>
+
+              <div
+                v-if="
+                  !isBoolean(settingByKey(key)?.type ?? '') && !isTextarea(key)
+                "
+                class="mt-3 flex justify-end"
+              >
+                <button
+                  type="button"
+                  :disabled="busyKey === key || !hasChanged(key)"
+                  class="rounded-lg px-4 py-1.5 text-sm font-medium transition-all disabled:opacity-40"
+                  :class="
+                    savedKey === key
+                      ? 'bg-green-600 text-white'
+                      : hasChanged(key)
+                        ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
+                        : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                  "
+                  @click="onSave(key)"
+                >
+                  {{
+                    busyKey === key
+                      ? "…"
+                      : savedKey === key
+                        ? "✓ Sauvegardé"
+                        : "Sauvegarder"
+                  }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
   </div>

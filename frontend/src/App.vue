@@ -36,6 +36,6 @@ onMounted(async () => {
       🧪 Version bêta, en cours de test — les Monstres affichés ne sont peut-être pas réels.
     </p>
     <RouterView />
-    <BottomNav />
+    <BottomNav v-if="!isAdmin" />
   </div>
 </template>

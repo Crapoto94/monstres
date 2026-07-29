@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
 import nodemailer from 'nodemailer';
 
 interface SendEmailOptions {
@@ -10,46 +11,24 @@ interface SendEmailOptions {
   templateKey?: string;
 }
 
+type EmailProvider = 'brevo' | 'smtp';
+
 /**
- * Envoi transactionnel via SMTP (§12.9 du cahier des charges).
- * Les templates sont cherchés en base (table email_templates) par clé.
- * Si le template n'existe pas, fallback sur le HTML codé en dur.
+ * Envoi transactionnel via Brevo ou SMTP au choix (§12.9 du cahier des
+ * charges). Le provider est choisi via le setting `email_provider` (admin →
+ * Paramètres). Les templates sont cherchés en base, avec fallback HTML.
  *
- * Config SMTP (dans .env) :
- *   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
- *   SMTP_FROM_EMAIL, SMTP_FROM_NAME
- *
- * Sans SMTP_HOST configuré (dev local), les emails sont loggés sans être
- * envoyés.
+ * Sans provider configuré (dev local), les emails sont loggés.
  */
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
   ) {}
-
-  private getTransporter(): nodemailer.Transporter | null {
-    if (this.transporter) return this.transporter;
-
-    const host = this.config.get<string>('SMTP_HOST');
-    if (!host) return null;
-
-    this.transporter = nodemailer.createTransport({
-      host,
-      port: Number(this.config.get<string>('SMTP_PORT', '587')),
-      secure: this.config.get<string>('SMTP_SECURE', 'false') === 'true',
-      auth: {
-        user: this.config.getOrThrow<string>('SMTP_USER'),
-        pass: this.config.getOrThrow<string>('SMTP_PASS'),
-      },
-    });
-
-    return this.transporter;
-  }
 
   async send({
     to,
@@ -57,19 +36,29 @@ export class EmailService {
     htmlContent,
     templateKey,
   }: SendEmailOptions): Promise<void> {
-    const transporter = this.getTransporter();
-    const fromEmail = this.config.get<string>(
-      'SMTP_FROM_EMAIL',
-      'noreply@monstres.app',
-    );
-    const fromName = this.config.get<string>(
-      'SMTP_FROM_NAME',
-      "Les monstres l'appli",
-    );
+    const provider = (await this.settings.getString(
+      'email_provider',
+      'brevo',
+    )) as EmailProvider;
 
-    if (!transporter) {
+    if (provider === 'smtp') {
+      await this.sendViaSmtp({ to, subject, htmlContent, templateKey });
+    } else {
+      await this.sendViaBrevo({ to, subject, htmlContent, templateKey });
+    }
+  }
+
+  private async sendViaBrevo({
+    to,
+    subject,
+    htmlContent,
+    templateKey,
+  }: SendEmailOptions): Promise<void> {
+    const apiKey = await this.settings.getString('brevo_api_key', '');
+
+    if (!apiKey) {
       this.logger.warn(
-        `SMTP_HOST absent — email non envoyé (loggé pour le dev).\nÀ: ${to}\nSujet: ${subject}\n${htmlContent}`,
+        `brevo_api_key vide — email non envoyé (loggé pour le dev).\nÀ: ${to}\nSujet: ${subject}\n${htmlContent}`,
       );
       await this.logEmail({
         to,
@@ -82,13 +71,116 @@ export class EmailService {
     }
 
     try {
+      const fromEmail = await this.settings.getString(
+        'brevo_sender_email',
+        'noreply@monstres.app',
+      );
+      const fromName = await this.settings.getString(
+        'brevo_sender_name',
+        "Les monstres l'appli",
+      );
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: fromEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.error(`Échec envoi Brevo (${response.status}): ${body}`);
+        await this.logEmail({
+          to,
+          subject,
+          htmlContent,
+          templateKey,
+          status: 'FAILED',
+          error: `HTTP ${response.status}: ${body}`,
+        });
+        throw new Error('EMAIL_SEND_FAILED');
+      }
+
+      await this.logEmail({
+        to,
+        subject,
+        htmlContent,
+        templateKey,
+        status: 'SENT',
+      });
+    } catch (error) {
+      if ((error as Error).message !== 'EMAIL_SEND_FAILED') {
+        await this.logEmail({
+          to,
+          subject,
+          htmlContent,
+          templateKey,
+          status: 'FAILED',
+          error: (error as Error).message,
+        });
+      }
+      throw error;
+    }
+  }
+
+  private async sendViaSmtp({
+    to,
+    subject,
+    htmlContent,
+    templateKey,
+  }: SendEmailOptions): Promise<void> {
+    const host = await this.settings.getString('smtp_host', '');
+
+    if (!host) {
+      this.logger.warn(
+        `smtp_host vide — email non envoyé (loggé pour le dev).\nÀ: ${to}\nSujet: ${subject}\n${htmlContent}`,
+      );
+      await this.logEmail({
+        to,
+        subject,
+        htmlContent,
+        templateKey,
+        status: 'SKIPPED',
+      });
+      return;
+    }
+
+    const port = Number(await this.settings.getString('smtp_port', '587'));
+    const secure =
+      (await this.settings.getString('smtp_secure', 'false')) === 'true';
+    const user = await this.settings.getString('smtp_user', '');
+    const pass = await this.settings.getString('smtp_pass', '');
+    const fromEmail = await this.settings.getString(
+      'smtp_from_email',
+      'noreply@monstres.app',
+    );
+    const fromName = await this.settings.getString(
+      'smtp_from_name',
+      "Les monstres l'appli",
+    );
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: user && pass ? { user, pass } : undefined,
+    });
+
+    try {
       await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to,
         subject,
         html: htmlContent,
       });
-
       await this.logEmail({
         to,
         subject,

@@ -36,6 +36,17 @@ const DEFAULT_SETTINGS = [
   { key: 'admin_notification_email', value: 'admin@fbc.fr', type: 'STRING' },
   { key: 'geo_explanation_content', value: '<p>Active la géolocalisation pour :</p><ul><li>🏠 <strong>Trier les Monstres par distance</strong> — voir les objets près de chez toi en premier</li><li>📸 <strong>Publier facilement</strong> — ta position est automatiquement détectée quand tu crées un Monstre</li></ul><p>Ta position n\'est jamais partagée publiquement. Seule la distance approximative est affichée aux autres utilisateurs.</p>', type: 'STRING' },
   { key: 'beta_mode_enabled', value: 'true', type: 'BOOLEAN' },
+  { key: 'email_provider', value: 'brevo', type: 'STRING' },
+  { key: 'brevo_api_key', value: '', type: 'STRING' },
+  { key: 'brevo_sender_email', value: 'noreply@monstres.app', type: 'STRING' },
+  { key: 'brevo_sender_name', value: "Les monstres l'appli", type: 'STRING' },
+  { key: 'smtp_host', value: '', type: 'STRING' },
+  { key: 'smtp_port', value: '587', type: 'STRING' },
+  { key: 'smtp_secure', value: 'false', type: 'STRING' },
+  { key: 'smtp_user', value: '', type: 'STRING' },
+  { key: 'smtp_pass', value: '', type: 'STRING' },
+  { key: 'smtp_from_email', value: 'noreply@monstres.app', type: 'STRING' },
+  { key: 'smtp_from_name', value: "Les monstres l'appli", type: 'STRING' },
 ];
 
 const DEFAULT_CATEGORIES = [

@@ -6,6 +6,18 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.9',
+    date: '29 juillet 2026',
+    changes: [
+      'Email : choix entre Brevo et SMTP depuis Admin → Paramètres (setting email_provider)',
+      'Config SMTP (host, port, user, pass, SSL/TLS, expéditeur) éditable depuis l\'admin sans redéploiement',
+      'Config Brevo (API key, expéditeur) éditable depuis l\'admin sans redéploiement',
+      'Bouton de test d\'envoi dans les paramètres email',
+      'Admin : sidebar sticky, seul le contenu à droite défile',
+      'Barre de navigation basse cachée dans les pages admin',
+    ],
+  },
+  {
     version: '1.0.8',
     date: '29 juillet 2026',
     changes: [

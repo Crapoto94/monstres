@@ -28,6 +28,7 @@ import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminAnalyticsService } from './admin-analytics.service';
 import { AdminNewsletterController } from './admin-newsletter.controller';
 import { AdminNewsletterService } from './admin-newsletter.service';
+import { AdminTestEmailController } from './admin-test-email.controller';
 
 @Module({
   imports: [UsersModule, CategoriesModule, EmailTemplatesModule],
@@ -47,6 +48,7 @@ import { AdminNewsletterService } from './admin-newsletter.service';
     AdminImportLogController,
     AdminAnalyticsController,
     AdminNewsletterController,
+    AdminTestEmailController,
   ],
   providers: [
     AdminUsersService,

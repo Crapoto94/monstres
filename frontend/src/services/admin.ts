@@ -458,3 +458,8 @@ export async function fetchAnalyticsSummary(days: number) {
   const { data } = await api.get<ApiSuccess<AnalyticsSummary>>('/admin/analytics/summary', { params: { days } })
   return data.data
 }
+
+export async function sendTestEmail(to: string) {
+  const { data } = await api.post<ApiSuccess<{ message: string }>>('/admin/test-email', { to })
+  return data.data
+}
