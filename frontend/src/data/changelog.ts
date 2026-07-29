@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.11',
+    date: '29 juillet 2026',
+    changes: [
+      'Email : fallback vers .env quand les settings base sont absents (rétrocompatibilité prod)',
+    ],
+  },
+  {
     version: '1.0.10',
     date: '29 juillet 2026',
     changes: [

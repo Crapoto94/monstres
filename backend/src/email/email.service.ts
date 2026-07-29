@@ -30,16 +30,31 @@ export class EmailService {
     private readonly settings: SettingsService,
   ) {}
 
+  private settingOrEnv(
+    dbKey: string,
+    envKey: string,
+    dbDefault: string,
+  ): Promise<string> {
+    return this.settings.getString(dbKey, '').then((val) => {
+      if (val) return val;
+      return this.config.get<string>(envKey, dbDefault);
+    });
+  }
+
   async send({
     to,
     subject,
     htmlContent,
     templateKey,
   }: SendEmailOptions): Promise<void> {
-    const provider = (await this.settings.getString(
-      'email_provider',
-      'brevo',
-    )) as EmailProvider;
+    const dbProvider = await this.settings.getString('email_provider', '');
+    const smtpFromEnv = this.config.get<string>('SMTP_HOST', '');
+
+    const provider: EmailProvider = dbProvider
+      ? (dbProvider as EmailProvider)
+      : smtpFromEnv
+        ? 'smtp'
+        : 'brevo';
 
     if (provider === 'smtp') {
       await this.sendViaSmtp({ to, subject, htmlContent, templateKey });
@@ -54,7 +69,11 @@ export class EmailService {
     htmlContent,
     templateKey,
   }: SendEmailOptions): Promise<void> {
-    const apiKey = await this.settings.getString('brevo_api_key', '');
+    const apiKey = await this.settingOrEnv(
+      'brevo_api_key',
+      'BREVO_API_KEY',
+      '',
+    );
 
     if (!apiKey) {
       this.logger.warn(
@@ -71,12 +90,14 @@ export class EmailService {
     }
 
     try {
-      const fromEmail = await this.settings.getString(
+      const fromEmail = await this.settingOrEnv(
         'brevo_sender_email',
+        'BREVO_SENDER_EMAIL',
         'noreply@monstres.app',
       );
-      const fromName = await this.settings.getString(
+      const fromName = await this.settingOrEnv(
         'brevo_sender_name',
+        'BREVO_SENDER_NAME',
         "Les monstres l'appli",
       );
 
@@ -137,7 +158,7 @@ export class EmailService {
     htmlContent,
     templateKey,
   }: SendEmailOptions): Promise<void> {
-    const host = await this.settings.getString('smtp_host', '');
+    const host = await this.settingOrEnv('smtp_host', 'SMTP_HOST', '');
 
     if (!host) {
       this.logger.warn(
@@ -153,17 +174,22 @@ export class EmailService {
       return;
     }
 
-    const port = Number(await this.settings.getString('smtp_port', '587'));
+    const port = Number(
+      await this.settingOrEnv('smtp_port', 'SMTP_PORT', '587'),
+    );
     const secure =
-      (await this.settings.getString('smtp_secure', 'false')) === 'true';
-    const user = await this.settings.getString('smtp_user', '');
-    const pass = await this.settings.getString('smtp_pass', '');
-    const fromEmail = await this.settings.getString(
+      (await this.settingOrEnv('smtp_secure', 'SMTP_SECURE', 'false')) ===
+      'true';
+    const user = await this.settingOrEnv('smtp_user', 'SMTP_USER', '');
+    const pass = await this.settingOrEnv('smtp_pass', 'SMTP_PASS', '');
+    const fromEmail = await this.settingOrEnv(
       'smtp_from_email',
+      'SMTP_FROM_EMAIL',
       'noreply@monstres.app',
     );
-    const fromName = await this.settings.getString(
+    const fromName = await this.settingOrEnv(
       'smtp_from_name',
+      'SMTP_FROM_NAME',
       "Les monstres l'appli",
     );
 
