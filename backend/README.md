@@ -29,7 +29,7 @@ src/
   prisma/                PrismaService (client Prisma + adaptateur libsql)
   settings/              SettingsService : lecture/écriture de la table `settings`
                           (durées, seuils, points — jamais en dur, voir CLAUDE.md)
-  email/                 EmailService (Brevo) — voir section Emails plus bas
+  email/                 EmailService (SMTP) — voir section Emails plus bas
   auth/                  Inscription, connexion, JWT cookie httpOnly (Phase 1)
   users/                 Profil public (GET /users/:id)
   admin/                 Espace admin (Phase 9) : dashboard, utilisateurs, Monstres,
@@ -130,13 +130,13 @@ Un admin ne peut pas s'auto-modérer (suspendre/bannir/supprimer/changer son
 propre rôle), et seul un `SUPER_ADMIN` peut modérer un compte
 `ADMIN`/`SUPER_ADMIN` ou en supprimer un — voir `AdminUsersService.assertCanModerate`.
 
-## Emails (Brevo)
-`EmailService` envoie via l'API Brevo (validation d'email, mot de passe
-oublié). **Sans `BREVO_API_KEY` configurée, les emails sont simplement
-loggés en console** (niveau `warn`, avec le lien complet) — pratique en dev
-local sans compte Brevo. Pour de vrais envois :
-1. Créer une clé API sur [app.brevo.com/settings/keys/api](https://app.brevo.com/settings/keys/api).
-2. Renseigner `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME` dans `.env`.
+## Emails (SMTP)
+`EmailService` envoie via SMTP (validation d'email, mot de passe oublié).
+**Sans `SMTP_HOST` configurée, les emails sont simplement loggés en console**
+(niveau `warn`, avec le lien complet) — pratique en dev local sans serveur SMTP.
+Pour de vrais envois :
+1. Configurer `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` dans `.env`.
+2. Configurer `SMTP_FROM_EMAIL` et `SMTP_FROM_NAME`.
 3. En production, configurer SPF/DKIM/DMARC sur le domaine d'envoi (§12.2 du cahier des charges).
 
 ## Base de données

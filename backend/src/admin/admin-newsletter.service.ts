@@ -132,7 +132,7 @@ ${dto.htmlContent}
         failedCount++;
       }
 
-      // Petite pause tous les 50 envois pour éviter de saturer l'API Brevo
+      // Petite pause tous les 50 envois pour éviter de saturer le serveur SMTP
       if ((sentCount + failedCount) % 50 === 0) {
         await new Promise((resolve) => setTimeout(resolve, 200));
       }

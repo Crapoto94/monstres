@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.8',
+    date: '29 juillet 2026',
+    changes: [
+      'Envoi d\'emails : Brevo remplacé par SMTP (nodemailer) — configurable dans .env',
+      'Nouveaux paramètres : SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM_EMAIL, SMTP_FROM_NAME',
+    ],
+  },
+  {
     version: '1.0.7',
     date: '28 juillet 2026',
     changes: [

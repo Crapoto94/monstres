@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import nodemailer from 'nodemailer';
 
 interface SendEmailOptions {
   to: string;
@@ -10,65 +11,102 @@ interface SendEmailOptions {
 }
 
 /**
- * Envoi transactionnel via l'API Brevo (§12.9 du cahier des charges).
- * Sans BREVO_API_KEY (dev local sans compte Brevo), les emails sont
- * simplement loggés au lieu d'être envoyés — cf. backend/README.md.
- *
+ * Envoi transactionnel via SMTP (§12.9 du cahier des charges).
  * Les templates sont cherchés en base (table email_templates) par clé.
  * Si le template n'existe pas, fallback sur le HTML codé en dur.
+ *
+ * Config SMTP (dans .env) :
+ *   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
+ *   SMTP_FROM_EMAIL, SMTP_FROM_NAME
+ *
+ * Sans SMTP_HOST configuré (dev local), les emails sont loggés sans être
+ * envoyés.
  */
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
   ) {}
 
-  async send({ to, subject, htmlContent, templateKey }: SendEmailOptions): Promise<void> {
-    const apiKey = this.config.get<string>('BREVO_API_KEY');
+  private getTransporter(): nodemailer.Transporter | null {
+    if (this.transporter) return this.transporter;
 
-    if (!apiKey) {
+    const host = this.config.get<string>('SMTP_HOST');
+    if (!host) return null;
+
+    this.transporter = nodemailer.createTransport({
+      host,
+      port: Number(this.config.get<string>('SMTP_PORT', '587')),
+      secure: this.config.get<string>('SMTP_SECURE', 'false') === 'true',
+      auth: {
+        user: this.config.getOrThrow<string>('SMTP_USER'),
+        pass: this.config.getOrThrow<string>('SMTP_PASS'),
+      },
+    });
+
+    return this.transporter;
+  }
+
+  async send({
+    to,
+    subject,
+    htmlContent,
+    templateKey,
+  }: SendEmailOptions): Promise<void> {
+    const transporter = this.getTransporter();
+    const fromEmail = this.config.get<string>(
+      'SMTP_FROM_EMAIL',
+      'noreply@monstres.app',
+    );
+    const fromName = this.config.get<string>(
+      'SMTP_FROM_NAME',
+      "Les monstres l'appli",
+    );
+
+    if (!transporter) {
       this.logger.warn(
-        `BREVO_API_KEY absent — email non envoyé (loggé pour le dev).\nÀ: ${to}\nSujet: ${subject}\n${htmlContent}`,
+        `SMTP_HOST absent — email non envoyé (loggé pour le dev).\nÀ: ${to}\nSujet: ${subject}\n${htmlContent}`,
       );
-      await this.logEmail({ to, subject, htmlContent, templateKey, status: 'SKIPPED' });
+      await this.logEmail({
+        to,
+        subject,
+        htmlContent,
+        templateKey,
+        status: 'SKIPPED',
+      });
       return;
     }
 
     try {
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'api-key': apiKey,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          sender: {
-            name: this.config.get<string>('BREVO_SENDER_NAME', 'Les Monstres'),
-            email: this.config.getOrThrow<string>('BREVO_SENDER_EMAIL'),
-          },
-          to: [{ email: to }],
-          subject,
-          htmlContent,
-        }),
+      await transporter.sendMail({
+        from: `"${fromName}" <${fromEmail}>`,
+        to,
+        subject,
+        html: htmlContent,
       });
 
-      if (!response.ok) {
-        const body = await response.text();
-        this.logger.error(`Échec envoi Brevo (${response.status}): ${body}`);
-        await this.logEmail({ to, subject, htmlContent, templateKey, status: 'FAILED', error: `HTTP ${response.status}: ${body}` });
-        throw new Error('EMAIL_SEND_FAILED');
-      }
-
-      await this.logEmail({ to, subject, htmlContent, templateKey, status: 'SENT' });
+      await this.logEmail({
+        to,
+        subject,
+        htmlContent,
+        templateKey,
+        status: 'SENT',
+      });
     } catch (error) {
-      if ((error as Error).message !== 'EMAIL_SEND_FAILED') {
-        await this.logEmail({ to, subject, htmlContent, templateKey, status: 'FAILED', error: (error as Error).message });
-      }
-      throw error;
+      this.logger.error(`Échec envoi SMTP: ${(error as Error).message}`);
+      await this.logEmail({
+        to,
+        subject,
+        htmlContent,
+        templateKey,
+        status: 'FAILED',
+        error: (error as Error).message,
+      });
+      throw new Error('EMAIL_SEND_FAILED');
     }
   }
 
@@ -87,52 +125,94 @@ export class EmailService {
     }
   }
 
-  async sendEmailVerification(to: string, name: string, token: string): Promise<void> {
+  async sendEmailVerification(
+    to: string,
+    name: string,
+    token: string,
+  ): Promise<void> {
     const url = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/verifier-email?token=${token}`;
     const vars = { user_name: name, verification_url: url };
-    const { subject, htmlContent: rawHtml } = await this.renderTemplate('email_verification', vars, {
-      subject: 'Confirme ton adresse email — Les Monstres',
-      htmlContent: `
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate(
+      'email_verification',
+      vars,
+      {
+        subject: 'Confirme ton adresse email — Les Monstres',
+        htmlContent: `
         <p>Bonjour ${escapeHtml(name)},</p>
         <p>Confirme ton adresse email pour activer ton compte Les Monstres :</p>
         <p><a href="${url}">${url}</a></p>
         <p>Ce lien expire dans quelques heures.</p>
       `,
-    });
+      },
+    );
     const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
-    await this.send({ to, subject, htmlContent, templateKey: 'email_verification' });
+    await this.send({
+      to,
+      subject,
+      htmlContent,
+      templateKey: 'email_verification',
+    });
   }
 
-  async sendPasswordReset(to: string, name: string, token: string): Promise<void> {
+  async sendPasswordReset(
+    to: string,
+    name: string,
+    token: string,
+  ): Promise<void> {
     const url = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/reinitialiser-mot-de-passe?token=${token}`;
     const vars = { user_name: name, reset_url: url };
-    const { subject, htmlContent: rawHtml } = await this.renderTemplate('password_reset', vars, {
-      subject: 'Réinitialise ton mot de passe — Les Monstres',
-      htmlContent: `
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate(
+      'password_reset',
+      vars,
+      {
+        subject: 'Réinitialise ton mot de passe — Les Monstres',
+        htmlContent: `
         <p>Bonjour ${escapeHtml(name)},</p>
         <p>Une demande de réinitialisation de mot de passe a été effectuée pour ce compte :</p>
         <p><a href="${url}">${url}</a></p>
         <p>Si tu n'es pas à l'origine de cette demande, ignore cet email.</p>
       `,
-    });
+      },
+    );
     const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
-    await this.send({ to, subject, htmlContent, templateKey: 'password_reset' });
+    await this.send({
+      to,
+      subject,
+      htmlContent,
+      templateKey: 'password_reset',
+    });
   }
 
   /** Alerte opérationnelle à l'admin (§ notification nouvel inscrit), pas une notification utilisateur classique — pas de `NotificationType` associé. */
-  async sendNewUserAlert(to: string, newUser: { name: string; email: string }): Promise<void> {
+  async sendNewUserAlert(
+    to: string,
+    newUser: { name: string; email: string },
+  ): Promise<void> {
     const adminUrl = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:5173')}/admin/utilisateurs`;
-    const vars = { user_name: newUser.name, new_user_email: newUser.email, admin_url: adminUrl };
-    const { subject, htmlContent: rawHtml } = await this.renderTemplate('new_user_registered', vars, {
-      subject: `Nouvel inscrit : ${newUser.name} — Les Monstres`,
-      htmlContent: `
+    const vars = {
+      user_name: newUser.name,
+      new_user_email: newUser.email,
+      admin_url: adminUrl,
+    };
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate(
+      'new_user_registered',
+      vars,
+      {
+        subject: `Nouvel inscrit : ${newUser.name} — Les Monstres`,
+        htmlContent: `
         <p>Un nouvel utilisateur vient de s'inscrire sur Les Monstres :</p>
         <p><strong>${escapeHtml(newUser.name)}</strong> — ${escapeHtml(newUser.email)}</p>
         <p><a href="${adminUrl}">Voir dans l'admin →</a></p>
       `,
-    });
+      },
+    );
     const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
-    await this.send({ to, subject, htmlContent, templateKey: 'new_user_registered' });
+    await this.send({
+      to,
+      subject,
+      htmlContent,
+      templateKey: 'new_user_registered',
+    });
   }
 
   private async renderTemplate(
@@ -141,7 +221,9 @@ export class EmailService {
     fallback: { subject: string; htmlContent: string },
   ): Promise<{ subject: string; htmlContent: string }> {
     try {
-      const template = await this.prisma.emailTemplate.findUnique({ where: { key } });
+      const template = await this.prisma.emailTemplate.findUnique({
+        where: { key },
+      });
       if (!template) return fallback;
       return {
         subject: this.replaceVars(template.subject, vars),
@@ -154,9 +236,14 @@ export class EmailService {
 
   async wrapWithMasterTemplate(htmlContent: string): Promise<string> {
     try {
-      const master = await this.prisma.emailTemplate.findUnique({ where: { key: 'master_template' } });
+      const master = await this.prisma.emailTemplate.findUnique({
+        where: { key: 'master_template' },
+      });
       if (!master) return htmlContent;
-      const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
+      const frontendUrl = this.config.get<string>(
+        'FRONTEND_URL',
+        'http://localhost:5173',
+      );
       const logoUrl = `${frontendUrl}/logo-email.png`;
       return master.htmlContent
         .replace(/\{\{content\}\}/g, htmlContent)
@@ -177,5 +264,11 @@ export class EmailService {
 }
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
+  return value.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
+        char
+      ]!,
+  );
 }
