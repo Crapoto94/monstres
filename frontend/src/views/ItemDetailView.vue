@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchItem, collectItem, toggleVote, reportItem, type Item, type ReportType } from '@/services/items'
 import { toggleInterest } from '@/services/reservations'
-import { fetchComments, createComment, deleteComment, type Comment } from '@/services/comments'
+import { fetchComments, createComment, deleteComment, toggleReaction, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
 import { resizeImageFile } from '@/utils/image'
@@ -313,6 +313,22 @@ async function handleDeleteComment(comment: Comment) {
   }
 }
 
+async function handleToggleReaction(comment: Comment, type: string) {
+  if (!item.value) return
+  try {
+    const result = await toggleReaction(item.value.id, comment.id, type)
+    if (result.action === 'added') {
+      comment.reactionCounts[type] = (comment.reactionCounts[type] ?? 0) + 1
+      comment.userReactions[type] = true
+    } else {
+      comment.reactionCounts[type] = Math.max(0, (comment.reactionCounts[type] ?? 1) - 1)
+      comment.userReactions[type] = false
+    }
+  } catch {
+    // silencieux
+  }
+}
+
 function goToItinerary(lat: number, lng: number) {
   const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
   if (isMobile) {
@@ -604,6 +620,20 @@ function goToItinerary(lat: number, lng: number) {
                   </button>
                 </div>
                 <p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300">{{ comment.content }}</p>
+                <div class="mt-1.5 flex flex-wrap items-center gap-0.5">
+                  <button
+                    v-for="emoji in [['LIKE', '👍'], ['LOVE', '❤️'], ['LAUGH', '😄'], ['WOW', '😮'], ['SAD', '😢'], ['ANGRY', '😡']]"
+                    :key="emoji[0]"
+                    type="button"
+                    :disabled="!auth.isAuthenticated"
+                    class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    :class="comment.userReactions[emoji[0]] ? 'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300' : 'text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                    @click="handleToggleReaction(comment, emoji[0])"
+                  >
+                    <span>{{ emoji[1] }}</span>
+                    <span v-if="(comment.reactionCounts[emoji[0]] ?? 0) > 0" class="tabular-nums">{{ comment.reactionCounts[emoji[0]] }}</span>
+                  </button>
+                </div>
               </div>
             </li>
             <li v-if="comments.length === 0" class="text-sm text-gray-400 dark:text-gray-500">

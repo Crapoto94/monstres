@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
@@ -125,6 +125,53 @@ export class UsersService {
     );
     await this.prisma.user.delete({ where: { id } });
     await Promise.all(itemIds.map((itemId) => this.imageService.deleteItemPhotos(itemId)));
+  }
+
+  /**
+   * Modifie le pseudo ou l'email. Si l'email change, le statut vérifié est
+   * révoqué et un nouveau token de vérification est généré.
+   */
+  async updateProfile(
+    id: string,
+    updates: { name?: string; email?: string },
+    generateVerification?: () => Promise<{ token: string; ttlHours: number }>,
+  ): Promise<SafeUser & { emailChanged?: boolean }> {
+    const current = await this.prisma.user.findUnique({ where: { id } });
+    if (!current) throw new NotFoundException('Utilisateur introuvable.');
+
+    const data: Record<string, unknown> = {};
+    if (updates.name !== undefined) data.name = updates.name;
+    if (updates.email !== undefined) data.email = updates.email.toLowerCase().trim();
+
+    let emailChanged = false;
+    if (
+      updates.email !== undefined &&
+      updates.email.toLowerCase().trim() !== current.email
+    ) {
+      const existing = await this.prisma.user.findUnique({
+        where: { email: updates.email.toLowerCase().trim() },
+      });
+      if (existing) throw new ConflictException('Cet email est déjà utilisé.');
+
+      data.emailVerifiedAt = null;
+      data.emailVerificationToken = null;
+      data.emailVerificationExpiresAt = null;
+      emailChanged = true;
+
+      if (generateVerification) {
+        const { token, ttlHours } = await generateVerification();
+        data.emailVerificationToken = token;
+        data.emailVerificationExpiresAt = new Date(
+          Date.now() + ttlHours * 60 * 60 * 1000,
+        );
+      }
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data,
+    });
+    return { ...this.toSafeUser(user), emailChanged };
   }
 
   /** Mise à jour de l'avatar (emoji ou URL). */

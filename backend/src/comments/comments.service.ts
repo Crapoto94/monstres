@@ -6,7 +6,6 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
 
-/** Commentaires (§6.6) : simple, connectés uniquement pour écrire. */
 @Injectable()
 export class CommentsService {
   constructor(
@@ -25,13 +24,30 @@ export class CommentsService {
     };
   }
 
-  async findByItem(itemId: string) {
+  async findByItem(itemId: string, userId?: string) {
     const comments = await this.prisma.comment.findMany({
       where: { itemId },
       orderBy: { createdAt: 'asc' },
-      include: { user: { select: { id: true, name: true, avatar: true } } },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+        reactions: { select: { type: true, userId: true } },
+      },
     });
-    return comments.map((c) => this.resolveCommentAvatar(c));
+
+    return comments.map((c) => {
+      const reactionCounts: Record<string, number> = {};
+      const userReactions: Record<string, boolean> = {};
+      for (const r of c.reactions) {
+        reactionCounts[r.type] = (reactionCounts[r.type] ?? 0) + 1;
+        if (r.userId === userId) userReactions[r.type] = true;
+      }
+
+      return {
+        ...this.resolveCommentAvatar(c),
+        reactionCounts,
+        userReactions,
+      };
+    });
   }
 
   async create(itemId: string, user: AuthenticatedUser, content: string) {
@@ -40,12 +56,34 @@ export class CommentsService {
 
     const comment = await this.prisma.comment.create({
       data: { itemId, userId: user.id, content },
-      include: { user: { select: { id: true, name: true, avatar: true } } },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+        reactions: { select: { type: true, userId: true } },
+      },
     });
-    return this.resolveCommentAvatar(comment);
+
+    return { ...this.resolveCommentAvatar(comment), reactionCounts: {}, userReactions: {} };
   }
 
-  /** L'auteur du commentaire ou un admin/super admin peut le supprimer (§6.6). */
+  async toggleReaction(commentId: string, type: string, user: AuthenticatedUser) {
+    const comment = await this.prisma.comment.findUnique({ where: { id: commentId } });
+    if (!comment) throw new NotFoundException('Commentaire introuvable.');
+
+    const existing = await this.prisma.commentReaction.findUnique({
+      where: { commentId_userId_type: { commentId, userId: user.id, type: type as any } },
+    });
+
+    if (existing) {
+      await this.prisma.commentReaction.delete({ where: { id: existing.id } });
+      return { action: 'removed', type };
+    }
+
+    await this.prisma.commentReaction.create({
+      data: { commentId, userId: user.id, type: type as any },
+    });
+    return { action: 'added', type };
+  }
+
   async remove(commentId: string, user: AuthenticatedUser) {
     const comment = await this.prisma.comment.findUnique({ where: { id: commentId } });
     if (!comment) throw new NotFoundException('Commentaire introuvable.');

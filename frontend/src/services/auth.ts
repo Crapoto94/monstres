@@ -65,6 +65,16 @@ export async function updateAvatar(avatar: string | null) {
   return data.data
 }
 
+export async function updateProfile(payload: { name?: string; email?: string }) {
+  const { data } = await api.patch<ApiSuccess<AuthUser & { emailChanged?: boolean }>>('/users/me/profile', payload)
+  return data.data
+}
+
+export async function resendVerification() {
+  const { data } = await api.post<ApiSuccess<{ message: string }>>('/auth/resend-verification')
+  return data.data
+}
+
 export async function deleteAccount() {
   await api.delete('/users/me')
 }

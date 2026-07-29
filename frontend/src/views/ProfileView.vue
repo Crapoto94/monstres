@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 import { api, type ApiSuccess } from '@/services/api'
 import type { AuthUser } from '@/services/auth'
+import { resendVerification } from '@/services/auth'
 import { fetchMyItems, type MyItems, type Item } from '@/services/items'
 import { getCurrentSubscription, isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/services/push'
 
@@ -92,6 +93,16 @@ const deleteError = ref<string | null>(null)
 const phoneDraft = ref(auth.user?.phoneNumber ?? '')
 const savingPhone = ref(false)
 const phoneError = ref<string | null>(null)
+
+const nameDraft = ref(auth.user?.name ?? '')
+const emailDraft = ref(auth.user?.email ?? '')
+const editingProfile = ref(false)
+const savingProfile = ref(false)
+const profileError = ref<string | null>(null)
+const profileSuccess = ref<string | null>(null)
+
+const resendingVerification = ref(false)
+const resendSent = ref(false)
 
 // --- Crop state ---
 const showCrop = ref(false)
@@ -274,6 +285,43 @@ async function onToggleWhatsapp() {
   await auth.setWhatsappNotifications(!auth.user.whatsappNotifications)
 }
 
+async function onSaveProfile() {
+  if (!auth.user) return
+  const payload: { name?: string; email?: string } = {}
+  if (nameDraft.value.trim() !== auth.user.name) payload.name = nameDraft.value.trim()
+  if (emailDraft.value.trim().toLowerCase() !== auth.user.email.toLowerCase()) payload.email = emailDraft.value.trim()
+  if (!Object.keys(payload).length) return
+
+  savingProfile.value = true
+  profileError.value = null
+  profileSuccess.value = null
+  try {
+    const result = await auth.updateProfile(payload)
+    editingProfile.value = false
+    if (result.emailChanged) {
+      profileSuccess.value = 'Email mis à jour — vérifie ta boîte mail pour confirmer le changement.'
+    } else {
+      profileSuccess.value = 'Profil mis à jour.'
+    }
+  } catch (e: any) {
+    profileError.value = e.response?.data?.error?.message ?? 'Erreur lors de la mise à jour.'
+  } finally {
+    savingProfile.value = false
+  }
+}
+
+async function onResendVerification() {
+  resendingVerification.value = true
+  try {
+    await resendVerification()
+    resendSent.value = true
+  } catch {
+    // silencieux
+  } finally {
+    resendingVerification.value = false
+  }
+}
+
 async function onDeleteAccount() {
   if (!confirm('Supprimer définitivement ton compte et toutes tes données ? Cette action est irréversible.')) return
   deleting.value = true
@@ -331,11 +379,50 @@ async function onDeleteAccount() {
             <img v-if="isImageAvatar" :src="selectedAvatar!" class="h-16 w-16 rounded-full object-cover" alt="" />
             <span v-else>{{ selectedAvatar ?? auth.user.name.charAt(0).toUpperCase() }}</span>
           </div>
-          <div class="min-w-0">
-            <p class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ auth.user.name }}</p>
-            <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ auth.user.email }}</p>
+          <div class="min-w-0 flex-1">
+            <template v-if="editingProfile">
+              <input
+                v-model="nameDraft"
+                type="text"
+                maxlength="50"
+                placeholder="Pseudo"
+                class="mb-1 w-full rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+              <input
+                v-model="emailDraft"
+                type="email"
+                placeholder="Email"
+                class="w-full rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </template>
+            <template v-else>
+              <p class="truncate font-semibold text-gray-900 dark:text-gray-100">{{ auth.user.name }}</p>
+              <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ auth.user.email }}</p>
+            </template>
           </div>
+          <button
+            type="button"
+            class="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+            :title="editingProfile ? 'Annuler' : 'Modifier'"
+            @click="editingProfile = !editingProfile; if (!editingProfile) { nameDraft = auth.user.name; emailDraft = auth.user.email; profileError = null; profileSuccess = null }"
+          >
+            <svg v-if="editingProfile" viewBox="0 0 24 24" fill="none" class="h-5 w-5"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" class="h-5 w-5"><path d="M15.232 5.232l3.536 3.536M9 11l-3 9 9-3 9-9-3.536-3.536A3 3 0 1 0 9 11z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
+
+        <div v-if="editingProfile" class="mt-3 flex gap-2">
+          <button
+            type="button"
+            :disabled="savingProfile"
+            class="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+            @click="onSaveProfile"
+          >
+            {{ savingProfile ? '…' : 'Sauvegarder' }}
+          </button>
+        </div>
+        <p v-if="profileError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ profileError }}</p>
+        <p v-if="profileSuccess" class="mt-2 text-xs text-green-600 dark:text-green-400">{{ profileSuccess }}</p>
 
         <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
@@ -359,9 +446,21 @@ async function onDeleteAccount() {
         </div>
       </div>
 
-      <p v-if="!auth.user.emailVerifiedAt" class="mt-3 text-sm text-amber-600 dark:text-amber-400">
-        Email non confirmé — vérifie ta boîte mail.
-      </p>
+      <div v-if="!auth.user.emailVerifiedAt" class="mt-3 flex items-center gap-2 text-sm">
+        <p class="text-amber-600 dark:text-amber-400">
+          Email non confirmé — vérifie ta boîte mail.
+        </p>
+        <button
+          v-if="!resendSent"
+          type="button"
+          :disabled="resendingVerification"
+          class="font-medium text-brand-600 underline hover:text-brand-700 disabled:opacity-40 dark:text-brand-400"
+          @click="onResendVerification"
+        >
+          {{ resendingVerification ? '…' : 'Renvoyer' }}
+        </button>
+        <span v-else class="text-green-600 dark:text-green-400">✓ Renvoyé</span>
+      </div>
 
       <!-- Avatar -->
       <div class="mt-4">

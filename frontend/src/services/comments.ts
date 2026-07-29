@@ -6,6 +6,8 @@ export interface Comment {
   content: string
   createdAt: string
   user: { id: string; name: string; avatar: string | null }
+  reactionCounts: Record<string, number>
+  userReactions: Record<string, boolean>
 }
 
 export async function fetchComments(itemId: string) {
@@ -15,6 +17,14 @@ export async function fetchComments(itemId: string) {
 
 export async function createComment(itemId: string, content: string) {
   const { data } = await api.post<ApiSuccess<Comment>>(`/items/${itemId}/comments`, { content })
+  return data.data
+}
+
+export async function toggleReaction(itemId: string, commentId: string, type: string) {
+  const { data } = await api.post<ApiSuccess<{ action: string; type: string }>>(
+    `/items/${itemId}/comments/${commentId}/reactions`,
+    { type },
+  )
   return data.data
 }
 

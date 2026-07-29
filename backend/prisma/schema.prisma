@@ -89,6 +89,15 @@ enum WhatsAppLogStatus {
   SKIPPED
 }
 
+enum ReactionType {
+  LIKE
+  LOVE
+  LAUGH
+  WOW
+  SAD
+  ANGRY
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Modèles
 // ─────────────────────────────────────────────────────────────────────────
@@ -148,6 +157,7 @@ model User {
   reservations    Reservation[]
   votes           Vote[]
   comments        Comment[]
+  commentReactions CommentReaction[]
   subscriptions   Subscription[]
   notifications   Notification[]
   userBadges      UserBadge[]
@@ -271,10 +281,25 @@ model Comment {
   content   String
   createdAt DateTime @default(now())
 
-  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item     Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions CommentReaction[]
 
   @@map("comments")
+}
+
+model CommentReaction {
+  id        String       @id @default(cuid())
+  commentId String
+  userId    String
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, type])
+  @@map("comment_reactions")
 }
 
 model Subscription {

@@ -102,6 +102,12 @@ export const useAuthStore = defineStore('auth', {
       this.user = await authService.updateAvatar(avatar)
     },
 
+    async updateProfile(payload: { name?: string; email?: string }) {
+      const result = await authService.updateProfile(payload)
+      this.user = result
+      return result
+    },
+
     setOnboardingCompleted() {
       if (this.user) {
         this.user.onboardingCompletedAt = new Date().toISOString()

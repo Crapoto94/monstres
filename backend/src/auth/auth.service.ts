@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -205,6 +205,31 @@ export class AuthService {
     });
 
     return this.usersService.toSafeUser(updated);
+  }
+
+  async resendVerificationEmail(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Utilisateur introuvable.');
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException('Email déjà vérifié.');
+    }
+
+    const emailVerificationToken = randomBytes(32).toString('hex');
+    const ttlHours = await this.settings.getNumber('email_verification_token_ttl_hours', 24);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerificationToken,
+        emailVerificationExpiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
+      },
+    });
+
+    try {
+      await this.emailService.sendEmailVerification(user.email, user.name, emailVerificationToken);
+    } catch (error) {
+      this.logger.error(`Échec envoi email de vérification à ${user.email}`, error as Error);
+    }
   }
 
   /** Ne révèle jamais si l'email existe ou non (anti-énumération). */

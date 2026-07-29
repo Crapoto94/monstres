@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.13',
+    date: '30 juillet 2026',
+    changes: [
+      'Profil : modification du pseudo et de l\'email directement depuis la fiche',
+      'Profil : si l\'email change, il repasse en « non vérifié » — un email de confirmation est envoyé',
+      'Profil : bouton « Renvoyer » l\'email de vérification',
+      'Commentaires : réactions aux commentaires (👍 ❤️ 😄 😮 😢 😡) avec toggle',
+    ],
+  },
+  {
     version: '1.0.12',
     date: '30 juillet 2026',
     changes: [

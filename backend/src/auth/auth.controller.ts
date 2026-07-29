@@ -56,6 +56,14 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async resendVerification(@CurrentUser() user: AuthenticatedUser) {
+    await this.authService.resendVerificationEmail(user.id);
+    return { message: 'Email de vérification renvoyé.' };
+  }
+
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
