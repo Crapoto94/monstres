@@ -172,6 +172,7 @@ export class EmailService {
       port,
       secure,
       auth: user && pass ? { user, pass } : undefined,
+      tls: { rejectUnauthorized: false },
     });
 
     try {
