@@ -18,12 +18,13 @@ const db = new Database('/app/data/monstres.db');
 const hash = bcrypt.hashSync('$PASSWORD', 10);
 const existing = db.prepare('SELECT id FROM users WHERE email = ?').get('$EMAIL');
 
+const now = new Date().toISOString();
 if (existing) {
-  db.prepare('UPDATE users SET password = ?, bannedAt = NULL, suspendedAt = NULL, role = ? WHERE email = ?').run(hash, 'SUPER_ADMIN', '$EMAIL');
+  db.prepare('UPDATE users SET password = ?, bannedAt = NULL, suspendedAt = NULL, role = ?, updatedAt = ? WHERE email = ?').run(hash, 'SUPER_ADMIN', now, '$EMAIL');
   console.log('✅ Mot de passe mis a jour pour ' + '$EMAIL');
 } else {
   const id = require('crypto').randomUUID();
-  db.prepare('INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)').run(id, '$EMAIL', '$EMAIL', hash, 'SUPER_ADMIN');
+  db.prepare('INSERT INTO users (id, name, email, password, role, createdAt, updatedAt, emailVerifiedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(id, '$EMAIL', '$EMAIL', hash, 'SUPER_ADMIN', now, now, now);
   console.log('✅ Compte cree : ' + '$EMAIL' + ' (SUPER_ADMIN)');
 }
 
