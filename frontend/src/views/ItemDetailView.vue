@@ -320,6 +320,12 @@ async function handleToggleReaction(comment: Comment, type: string) {
     if (result.action === 'added') {
       comment.reactionCounts[type] = (comment.reactionCounts[type] ?? 0) + 1
       comment.userReactions[type] = true
+    } else if (result.action === 'replaced') {
+      const prev = result.previousType as string
+      comment.reactionCounts[prev] = Math.max(0, (comment.reactionCounts[prev] ?? 1) - 1)
+      comment.userReactions[prev] = false
+      comment.reactionCounts[type] = (comment.reactionCounts[type] ?? 0) + 1
+      comment.userReactions[type] = true
     } else {
       comment.reactionCounts[type] = Math.max(0, (comment.reactionCounts[type] ?? 1) - 1)
       comment.userReactions[type] = false

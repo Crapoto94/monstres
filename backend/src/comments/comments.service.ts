@@ -69,19 +69,31 @@ export class CommentsService {
     const comment = await this.prisma.comment.findUnique({ where: { id: commentId } });
     if (!comment) throw new NotFoundException('Commentaire introuvable.');
 
-    const existing = await this.prisma.commentReaction.findUnique({
-      where: { commentId_userId_type: { commentId, userId: user.id, type: type as any } },
+    // Au plus une réaction par utilisateur par commentaire.
+    // Si l'utilisateur a déjà une réaction sur ce commentaire :
+    //   - même type → suppression (toggle off)
+    //   - type différent → remplacement (supprime l'ancienne, ajoute la nouvelle)
+    const allUserReactions = await this.prisma.commentReaction.findMany({
+      where: { commentId, userId: user.id },
     });
 
-    if (existing) {
-      await this.prisma.commentReaction.delete({ where: { id: existing.id } });
+    const sameType = allUserReactions.find((r) => r.type === type);
+    const otherType = allUserReactions.find((r) => r.type !== type);
+
+    if (sameType) {
+      await this.prisma.commentReaction.delete({ where: { id: sameType.id } });
       return { action: 'removed', type };
+    }
+
+    if (otherType) {
+      await this.prisma.commentReaction.delete({ where: { id: otherType.id } });
     }
 
     await this.prisma.commentReaction.create({
       data: { commentId, userId: user.id, type: type as any },
     });
-    return { action: 'added', type };
+
+    return { action: otherType ? 'replaced' : 'added', type, previousType: otherType?.type ?? null };
   }
 
   async remove(commentId: string, user: AuthenticatedUser) {

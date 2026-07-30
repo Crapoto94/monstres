@@ -21,7 +21,7 @@ export async function createComment(itemId: string, content: string) {
 }
 
 export async function toggleReaction(itemId: string, commentId: string, type: string) {
-  const { data } = await api.post<ApiSuccess<{ action: string; type: string }>>(
+  const { data } = await api.post<ApiSuccess<{ action: string; type: string; previousType?: string | null }>>(
     `/items/${itemId}/comments/${commentId}/reactions`,
     { type },
   )
