@@ -164,7 +164,12 @@ export class NotificationsService {
             <p><a href="${itemUrl}">Voir ce Monstre</a></p>
           `,
         });
-        return { ...rendered, htmlContent: await this.wrapWithMasterTemplate(rendered.htmlContent) };
+        // Si pas de photo, on retire la balise <img> du template (qui serait
+        // rendue avec src="" et produirait une icône cassée dans l'email).
+        const htmlContent = d.itemPhotoUrl
+          ? rendered.htmlContent.replace(/<!--\/?item_photo-->/gi, '')
+          : rendered.htmlContent.replace(/<!--item_photo-->.*?<!--\/item_photo-->/gs, '');
+        return { ...rendered, htmlContent: await this.wrapWithMasterTemplate(htmlContent) };
       }
       case NotificationType.BADGE_UNLOCKED: {
         const d = data as NotificationData['BADGE_UNLOCKED'];
