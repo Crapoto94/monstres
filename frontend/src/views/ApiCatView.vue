@@ -28,6 +28,15 @@ const curlExample = (categoryId: string) => `curl -X POST ${apiBase}/items \\
   -F "longitude=2.3522" \\
   -F "categoryId=${categoryId}" \\
   -F "photos=@photo.jpg"`
+
+const curlImportExample = `curl -X POST ${apiBase}/import/facebook \\
+  -H "x-import-token: <IMPORT_API_TOKEN>" \\
+  -F "postId=FB_POST_ID" \\
+  -F "title=Canapé vintage" \\
+  -F "address=10 rue de Rivoli, Paris" \\
+  -F "categoryName=Canapés" \\
+  -F "categoryIcon=🛋️" \\
+  -F "photos=@photo.jpg"`
 </script>
 
 <template>
@@ -77,6 +86,40 @@ const curlExample = (categoryId: string) => `curl -X POST ${apiBase}/items \\
     >{{ curlExample(categories[0]?.id ?? '<ID_CATEGORIE>') }}</pre>
     <p v-if="categories.length === 0" class="mt-1 text-xs text-gray-400 dark:text-gray-500">
       Aucune catégorie chargée — remplace <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">&lt;ID_CATEGORIE&gt;</code> par l'id d'une catégorie.
+    </p>
+
+    <h2 class="mt-8 text-sm font-semibold text-gray-900 dark:text-gray-100">
+      Ajouter une catégorie via l'import Facebook
+    </h2>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      L'endpoint
+      <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">POST /api/v1/import/facebook</code>
+      (token
+      <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">x-import-token</code>, multipart/form-data)
+      accepte une catégorie par Monstre importé. Deux façons :
+    </p>
+    <ul class="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm text-gray-500 dark:text-gray-400">
+      <li>
+        <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">categoryId</code>
+        : catégorie existante à rattacher (erreur si l'id est inconnu) ;
+      </li>
+      <li>
+        <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">categoryName</code>
+        : si aucune catégorie ne porte ce nom, elle est
+        <strong class="font-medium text-gray-900 dark:text-gray-100">créée automatiquement</strong>
+        (optionnellement avec <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">categoryIcon</code>)
+        puis rattachée — c'est le seul moyen pour la routine d'import d'ajouter une catégorie,
+        car elle n'a pas accès à l'admin. Une catégorie déjà existante est simplement réutilisée.
+      </li>
+    </ul>
+
+    <h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Exemple — catégorie créée au passage</h3>
+    <pre
+      class="mt-2 overflow-x-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100"
+    >{{ curlImportExample }}</pre>
+    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+      <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">categoryId</code> est prioritaire :
+      si les deux champs sont envoyés, seul l'id est utilisé.
     </p>
   </section>
 </template>

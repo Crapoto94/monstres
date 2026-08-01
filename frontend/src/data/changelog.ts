@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.26',
+    date: '1 août 2026',
+    changes: [
+      'Import Facebook : la routine peut désormais rattacher (ou créer) une catégorie à chaque Monstre importé via les champs categoryId / categoryName — si la catégorie n\'existe pas, elle est créée automatiquement',
+      'Page /apicat : documentation + exemple pour poster une catégorie via l\'import Facebook',
+    ],
+  },
+  {
     version: '1.0.25',
     date: '1 août 2026',
     changes: [

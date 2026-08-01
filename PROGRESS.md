@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-08-01** (v1.0.25 — smileys dans les messages, carte réduite en création de zone)
+Dernière mise à jour : **2026-08-01** (v1.0.26 — catégorie créable via l'import Facebook)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -17,6 +17,8 @@ Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
+### Récap v1.0.25 → v1.0.26 (2026-08-01)
+- **v1.0.26** : catégorie via l'import Facebook. `POST /api/v1/import/facebook` accepte désormais `categoryId` (catégorie existante, prioritaire, erreur si id inconnu), `categoryName` (créée automatiquement via l'import si absente — c'est le seul moyen pour la routine, sans accès admin, d'ajouter une catégorie ; réutilisée si elle existe déjà) et `categoryIcon` (icône emoji, seulement à la création). `resolveCategoryId()` dans `import.service.ts` résout/upsert la catégorie (ordre = max+1) et la rattache au Monstre créé. Page `/apicat` : nouvelle section documentant les deux façons de poster une catégorie via l'import + exemple cURL (`x-import-token`). Testé en local : catégorie créée + liée via l'endpoint, puis données de test nettoyées.
 ### Récap v1.0.24 → v1.0.25 (2026-08-01)
 - **v1.0.25** : smileys dans la messagerie — nouveau composant `SmileyPicker.vue` (grille d'emojis courants) + bouton 😊 dans `MessagesView.vue`, insertion à la position du curseur (focus préservé). Carte : en mode « Définir une zone d'alerte », la carte passe de `h-[62vh]` à `h-[35vh]` (transition 300 ms + `map.invalidateSize()` après 320 ms) pour laisser la place aux explications en dessous sur smartphone. Correctif PWA : rechargement forcé au chargement si `__APP_VERSION__` ≠ version du backend (`GET /api/v1/health`, nouveau `frontend/src/services/health.ts`), garde anti-boucle 30 s (`sessionStorage` `lm_forced_reload_at`), relancé sur `pageshow` (bfcache).
 - **Correctif PWA (v1.0.24)** : sur smartphone, un simple rafraîchissement peut continuer à servir l'ancien shell mis en cache par le service worker → ancienne UI (ex. menu « Messages ») malgré plusieurs refreshes. Ajout d'un rechargement forcé dans `main.ts` : à chaque affichage de la page, la version compilée du frontend (`__APP_VERSION__`) est comparée à celle du backend (`GET /api/v1/health`, `frontend/src/services/health.ts`) ; si elles diffèrent, un `window.location.reload()` est déclenché (garde anti-boucle 30 s via `sessionStorage`, clé `lm_forced_reload_at`, effacée dès que les versions correspondent ; relancé aussi sur `pageshow` pour les restaurations bfcache).

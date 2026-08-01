@@ -125,6 +125,8 @@ export class ImportService {
       photos.map((photo) => this.imageService.process(photo.buffer, itemId)),
     );
 
+    const categoryId = await this.resolveCategoryId(dto);
+
     // Publication immédiate (AVAILABLE) ou mise en attente de modération
     // (PENDING_REVIEW), pilotable via `settings` sans redéploiement — défaut :
     // en ligne tout de suite (modération a posteriori, choix utilisateur).
@@ -139,6 +141,7 @@ export class ImportService {
         latitude,
         longitude,
         address,
+        categoryId,
         status: autoPublish ? 'AVAILABLE' : 'PENDING_REVIEW',
         photos: {
           create: processedPhotos.map((photo, index) => ({
@@ -172,6 +175,40 @@ export class ImportService {
       `Monstre importé de Facebook (post ${dto.postId}) → item ${item.id} (${autoPublish ? 'AVAILABLE' : 'PENDING_REVIEW'}).`,
     );
     return { status: 'created', itemId: item.id };
+  }
+
+  /**
+   * Rattache une catégorie au Monstre importé. Soit via un `categoryId`
+   * existant (prioritaire), soit via `categoryName` : si aucune catégorie ne
+   * porte ce nom, elle est créée automatiquement — c'est le moyen qu'a la
+   * routine d'import (qui n'a pas accès à l'admin) d'ajouter une catégorie.
+   */
+  private async resolveCategoryId(dto: CreateFacebookImportDto): Promise<string | null> {
+    if (dto.categoryId) {
+      const category = await this.prisma.category.findUnique({ where: { id: dto.categoryId } });
+      if (!category) {
+        throw new BadRequestException(`Catégorie introuvable (${dto.categoryId}).`);
+      }
+      return category.id;
+    }
+
+    if (dto.categoryName) {
+      const name = dto.categoryName.trim();
+      if (name.length < 2) {
+        throw new BadRequestException('Nom de catégorie invalide.');
+      }
+      const existing = await this.prisma.category.findFirst({ where: { name } });
+      if (existing) return existing.id;
+
+      const { _max } = await this.prisma.category.aggregate({ _max: { order: true } });
+      const created = await this.prisma.category.create({
+        data: { name, icon: dto.categoryIcon || null, order: (_max.order ?? -1) + 1 },
+      });
+      this.logger.log(`Catégorie créée via l'import Facebook : "${name}" (${created.id}).`);
+      return created.id;
+    }
+
+    return null;
   }
 
   /**

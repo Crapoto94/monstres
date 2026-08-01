@@ -37,4 +37,22 @@ export class CreateFacebookImportDto {
   @Type(() => Number)
   @IsNumber()
   longitude?: number;
+
+  /** Catégorie existante à rattacher (prioritaire si `categoryName` est aussi fourni). */
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
+
+  /** Nom de la catégorie : créée automatiquement via l'import si elle n'existe pas encore. */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  categoryName?: string;
+
+  /** Icône (emoji) utilisée uniquement à la création de la catégorie. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  categoryIcon?: string;
 }
