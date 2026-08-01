@@ -458,7 +458,7 @@ function goToItinerary(lat: number, lng: number) {
         </div>
 
         <!-- Description -->
-        <p v-if="item.description" class="text-sm leading-relaxed text-gray-700 dark:text-gray-300">{{ item.description }}</p>
+        <p v-if="item.description" class="break-words text-sm leading-relaxed text-gray-700 dark:text-gray-300"><span v-html="linkify(item.description)" /></p>
 
         <!-- Adresse -->
         <div class="flex items-start gap-2 text-sm">
