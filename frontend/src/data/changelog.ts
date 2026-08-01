@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.17',
+    date: '1 août 2026',
+    changes: [
+      'Admin → Sauvegardes : sauvegarde automatique quotidienne de la base (04:00), avec email de confirmation au super-admin et lien de téléchargement',
+      'Admin → Sauvegardes : création manuelle, téléchargement, suppression, restauration depuis une sauvegarde locale ou un fichier uploadé',
+    ],
+  },
+  {
     version: '1.0.16',
     date: '1 août 2026',
     changes: [

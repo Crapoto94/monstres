@@ -30,6 +30,7 @@ import { ShareModule } from './share/share.module';
 import { ImportModule } from './import/import.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SeoModule } from './seo/seo.module';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { SeoModule } from './seo/seo.module';
     ImportModule,
     AnalyticsModule,
     SeoModule,
+    BackupModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

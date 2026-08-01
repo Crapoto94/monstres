@@ -73,6 +73,11 @@ const tabs = computed(() => [
           label: "Console SQL",
           badge: null as number | null,
         },
+        {
+          to: "/admin/sauvegardes",
+          label: "Sauvegardes",
+          badge: null as number | null,
+        },
       ]
     : []),
 ]);

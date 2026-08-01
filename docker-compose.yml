@@ -31,6 +31,7 @@ services:
     volumes:
       - backend_data:/app/data
       - storage_data:/app/storage
+      - backend_backups:/app/backups
 
   storage:
     image: nginx:alpine
@@ -42,3 +43,4 @@ services:
 volumes:
   backend_data:
   storage_data:
+  backend_backups:

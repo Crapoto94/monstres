@@ -659,3 +659,48 @@ export async function fetchAdminComments(params: {
 export async function deleteComment(id: string) {
   await api.delete(`/admin/comments/${id}`);
 }
+
+export interface BackupFile {
+  name: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export async function fetchBackups() {
+  const { data } = await api.get<ApiSuccess<BackupFile[]>>("/admin/backups");
+  return data.data;
+}
+
+export async function createBackup() {
+  const { data } = await api.post<ApiSuccess<BackupFile>>("/admin/backups");
+  return data.data;
+}
+
+export async function downloadBackup(name: string) {
+  const { data } = await api.get(`/admin/backups/${encodeURIComponent(name)}/download`, {
+    responseType: "blob",
+  });
+  return data;
+}
+
+export async function deleteBackup(name: string) {
+  await api.delete(`/admin/backups/${encodeURIComponent(name)}`);
+}
+
+export async function restoreLocalBackup(name: string) {
+  const { data } = await api.post<ApiSuccess<{ ok: boolean }>>("/admin/backups/restore/local", {
+    name,
+  });
+  return data.data;
+}
+
+export async function restoreUploadBackup(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await api.post<ApiSuccess<{ ok: boolean }>>(
+    "/admin/backups/restore/upload",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return data.data;
+}

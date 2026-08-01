@@ -371,6 +371,40 @@ export class EmailService {
     });
   }
 
+  /** Alerte opérationnelle : sauvegarde quotidienne de la base réalisée (§ sauvegarde). */
+  async sendBackupSuccess(
+    to: string,
+    backup: { fileName: string; sizeBytes: number; downloadUrl: string; adminUrl: string },
+  ): Promise<void> {
+    const sizeMb = (backup.sizeBytes / (1024 * 1024)).toFixed(2);
+    const vars = {
+      backup_name: backup.fileName,
+      backup_size: `${sizeMb} Mo`,
+      backup_url: backup.downloadUrl,
+      admin_url: backup.adminUrl,
+    };
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate(
+      'backup_success',
+      vars,
+      {
+        subject: `Sauvegarde de la base réalisée — Les Monstres`,
+        htmlContent: `
+        <p>La sauvegarde quotidienne de la base de données a été réalisée avec succès :</p>
+        <p><strong>${escapeHtml(backup.fileName)}</strong> (${sizeMb} Mo)</p>
+        <p><a href="${backup.downloadUrl}">Télécharger la sauvegarde →</a></p>
+        <p><a href="${backup.adminUrl}">Ouvrir le menu de sauvegarde dans l'admin →</a></p>
+      `,
+      },
+    );
+    const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
+    await this.send({
+      to,
+      subject,
+      htmlContent,
+      templateKey: 'backup_success',
+    });
+  }
+
   private async renderTemplate(
     key: string,
     vars: Record<string, string>,

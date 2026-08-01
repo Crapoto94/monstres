@@ -31,9 +31,11 @@ import { AdminNewsletterService } from './admin-newsletter.service';
 import { AdminCommentsController } from './admin-comments.controller';
 import { AdminCommentsService } from './admin-comments.service';
 import { AdminTestEmailController } from './admin-test-email.controller';
+import { AdminBackupController } from './admin-backup.controller';
+import { BackupModule } from '../backup/backup.module';
 
 @Module({
-  imports: [UsersModule, CategoriesModule, EmailTemplatesModule],
+  imports: [UsersModule, CategoriesModule, EmailTemplatesModule, BackupModule],
   controllers: [
     AdminUsersController,
     AdminItemsController,
@@ -52,6 +54,7 @@ import { AdminTestEmailController } from './admin-test-email.controller';
     AdminNewsletterController,
     AdminCommentsController,
     AdminTestEmailController,
+    AdminBackupController,
   ],
   providers: [
     AdminUsersService,
