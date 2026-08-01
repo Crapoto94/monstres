@@ -405,6 +405,50 @@ export class EmailService {
     });
   }
 
+  /**
+   * Notification de messagerie interne : prévient le destinataire qu'un
+   * utilisateur lui a écrit, avec un lien direct vers la conversation.
+   * Réservée aux comptes ayant activé `messageEmailNotifications`.
+   */
+  async sendNewMessageNotification(options: {
+    to: string;
+    recipientName: string;
+    senderName: string;
+    preview: string;
+    conversationUrl: string;
+  }): Promise<void> {
+    const trimmedPreview =
+      options.preview.length > 200
+        ? `${options.preview.slice(0, 200)}…`
+        : options.preview;
+    const vars = {
+      user_name: options.recipientName,
+      sender_name: options.senderName,
+      message_preview: trimmedPreview,
+      message_url: options.conversationUrl,
+    };
+    const { subject, htmlContent: rawHtml } = await this.renderTemplate(
+      'new_message',
+      vars,
+      {
+        subject: `Nouveau message de ${options.senderName} — Les Monstres`,
+        htmlContent: `
+        <p>Bonjour ${escapeHtml(options.recipientName)},</p>
+        <p><strong>${escapeHtml(options.senderName)}</strong> t'a écrit un message sur Les Monstres :</p>
+        <blockquote style="border-left:3px solid #7c3aed;padding:4px 12px;color:#6b7280;">${escapeHtml(trimmedPreview)}</blockquote>
+        <p><a href="${options.conversationUrl}">Ouvrir la messagerie →</a></p>
+      `,
+      },
+    );
+    const htmlContent = await this.wrapWithMasterTemplate(rawHtml);
+    await this.send({
+      to: options.to,
+      subject,
+      htmlContent,
+      templateKey: 'new_message',
+    });
+  }
+
   private async renderTemplate(
     key: string,
     vars: Record<string, string>,

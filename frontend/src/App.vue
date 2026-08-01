@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BottomNav from '@/components/layout/BottomNav.vue'
 import { fetchPublicSettings } from '@/services/settings'
+import { useAuthStore } from '@/stores/auth'
+import { useMessagesStore } from '@/stores/messages'
 
 const route = useRoute()
+const auth = useAuthStore()
+const messagesStore = useMessagesStore()
 // L'appli est mobile-first (largeur plafonnée à max-w-lg partout), mais
 // l'admin gagne à utiliser l'espace disponible sur grand écran (tableaux,
 // listes de cartes) — plafond levé uniquement à partir de lg: (desktop),
@@ -22,6 +26,17 @@ onMounted(async () => {
     // silencieux
   }
 })
+
+// Rafraîchit le compteur de messages non lus à chaque changement d'auth
+// (connexion/déconnexion) — le badge de la BottomNav et MessagesView le lisent.
+watch(
+  () => auth.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) messagesStore.refreshUnreadCount()
+    else messagesStore.unreadCount = 0
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

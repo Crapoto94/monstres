@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.21',
+    date: '1 août 2026',
+    changes: [
+      'Messages : messagerie interne 1:1 — écris à un déposant depuis sa fiche ou à un membre depuis la communauté, et suis tes conversations dans l\'onglet Messages (badge de non-lus)',
+      'Messages : option « Nouveaux messages » dans le profil — reçois un email quand quelqu\'un t\'écrit (désactivable à tout moment)',
+    ],
+  },
+  {
     version: '1.0.20',
     date: '1 août 2026',
     changes: [

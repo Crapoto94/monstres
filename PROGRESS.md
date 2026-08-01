@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-07-27** (v1.0.2 — ressourceries en popup + GPS intent + cache position)
+Dernière mise à jour : **2026-08-01** (v1.0.21 — messagerie interne 1:1 + email opt-in)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -16,6 +16,9 @@ paliers, ajustement automatique de trustScore, badges, tests automatisés).
 Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
+
+### Récap v1.0.20 → v1.0.21 (2026-08-01)
+- **v1.0.21** : messagerie interne 1:1 (Phase 11). Modèles `Conversation` (couple ordonné A < B, `@@unique`) et `Message` (senderId, readAt), champ `User.messageEmailNotifications` (opt-in email par utilisateur, indépendant des alertes système). API `/api/v1/messages/*` (conversations, messages, marquage lu, compteur non-lus) protégée par JWT. Email de notification `new_message` (template seedé, lien vers `/messages?conversation=…`). Frontend : onglet « Messages » dans la BottomNav (badge non-lus via `stores/messages.ts`), vue `MessagesView.vue` (liste + fil de discussion), boutons « Écrire » depuis la fiche Monstre (déposant) et la communauté (membres), toggle « Nouveaux messages » dans le profil.
 
 ### Récap v1.0.0 → v1.0.2 (2026-07-27)
 - **v1.0.0** : version officielle. Newsletter WYSIWYG (QuillEditor), correctif formatage gras/retours à la ligne, sidebar admin fond noir, historique des envois newsletter (volet de droite).

@@ -18,6 +18,7 @@ export interface SafeUser {
   newsletterOptin: boolean;
   phoneNumber: string | null;
   whatsappNotifications: boolean;
+  messageEmailNotifications: boolean;
   createdAt: Date;
   onboardingCompletedAt: Date | null;
 }
@@ -71,6 +72,7 @@ export class UsersService {
       newsletterOptin: user.newsletterOptin,
       phoneNumber: user.phoneNumber,
       whatsappNotifications: user.whatsappNotifications,
+      messageEmailNotifications: user.messageEmailNotifications,
       createdAt: user.createdAt,
       onboardingCompletedAt: user.onboardingCompletedAt,
     };
@@ -91,7 +93,12 @@ export class UsersService {
    */
   async updatePreferences(
     id: string,
-    updates: { emailNotifications?: boolean; whatsappNotifications?: boolean; phoneNumber?: string | null },
+    updates: {
+      emailNotifications?: boolean;
+      whatsappNotifications?: boolean;
+      phoneNumber?: string | null;
+      messageEmailNotifications?: boolean;
+    },
   ): Promise<SafeUser> {
     const current = await this.prisma.user.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('Utilisateur introuvable.');
@@ -106,6 +113,8 @@ export class UsersService {
         emailNotifications: updates.emailNotifications ?? current.emailNotifications,
         phoneNumber,
         whatsappNotifications,
+        messageEmailNotifications:
+          updates.messageEmailNotifications ?? current.messageEmailNotifications,
       },
     });
     return this.toSafeUser(user);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchItem, collectItem, toggleVote, reportItem, type Item, type ReportType } from '@/services/items'
 import { toggleInterest } from '@/services/reservations'
 import { fetchComments, createComment, deleteComment, toggleReaction, type Comment } from '@/services/comments'
@@ -11,6 +11,7 @@ import { resizeImageFile } from '@/utils/image'
 import { useSeo } from '@/composables/useSeo'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const item = ref<Item | null>(null)
 const error = ref<string | null>(null)
@@ -451,10 +452,18 @@ function goToItinerary(lat: number, lng: number) {
             <img v-if="isImageAvatar(item.user.avatar)" :src="item.user.avatar!" class="h-9 w-9 rounded-full object-cover" alt="" />
             <span v-else>{{ item.user.avatar ?? item.user.name.charAt(0).toUpperCase() }}</span>
           </div>
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.user.name }}</p>
             <p class="text-xs text-gray-400 dark:text-gray-500">a publié ce Monstre</p>
           </div>
+          <button
+            v-if="auth.isAuthenticated && !isMyItem"
+            type="button"
+            class="ml-2 flex-shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
+            @click="router.push({ path: '/messages', query: { recipient: item.user.id, recipientName: item.user.name } })"
+          >
+            💬 Écrire
+          </button>
         </div>
 
         <!-- Description -->

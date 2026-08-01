@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { fetchCommunity, type CommunityMember } from '@/services/community'
+import { useAuthStore } from '@/stores/auth'
 import { useSeo } from '@/composables/useSeo'
 
 useSeo({
@@ -8,6 +10,9 @@ useSeo({
   description: 'Découvre les membres qui repèrent, partagent et récupèrent les Monstres près de chez toi.',
   path: '/communaute',
 })
+
+const router = useRouter()
+const auth = useAuthStore()
 
 const members = ref<CommunityMember[]>([])
 const loading = ref(true)
@@ -85,6 +90,14 @@ function isImageAvatar(avatar: string | null): boolean {
           <div class="flex-shrink-0 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
             {{ member.score }} pts
           </div>
+          <button
+            v-if="auth.isAuthenticated && auth.user?.id !== member.id"
+            type="button"
+            class="flex-shrink-0 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-700"
+            @click="router.push({ path: '/messages', query: { recipient: member.id, recipientName: member.name } })"
+          >
+            💬 Écrire
+          </button>
         </div>
 
         <div class="mt-3 flex flex-wrap gap-1.5 text-[11px]">

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useMessagesStore } from '@/stores/messages'
 
 const route = useRoute()
+const messagesStore = useMessagesStore()
 
 const links = [
   { to: '/', label: 'Accueil', icon: 'home' },
   { to: '/carte', label: 'Carte', icon: 'map' },
+  { to: '/messages', label: 'Messages', icon: 'chat' },
   { to: '/alertes', label: 'Alertes', icon: 'bell' },
   { to: '/profil', label: 'Profil', icon: 'user' },
 ]
@@ -63,13 +66,21 @@ const isAdmin = computed(() => route.path.startsWith('/admin'))
 
     <RouterLink
       :to="links[2].to"
-      class="flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-[11px] text-gray-400 transition-colors dark:text-gray-500"
+      class="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-[11px] text-gray-400 transition-colors dark:text-gray-500"
       :class="isActive(links[2].to) ? 'text-brand-600 font-semibold dark:text-brand-300' : ''"
     >
-      <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6">
-        <path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        <path d="M10 19.5a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      </svg>
+      <span class="relative">
+        <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6">
+          <path d="M4 5h16v11H9l-5 4V5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+          <path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+        <span
+          v-if="messagesStore.unreadCount > 0"
+          class="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white"
+        >
+          {{ messagesStore.unreadCount > 99 ? '99+' : messagesStore.unreadCount }}
+        </span>
+      </span>
       <span>{{ links[2].label }}</span>
     </RouterLink>
 
@@ -79,10 +90,22 @@ const isAdmin = computed(() => route.path.startsWith('/admin'))
       :class="isActive(links[3].to) ? 'text-brand-600 font-semibold dark:text-brand-300' : ''"
     >
       <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6">
+        <path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+        <path d="M10 19.5a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      </svg>
+      <span>{{ links[3].label }}</span>
+    </RouterLink>
+
+    <RouterLink
+      :to="links[4].to"
+      class="flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-[11px] text-gray-400 transition-colors dark:text-gray-500"
+      :class="isActive(links[4].to) ? 'text-brand-600 font-semibold dark:text-brand-300' : ''"
+    >
+      <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6">
         <circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8" />
         <path d="M4.5 20c1-3.6 4-5.5 7.5-5.5s6.5 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </svg>
-      <span>{{ links[3].label }}</span>
+      <span>{{ links[4].label }}</span>
     </RouterLink>
   </nav>
 </template>

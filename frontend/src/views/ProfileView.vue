@@ -349,6 +349,12 @@ async function onDeleteAccount() {
       <!-- Actions rapides -->
       <div class="mt-4 flex flex-wrap gap-2">
         <RouterLink
+          to="/messages"
+          class="inline-flex items-center gap-2 rounded-xl bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-200 dark:bg-sky-900 dark:text-sky-300 dark:hover:bg-sky-800"
+        >
+          💬 Messages
+        </RouterLink>
+        <RouterLink
           to="/communaute"
           class="inline-flex items-center gap-2 rounded-xl bg-brand-100 px-4 py-2.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-200 dark:bg-brand-900 dark:text-brand-300 dark:hover:bg-brand-800"
         >
@@ -516,6 +522,25 @@ async function onDeleteAccount() {
           <span
             class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
             :class="auth.user.emailNotifications ? 'translate-x-6' : 'translate-x-1'"
+          />
+        </button>
+      </div>
+
+      <!-- Notifications email : messages reçus dans la messagerie interne -->
+      <div class="mt-3 flex items-center justify-between rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+        <div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Nouveaux messages</p>
+          <p class="text-xs text-gray-400">Recevoir un email quand quelqu'un t'écrit</p>
+        </div>
+        <button
+          type="button"
+          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+          :class="auth.user.messageEmailNotifications ? 'bg-brand-600' : 'bg-gray-300 dark:bg-gray-700'"
+          @click="auth.setMessageEmailNotifications(!auth.user.messageEmailNotifications)"
+        >
+          <span
+            class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+            :class="auth.user.messageEmailNotifications ? 'translate-x-6' : 'translate-x-1'"
           />
         </button>
       </div>

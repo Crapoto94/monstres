@@ -31,6 +31,7 @@ import { ImportModule } from './import/import.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SeoModule } from './seo/seo.module';
 import { BackupModule } from './backup/backup.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { BackupModule } from './backup/backup.module';
     AnalyticsModule,
     SeoModule,
     BackupModule,
+    MessagesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

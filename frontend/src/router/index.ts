@@ -45,6 +45,12 @@ export const router = createRouter({
       component: () => import("@/views/CommunityView.vue"),
     },
     {
+      path: "/messages",
+      name: "messages",
+      component: () => import("@/views/MessagesView.vue"),
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/mentions-legales",
       name: "legal-notices",
       component: () => import("@/views/LegalView.vue"),

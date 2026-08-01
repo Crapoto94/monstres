@@ -31,6 +31,7 @@ const VARIABLES_BY_TEMPLATE: Record<string, string[]> = {
   item_collected: ['{{item_title}}', '{{collector_name}}', '{{item_url}}'],
   badge_unlocked: ['{{badge_name}}'],
   new_user_registered: ['{{user_name}}', '{{new_user_email}}', '{{admin_url}}'],
+  new_message: ['{{user_name}}', '{{sender_name}}', '{{message_preview}}', '{{message_url}}'],
 }
 
 const currentVars = computed(() => {

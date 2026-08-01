@@ -206,6 +206,22 @@ const DEFAULT_EMAIL_TEMPLATES = [
   <p><a href="{{admin_url}}" style="color:#7c3aed;font-weight:bold;">Voir dans l'admin →</a></p>
 </div>`,
   },
+  {
+    key: 'new_message',
+    name: 'Nouveau message (messagerie interne)',
+    subject: 'Nouveau message de {{sender_name}} — Les Monstres',
+    isSystem: true,
+    htmlContent: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+  <h2 style="color:#7c3aed;">Tu as un nouveau message !</h2>
+  <p>Bonjour <strong>{{user_name}}</strong>,</p>
+  <p><strong>{{sender_name}}</strong> t'a écrit un message sur Les Monstres :</p>
+  <blockquote style="border-left:3px solid #7c3aed;margin:16px 0;padding:4px 12px;color:#6b7280;">"{{message_preview}}"</blockquote>
+  <p style="text-align:center;margin:30px 0;">
+    <a href="{{message_url}}" style="background:#7c3aed;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;">Ouvrir la messagerie →</a>
+  </p>
+  <p style="color:#888;font-size:12px;">Tu peux désactiver ces emails depuis ton profil (Notifications de messagerie).</p>
+</div>`,
+  },
 ];
 
 async function main() {

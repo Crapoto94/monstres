@@ -7,6 +7,10 @@ export class UpdatePreferencesDto {
 
   @IsOptional()
   @IsBoolean()
+  messageEmailNotifications?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   whatsappNotifications?: boolean;
 
   @IsOptional()

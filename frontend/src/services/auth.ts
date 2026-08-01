@@ -13,6 +13,7 @@ export interface AuthUser {
   newsletterOptin: boolean
   phoneNumber: string | null
   whatsappNotifications: boolean
+  messageEmailNotifications: boolean
   createdAt: string
   onboardingCompletedAt: string | null
 }
@@ -55,6 +56,7 @@ export async function updatePreferences(updates: {
   emailNotifications?: boolean
   whatsappNotifications?: boolean
   phoneNumber?: string | null
+  messageEmailNotifications?: boolean
 }) {
   const { data } = await api.patch<ApiSuccess<AuthUser>>('/users/me/preferences', updates)
   return data.data

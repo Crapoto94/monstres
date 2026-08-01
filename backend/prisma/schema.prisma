@@ -121,6 +121,11 @@ model User {
   // n'est renseigné) via l'API WhatsApp Cloud de Meta.
   phoneNumber           String?
   whatsappNotifications Boolean @default(false)
+  // Messagerie interne : recevoir (ou non) par email un nouveau message,
+  // avec un lien vers la messagerie. Indépendant de `emailNotifications`
+  // (qui concerne les alertes système) — un utilisateur peut vouloir les
+  // alertes mais pas les emails de messagerie, ou l'inverse.
+  messageEmailNotifications Boolean @default(true)
   // Modération de compte (§14, Phase 9) : suspension temporaire vs bannissement
   // définitif, appliqués par un admin. Un login est refusé si l'un des deux est renseigné.
   suspendedAt     DateTime?
@@ -166,7 +171,54 @@ model User {
   auditLogs       AuditLog[]
   pushSubscriptions PushSubscription[]
 
+  // Messagerie interne : l'utilisateur peut être participant A ou B d'une
+  // conversation (A < B garantit l'unicité du couple via @@unique).
+  conversationsAsA  Conversation[]  @relation("ConversationParticipantA")
+  conversationsAsB  Conversation[]  @relation("ConversationParticipantB")
+  messagesSent      Message[]       @relation("MessageSender")
+
   @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Messagerie interne (Phase 11) : conversations 1:1 entre utilisateurs.
+// Une conversation relie exactement deux utilisateurs (couple ordonné
+// A < B, unique). Un message appartient à une conversation.
+// ─────────────────────────────────────────────────────────────────────────
+model Conversation {
+  id             String   @id @default(cuid())
+  participantAId String
+  participantBId String
+  lastMessageAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // participantAId < participantBId (ordre lexicographique) pour garantir
+  // l'unicité du couple quelle que soit la personne qui initie.
+  participantA User      @relation("ConversationParticipantA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB User      @relation("ConversationParticipantB", fields: [participantBId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@unique([participantAId, participantBId])
+  @@index([participantAId])
+  @@index([participantBId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
 }
 
 model SocialAccount {

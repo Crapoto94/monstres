@@ -94,6 +94,10 @@ export const useAuthStore = defineStore('auth', {
       this.user = await authService.updatePreferences({ whatsappNotifications: enabled })
     },
 
+    async setMessageEmailNotifications(enabled: boolean) {
+      this.user = await authService.updatePreferences({ messageEmailNotifications: enabled })
+    },
+
     async setPhoneNumber(phoneNumber: string | null) {
       this.user = await authService.updatePreferences({ phoneNumber })
     },
