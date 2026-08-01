@@ -6,7 +6,10 @@ import {
   deleteItem,
   deleteAllItems,
   fetchAdminCategories,
+  fetchAdminItem,
+  updateAdminItem,
   type AdminItemSummary,
+  type AdminItemDetail,
   type AdminCategory,
 } from '@/services/admin'
 import { useAuthStore } from '@/stores/auth'
@@ -24,6 +27,17 @@ const page = ref(1)
 const totalPages = ref(1)
 const busyId = ref<string | null>(null)
 const actionError = ref<string | null>(null)
+
+// Édition d'un Monstre (titre, description, catégorie, position, adresse).
+const editingItem = ref<AdminItemDetail | null>(null)
+const editTitle = ref('')
+const editDescription = ref('')
+const editCategoryId = ref('')
+const editLatitude = ref<number>(0)
+const editLongitude = ref<number>(0)
+const editAddress = ref('')
+const savingEdit = ref(false)
+const editError = ref<string | null>(null)
 
 async function load() {
   loading.value = true
@@ -97,6 +111,44 @@ async function onClearAll() {
     actionError.value = e.response?.data?.error?.message ?? 'Action impossible.'
   } finally {
     clearingDb.value = false
+  }
+}
+
+async function onEdit(item: AdminItemSummary) {
+  editError.value = null
+  try {
+    const detail = await fetchAdminItem(item.id)
+    editingItem.value = detail
+    editTitle.value = detail.title
+    editDescription.value = detail.description ?? ''
+    editCategoryId.value = detail.categoryId ?? ''
+    editLatitude.value = detail.latitude
+    editLongitude.value = detail.longitude
+    editAddress.value = detail.address ?? ''
+  } catch (e: any) {
+    actionError.value = e.response?.data?.error?.message ?? 'Impossible de charger le Monstre.'
+  }
+}
+
+async function onSaveEdit() {
+  if (!editingItem.value) return
+  savingEdit.value = true
+  editError.value = null
+  try {
+    await updateAdminItem(editingItem.value.id, {
+      title: editTitle.value.trim(),
+      description: editDescription.value.trim() || null,
+      categoryId: editCategoryId.value || null,
+      latitude: editLatitude.value,
+      longitude: editLongitude.value,
+      address: editAddress.value.trim() || null,
+    })
+    editingItem.value = null
+    await load()
+  } catch (e: any) {
+    editError.value = e.response?.data?.error?.message ?? 'Enregistrement impossible.'
+  } finally {
+    savingEdit.value = false
   }
 }
 </script>
@@ -186,6 +238,14 @@ async function onClearAll() {
             <button
               type="button"
               :disabled="busyId === item.id"
+              class="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-600 disabled:opacity-40 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              @click="onEdit(item)"
+            >
+              Éditer
+            </button>
+            <button
+              type="button"
+              :disabled="busyId === item.id"
               class="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-600 disabled:opacity-40 dark:border-red-800 dark:text-red-400"
               @click="onDelete(item)"
             >
@@ -215,5 +275,106 @@ async function onClearAll() {
         Suivant
       </button>
     </div>
+
+    <!-- Modale d'édition d'un Monstre -->
+    <Teleport to="body">
+      <div
+        v-if="editingItem"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 p-4"
+      >
+        <div class="flex max-h-[90vh] w-full max-w-md flex-col rounded-xl bg-white p-4 shadow-xl dark:bg-gray-900">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Éditer le Monstre</h2>
+            <button
+              type="button"
+              class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+              @click="editingItem = null"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto text-sm">
+            <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+              Titre
+              <input
+                v-model="editTitle"
+                type="text"
+                maxlength="120"
+                class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+              Description
+              <textarea
+                v-model="editDescription"
+                rows="3"
+                maxlength="2000"
+                class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+              Catégorie
+              <select
+                v-model="editCategoryId"
+                class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                <option value="">Sans catégorie</option>
+                <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+              </select>
+            </label>
+            <div class="flex gap-2">
+              <label class="flex flex-1 flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                Latitude
+                <input
+                  v-model.number="editLatitude"
+                  type="number"
+                  step="any"
+                  class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+              </label>
+              <label class="flex flex-1 flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+                Longitude
+                <input
+                  v-model.number="editLongitude"
+                  type="number"
+                  step="any"
+                  class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                />
+              </label>
+            </div>
+            <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+              Adresse (affichage)
+              <input
+                v-model="editAddress"
+                type="text"
+                maxlength="500"
+                class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+
+            <p v-if="editError" class="text-xs text-red-600 dark:text-red-400">{{ editError }}</p>
+          </div>
+
+          <div class="mt-4 flex gap-2">
+            <button
+              type="button"
+              class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              @click="editingItem = null"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              :disabled="savingEdit"
+              class="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              @click="onSaveEdit"
+            >
+              {{ savingEdit ? '…' : 'Enregistrer' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

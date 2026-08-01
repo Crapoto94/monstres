@@ -208,20 +208,29 @@ async function handleDeleteSubscription(id: string) {
 <template>
   <div v-if="auth.isAuthenticated">
     <!-- Zones surveillées (§6.10) -->
-    <div id="zones-alertes" class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Zones surveillées ({{ subscriptions.length }}/{{ MAX_SUBSCRIPTIONS }})
-        </h2>
-        <button
-          v-if="canAddSubscription"
-          type="button"
-          class="text-sm text-brand-600 dark:text-brand-400"
-          @click="showSubForm = !showSubForm"
-        >
-          {{ showSubForm ? 'Annuler' : '+ Ajouter' }}
-        </button>
+    <div id="zones-alertes" class="mt-6 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h2 class="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            🔔 Zones d'Alertes
+          </h2>
+          <p class="mt-0.5 text-xs text-gray-400">
+            Sois prévenu quand un Monstre est signalé près d'un endroit choisi.
+          </p>
+        </div>
+        <span class="flex-shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+          {{ subscriptions.length }}/{{ MAX_SUBSCRIPTIONS }}
+        </span>
       </div>
+
+      <button
+        v-if="canAddSubscription"
+        type="button"
+        class="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+        @click="showSubForm = !showSubForm"
+      >
+        {{ showSubForm ? '✖️ Annuler' : '＋ Ajouter une zone d\'alerte' }}
+      </button>
 
       <p v-if="subsLoading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
@@ -229,19 +238,25 @@ async function handleDeleteSubscription(id: string) {
         <li
           v-for="subscription in subscriptions"
           :key="subscription.id"
-          class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
+          class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
         >
-          <div>
+          <div class="min-w-0">
             <p class="font-medium text-gray-900 dark:text-gray-100">{{ subscription.name }}</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500">Rayon : {{ subscription.radius / 1000 }} km</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">
+              Rayon : {{ subscription.radius / 1000 }} km · {{ subscription.latitude.toFixed(4) }},
+              {{ subscription.longitude.toFixed(4) }}
+            </p>
           </div>
           <button
             type="button"
-            class="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+            class="flex-shrink-0 text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400"
             @click="handleDeleteSubscription(subscription.id)"
           >
             Supprimer
           </button>
+        </li>
+        <li v-if="subscriptions.length === 0 && !subsLoading" class="text-sm text-gray-400 dark:text-gray-500">
+          Aucune zone pour l'instant — ajoute-en une pour suivre un quartier.
         </li>
       </ul>
 

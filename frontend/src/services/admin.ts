@@ -71,6 +71,12 @@ export interface AdminItemSummary {
   photos: { thumbnailPath: string | null; path: string }[];
 }
 
+export interface AdminItemDetail extends AdminItemSummary {
+  description: string | null;
+  address: string | null;
+  categoryId: string | null;
+}
+
 export interface AdminCategory {
   id: string;
   name: string;
@@ -246,6 +252,26 @@ export async function updateItemStatus(id: string, status: string) {
   const { data } = await api.patch<ApiSuccess<AdminItemSummary>>(
     `/admin/items/${id}/status`,
     { status },
+  );
+  return data.data;
+}
+
+export async function fetchAdminItem(id: string) {
+  const { data } = await api.get<ApiSuccess<AdminItemDetail>>(
+    `/admin/items/${id}`,
+  );
+  return data.data;
+}
+
+export async function updateAdminItem(
+  id: string,
+  payload: Partial<
+    Pick<AdminItemDetail, "title" | "description" | "categoryId" | "latitude" | "longitude" | "address">
+  >,
+) {
+  const { data } = await api.patch<ApiSuccess<AdminItemSummary>>(
+    `/admin/items/${id}`,
+    payload,
   );
   return data.data;
 }

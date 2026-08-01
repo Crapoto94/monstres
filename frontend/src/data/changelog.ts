@@ -6,6 +6,16 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.24',
+    date: '1 août 2026',
+    changes: [
+      'Carte : le bouton « Définir une zone d\'alerte » permet de placer la zone directement sur la carte — clique pour fixer le centre, règle le rayon, c\'est enregistré (compte requis)',
+      'Profil : les « Zones d\'Alertes » sont plus visibles (carte dédiée, coordonnées affichées) et le raccourci « Messages » en haut a été retiré — l\'onglet Messages de la barre du bas suffit',
+      'Admin → Monstres : nouvelle édition d\'un Monstre (titre, description, catégorie, position GPS, adresse)',
+      'Page technique /apicat : l\'exemple cURL s\'affiche même sans catégories chargées + bouton « Réessayer »',
+    ],
+  },
+  {
     version: '1.0.23',
     date: '1 août 2026',
     changes: [

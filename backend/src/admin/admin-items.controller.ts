@@ -1,10 +1,20 @@
-import { Controller, Delete, Get, Param, Patch, Query, UseGuards, Body } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+  Body,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminItemsService } from './admin-items.service';
 import { AdminListItemsQueryDto } from './dto/admin-list-items-query.dto';
 import { UpdateItemStatusDto } from './dto/update-item-status.dto';
+import { UpdateAdminItemDto } from './dto/update-admin-item.dto';
 
 /** §14 : recherche multi-critères, changement de statut, suppression définitive. */
 @Controller('admin/items')
@@ -26,6 +36,11 @@ export class AdminItemsController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateItemStatusDto) {
     return this.adminItemsService.updateStatus(id, dto.status);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateAdminItemDto) {
+    return this.adminItemsService.update(id, dto);
   }
 
   @Delete(':id')

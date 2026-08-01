@@ -350,12 +350,6 @@ async function onDeleteAccount() {
       <!-- Actions rapides -->
       <div class="mt-4 flex flex-wrap gap-2">
         <RouterLink
-          to="/messages"
-          class="inline-flex items-center gap-2 rounded-xl bg-sky-100 px-4 py-2.5 text-sm font-semibold text-sky-700 transition-colors hover:bg-sky-200 dark:bg-sky-900 dark:text-sky-300 dark:hover:bg-sky-800"
-        >
-          💬 Messages
-        </RouterLink>
-        <RouterLink
           to="/communaute"
           class="inline-flex items-center gap-2 rounded-xl bg-brand-100 px-4 py-2.5 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-200 dark:bg-brand-900 dark:text-brand-300 dark:hover:bg-brand-800"
         >

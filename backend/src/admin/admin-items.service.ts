@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
 import { AdminListItemsQueryDto } from './dto/admin-list-items-query.dto';
+import { UpdateAdminItemDto } from './dto/update-admin-item.dto';
 import { ItemStatus } from '../generated/prisma/enums';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -21,11 +22,16 @@ export class AdminItemsService {
   ) {}
 
   private photoUrl(path: string): string {
-    const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
+    const imgBaseUrl = this.config.get<string>(
+      'IMG_BASE_URL',
+      'http://localhost:3000/uploads',
+    );
     return `${imgBaseUrl}/${path}`;
   }
 
-  private serializePhotos(photos: { path: string; thumbnailPath: string | null }[]) {
+  private serializePhotos(
+    photos: { path: string; thumbnailPath: string | null }[],
+  ) {
     return photos.map((p) => ({
       ...p,
       path: this.photoUrl(p.path),
@@ -63,7 +69,13 @@ export class AdminItemsService {
       photos: this.serializePhotos(item.photos),
     }));
 
-    return { items: serialized, page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) };
+    return {
+      items: serialized,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   async findOne(id: string) {
@@ -73,7 +85,10 @@ export class AdminItemsService {
         user: { select: { id: true, name: true, email: true } },
         category: true,
         photos: { orderBy: { order: 'asc' } },
-        reservations: { orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, name: true } } } },
+        reservations: {
+          orderBy: { createdAt: 'desc' },
+          include: { user: { select: { id: true, name: true } } },
+        },
         reports: true,
       },
     });
@@ -84,6 +99,21 @@ export class AdminItemsService {
   async updateStatus(id: string, status: ItemStatus) {
     await this.findOrThrow(id);
     return this.prisma.item.update({ where: { id }, data: { status } });
+  }
+
+  /** §14 : édition des champs du Monstre (titre, description, catégorie,
+   *  position, adresse). `categoryId` non fourni → inchangé ; fourni à
+   *  `null` → Monstre sans catégorie. */
+  async update(id: string, dto: UpdateAdminItemDto) {
+    await this.findOrThrow(id);
+    const data: Record<string, unknown> = {};
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.categoryId !== undefined) data.categoryId = dto.categoryId || null;
+    if (dto.latitude !== undefined) data.latitude = dto.latitude;
+    if (dto.longitude !== undefined) data.longitude = dto.longitude;
+    if (dto.address !== undefined) data.address = dto.address;
+    return this.prisma.item.update({ where: { id }, data });
   }
 
   /** Suppression définitive : ligne(s) en base (cascade) + photos sur disque. */
@@ -98,7 +128,9 @@ export class AdminItemsService {
   async removeAll() {
     const items = await this.prisma.item.findMany({ select: { id: true } });
     await this.prisma.item.deleteMany();
-    await Promise.all(items.map((item) => this.imageService.deleteItemPhotos(item.id)));
+    await Promise.all(
+      items.map((item) => this.imageService.deleteItemPhotos(item.id)),
+    );
     return { deleted: items.length };
   }
 

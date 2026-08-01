@@ -7,15 +7,19 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
+  error.value = null
   try {
     categories.value = await fetchCategories()
-  } catch {
-    error.value = 'Impossible de charger les catégories.'
+  } catch (e: any) {
+    error.value = e.response?.data?.error?.message ?? 'Impossible de charger les catégories.'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
 
 const curlExample = (categoryId: string) => `curl -X POST ${apiBase}/items \\
   -b "access_token=<TON_JWT>" \\
@@ -36,7 +40,12 @@ const curlExample = (categoryId: string) => `curl -X POST ${apiBase}/items \\
 
     <h2 class="mt-6 text-sm font-semibold text-gray-900 dark:text-gray-100">Catégories</h2>
     <p v-if="loading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
-    <p v-else-if="error" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+    <div v-else-if="error" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+      <p>{{ error }}</p>
+      <button type="button" class="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-400" @click="load">
+        Réessayer
+      </button>
+    </div>
     <ul v-else class="mt-2 flex flex-col gap-2">
       <li
         v-for="category in categories"
@@ -64,8 +73,10 @@ const curlExample = (categoryId: string) => `curl -X POST ${apiBase}/items \\
 
     <h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Exemple</h3>
     <pre
-      v-if="categories.length > 0"
       class="mt-2 overflow-x-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100"
-    >{{ curlExample(categories[0].id) }}</pre>
+    >{{ curlExample(categories[0]?.id ?? '<ID_CATEGORIE>') }}</pre>
+    <p v-if="categories.length === 0" class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+      Aucune catégorie chargée — remplace <code class="rounded bg-gray-100 px-1 dark:bg-gray-800">&lt;ID_CATEGORIE&gt;</code> par l'id d'une catégorie.
+    </p>
   </section>
 </template>
