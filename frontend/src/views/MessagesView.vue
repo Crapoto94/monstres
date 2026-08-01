@@ -13,6 +13,7 @@ import {
   type Message,
 } from '@/services/messages'
 import { formatRelativeTime } from '@/utils/time'
+import SmileyPicker from '@/components/SmileyPicker.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +28,8 @@ const messagesLoading = ref(false)
 const draft = ref('')
 const sending = ref(false)
 const error = ref<string | null>(null)
+const draftInput = ref<HTMLTextAreaElement | null>(null)
+const showSmileys = ref(false)
 
 const activeConversation = computed(() => conversations.value.find((c) => c.id === activeConversationId.value) ?? null)
 
@@ -119,6 +122,17 @@ async function onSend() {
   } finally {
     sending.value = false
   }
+}
+
+function insertEmoji(emoji: string) {
+  const start = draftInput.value?.selectionStart ?? draft.value.length
+  const end = draftInput.value?.selectionEnd ?? draft.value.length
+  draft.value = draft.value.slice(0, start) + emoji + draft.value.slice(end)
+  showSmileys.value = false
+  nextTick(() => {
+    draftInput.value?.focus()
+    draftInput.value?.setSelectionRange(start + emoji.length, start + emoji.length)
+  })
 }
 
 function avatarFor(user: { avatar: string | null; name: string } | null): string {
@@ -248,23 +262,38 @@ watch(
         </div>
       </div>
 
-      <div class="mt-3 flex items-end gap-2">
-        <textarea
-          v-model="draft"
-          rows="1"
-          maxlength="2000"
-          placeholder="Écris ton message…"
-          class="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-brand-400 dark:focus:ring-brand-400"
-          @keydown.enter.exact.prevent="onSend"
-        />
-        <button
-          type="button"
-          :disabled="!draft.trim() || sending"
-          class="flex-shrink-0 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-40"
-          @click="onSend"
-        >
-          {{ sending ? '…' : 'Envoyer' }}
-        </button>
+      <div class="mt-3">
+        <div v-if="showSmileys" class="mb-2">
+          <SmileyPicker @select="insertEmoji" />
+        </div>
+        <div class="flex items-end gap-2">
+          <button
+            type="button"
+            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-gray-300 text-lg transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            :class="showSmileys ? 'bg-gray-100 dark:bg-gray-800' : 'bg-white dark:bg-gray-900'"
+            title="Ajouter un smiley"
+            @click="showSmileys = !showSmileys"
+          >
+            😊
+          </button>
+          <textarea
+            ref="draftInput"
+            v-model="draft"
+            rows="1"
+            maxlength="2000"
+            placeholder="Écris ton message…"
+            class="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:border-brand-400 dark:focus:ring-brand-400"
+            @keydown.enter.exact.prevent="onSend"
+          />
+          <button
+            type="button"
+            :disabled="!draft.trim() || sending"
+            class="flex-shrink-0 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-40"
+            @click="onSend"
+          >
+            {{ sending ? '…' : 'Envoyer' }}
+          </button>
+        </div>
       </div>
     </template>
   </section>

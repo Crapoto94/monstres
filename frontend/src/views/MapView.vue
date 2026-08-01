@@ -228,6 +228,13 @@ watch(zoneRadiusKm, () => {
   if (zoneMode.value && zoneLat.value !== null) drawZonePreview()
 })
 
+// La carte se réduit en mode création pour laisser de la place aux
+// explications en dessous sur smartphone : Leaflet doit être informé du
+// changement de taille (après la transition CSS de 300 ms).
+watch(zoneMode, () => {
+  setTimeout(() => map?.invalidateSize(), 320)
+})
+
 /** Rechargement débouncé : ne part qu'une fois le curseur stabilisé. */
 function scheduleReload() {
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -288,7 +295,11 @@ onBeforeUnmount(() => {
 
     <p v-if="loading" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Chargement des Monstres…</p>
     <p v-else-if="error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-    <div ref="mapContainer" class="mt-3 h-[62vh] w-full rounded-lg border border-gray-300 dark:border-gray-700"></div>
+    <div
+      ref="mapContainer"
+      class="mt-3 w-full rounded-lg border border-gray-300 transition-[height] duration-300 dark:border-gray-700"
+      :class="zoneMode ? 'h-[35vh]' : 'h-[62vh]'"
+    ></div>
 
     <button
       type="button"

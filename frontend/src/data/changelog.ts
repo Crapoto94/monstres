@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.25',
+    date: '1 août 2026',
+    changes: [
+      'Messages : nouveau bouton 😊 pour ajouter des smileys à tes messages — un clic insère l\'emoji à la position du curseur',
+      'Carte : en mode « Définir une zone d\'alerte », la carte se réduit automatiquement pour laisser de la place aux explications en dessous sur smartphone',
+      'Correctif PWA : au chargement, l\'app vérifie que ta version est à jour (comparée au serveur) et se recharge automatiquement si une mise à jour a été déployée — fini les anciennes interfaces persistantes sur mobile',
+    ],
+  },
+  {
     version: '1.0.24',
     date: '1 août 2026',
     changes: [
