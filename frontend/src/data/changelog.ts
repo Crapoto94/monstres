@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.20',
+    date: '1 août 2026',
+    changes: [
+      'Admin → Fichiers : correction du dossier media vide en production — la racine pointe désormais automatiquement sur le volume partagé (/app/media)',
+    ],
+  },
+  {
     version: '1.0.19',
     date: '1 août 2026',
     changes: [

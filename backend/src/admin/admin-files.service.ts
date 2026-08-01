@@ -53,11 +53,24 @@ export class AdminFilesService {
   }
 
   private rootDir(root: FileRootId = 'media'): string {
-    const configured =
+    const isProd = process.env.NODE_ENV === 'production';
+    const mediaDefault = isProd
+      ? '/app/media' // volume site_media partagé avec le frontend (Docker)
+      : '../frontend/public/media';
+    let configured =
       root === 'uploads'
         ? this.config.get<string>('STORAGE_PATH', './storage')
-        : this.config.get<string>('FILE_MANAGER_ROOT', '../frontend/public/media');
-    return resolve(process.cwd(), configured);
+        : this.config.get<string>('FILE_MANAGER_ROOT', mediaDefault);
+    let resolved = resolve(process.cwd(), configured);
+
+    // Robustesse prod : si une ancienne valeur FILE_MANAGER_ROOT pointe vers
+    // un dossier qui n'existe pas (ex. /app/data/files), on retombe sur le
+    // volume media partagé plutôt que d'exposer un dossier vide.
+    if (isProd && root === 'media' && !existsSync(resolved)) {
+      configured = '/app/media';
+      resolved = resolve(process.cwd(), configured);
+    }
+    return resolved;
   }
 
   /** Normalise un chemin relatif et refuse toute sortie de la racine. */
