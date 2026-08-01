@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.27',
+    date: '1 août 2026',
+    changes: [
+      'Carte : le bouton d\'ajout de zone remonte en haut, à côté du curseur de période — renommé « Alertes Géo »',
+      'Carte : correctif — la carte ne disparaît plus quand on active la création de zone (elle se réduit simplement pour laisser la place aux explications)',
+    ],
+  },
+  {
     version: '1.0.26',
     date: '1 août 2026',
     changes: [

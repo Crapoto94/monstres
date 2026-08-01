@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-08-01** (v1.0.26 — catégorie créable via l'import Facebook)
+Dernière mise à jour : **2026-08-01** (v1.0.27 — bouton Alertes Géo en haut de la carte, carte ne disparaît plus)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -17,6 +17,8 @@ Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
+### Récap v1.0.26 → v1.0.27 (2026-08-01)
+- **v1.0.27** : carte — le bouton d'ajout de zone remonte en haut, sur la même ligne que le curseur de période, renommé « Alertes Géo » (devient « ✖️ Annuler » en mode création). Correctif : la carte ne disparaît plus à l'activation du mode création. Cause : la transition CSS de hauteur (`transition-[height]` + `invalidateSize()` différé) faisait perdre la main à Leaflet pendant l'animation. Correctif : hauteur passée en style inline (`35vh`/`62vh`, sans transition) + `map.invalidateSize()` après `nextTick()`.
 ### Récap v1.0.25 → v1.0.26 (2026-08-01)
 - **v1.0.26** : catégorie via l'import Facebook. `POST /api/v1/import/facebook` accepte désormais `categoryId` (catégorie existante, prioritaire, erreur si id inconnu), `categoryName` (créée automatiquement via l'import si absente — c'est le seul moyen pour la routine, sans accès admin, d'ajouter une catégorie ; réutilisée si elle existe déjà) et `categoryIcon` (icône emoji, seulement à la création). `resolveCategoryId()` dans `import.service.ts` résout/upsert la catégorie (ordre = max+1) et la rattache au Monstre créé. Page `/apicat` : nouvelle section documentant les deux façons de poster une catégorie via l'import + exemple cURL (`x-import-token`). Testé en local : catégorie créée + liée via l'endpoint, puis données de test nettoyées.
 ### Récap v1.0.24 → v1.0.25 (2026-08-01)
