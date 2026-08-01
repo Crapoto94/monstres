@@ -6,6 +6,7 @@ import { toggleInterest } from '@/services/reservations'
 import { fetchComments, createComment, deleteComment, toggleReaction, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
 import { formatRelativeTime } from '@/utils/time'
+import { linkify } from '@/utils/linkify'
 import { resizeImageFile } from '@/utils/image'
 import { useSeo } from '@/composables/useSeo'
 
@@ -625,7 +626,7 @@ function goToItinerary(lat: number, lng: number) {
                     Supprimer
                   </button>
                 </div>
-                <p class="mt-0.5 text-sm text-gray-700 dark:text-gray-300">{{ comment.content }}</p>
+                <p class="mt-0.5 text-sm text-gray-700 break-words dark:text-gray-300"><span v-html="linkify(comment.content)" /></p>
                 <div class="mt-1.5 flex flex-wrap items-center gap-0.5">
                   <button
                     v-for="emoji in [['LIKE', '👍'], ['LOVE', '❤️'], ['LAUGH', '😄'], ['WOW', '😮'], ['SAD', '😢'], ['ANGRY', '😡']]"

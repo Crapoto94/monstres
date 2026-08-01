@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.14',
+    date: '1 août 2026',
+    changes: [
+      'Commentaires : les liens (y compris « Posté dans le groupe Facebook ») sont maintenant cliquables',
+    ],
+  },
+  {
     version: '1.0.13',
     date: '30 juillet 2026',
     changes: [

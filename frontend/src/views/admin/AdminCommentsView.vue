@@ -6,6 +6,7 @@ import {
   deleteComment,
   type AdminCommentEntry,
 } from "@/services/admin";
+import { linkify } from "@/utils/linkify";
 
 const comments = ref<AdminCommentEntry[]>([]);
 const loading = ref(true);
@@ -89,7 +90,7 @@ function formatDateTime(date: string) {
               <p
                 class="whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200"
               >
-                {{ comment.content }}
+                <span v-html="linkify(comment.content)" />
               </p>
               <p class="mt-2 text-xs text-gray-400">
                 <RouterLink
