@@ -6,6 +6,15 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.23',
+    date: '1 août 2026',
+    changes: [
+      'Navigation : le bouton « Boîte » devient « Messages » — compteur de non-lus limité aux conversations',
+      'Alertes : les zones d\'alerte et notifications déménagent dans l\'onglet Profil, section « Zones d\'Alertes »',
+      'Carte : bouton « Définir une zone d\'alerte » sous la carte, qui amène directement à la section zones du profil',
+    ],
+  },
+  {
     version: '1.0.22',
     date: '1 août 2026',
     changes: [

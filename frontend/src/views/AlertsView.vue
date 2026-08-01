@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useNotificationsStore } from '@/stores/notifications'
 import { fetchNotifications, markNotificationAsRead, type AppNotification } from '@/services/notifications'
 import {
   fetchSubscriptions,
@@ -15,7 +14,6 @@ const MAX_SUBSCRIPTIONS = 5
 const MAX_RADIUS_KM = 5
 
 const auth = useAuthStore()
-const notificationsStore = useNotificationsStore()
 const notifications = ref<AppNotification[]>([])
 const loading = ref(true)
 
@@ -44,7 +42,6 @@ const NOMINATIM_HEADERS = { 'Accept-Language': 'fr' }
 onMounted(async () => {
   if (auth.isAuthenticated) {
     notifications.value = await fetchNotifications()
-    await notificationsStore.refreshUnreadCount()
     subscriptions.value = await fetchSubscriptions()
   }
   loading.value = false
@@ -70,13 +67,7 @@ async function onOpen(notification: AppNotification) {
   if (!notification.readAt) {
     notification.readAt = new Date().toISOString()
     await markNotificationAsRead(notification.id)
-    await notificationsStore.refreshUnreadCount()
   }
-}
-
-async function toggleEmailNotifications(event: Event) {
-  const checked = (event.target as HTMLInputElement).checked
-  await auth.setEmailNotifications(checked)
 }
 
 const canAddSubscription = computed(() => subscriptions.value.length < MAX_SUBSCRIPTIONS)
@@ -215,201 +206,182 @@ async function handleDeleteSubscription(id: string) {
 </script>
 
 <template>
-  <section class="flex-1 p-4">
-    <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Alertes</h1>
+  <div v-if="auth.isAuthenticated">
+    <!-- Zones surveillées (§6.10) -->
+    <div id="zones-alertes" class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Zones surveillées ({{ subscriptions.length }}/{{ MAX_SUBSCRIPTIONS }})
+        </h2>
+        <button
+          v-if="canAddSubscription"
+          type="button"
+          class="text-sm text-brand-600 dark:text-brand-400"
+          @click="showSubForm = !showSubForm"
+        >
+          {{ showSubForm ? 'Annuler' : '+ Ajouter' }}
+        </button>
+      </div>
 
-    <div v-if="!auth.isAuthenticated" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-      <RouterLink to="/connexion" class="text-brand-600 underline dark:text-brand-400">Connecte-toi</RouterLink>
-      pour voir tes notifications et zones surveillées.
-    </div>
+      <p v-if="subsLoading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
-    <template v-else>
-      <label class="mt-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-        <input
-          type="checkbox"
-          :checked="auth.user?.emailNotifications"
-          class="h-4 w-4 rounded"
-          @change="toggleEmailNotifications"
-        />
-        Recevoir les notifications par email
-      </label>
-
-      <!-- Zones surveillées (§6.10) -->
-      <div class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Zones surveillées ({{ subscriptions.length }}/{{ MAX_SUBSCRIPTIONS }})
-          </h2>
+      <ul v-else class="mt-3 flex flex-col gap-2">
+        <li
+          v-for="subscription in subscriptions"
+          :key="subscription.id"
+          class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
+        >
+          <div>
+            <p class="font-medium text-gray-900 dark:text-gray-100">{{ subscription.name }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">Rayon : {{ subscription.radius / 1000 }} km</p>
+          </div>
           <button
-            v-if="canAddSubscription"
             type="button"
-            class="text-sm text-brand-600 dark:text-brand-400"
-            @click="showSubForm = !showSubForm"
+            class="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+            @click="handleDeleteSubscription(subscription.id)"
           >
-            {{ showSubForm ? 'Annuler' : '+ Ajouter' }}
+            Supprimer
+          </button>
+        </li>
+      </ul>
+
+      <form v-if="showSubForm" class="mt-3 flex flex-col gap-3 text-sm" @submit.prevent="handleCreateSubscription">
+        <input
+          v-model="subName"
+          type="text"
+          placeholder="Nom du lieu (ex. Chez moi, Boulangerie…)"
+          class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+        />
+
+        <!-- Mode toggle -->
+        <div class="flex overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+            :class="subMode === 'gps' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
+            @click="subMode = 'gps'"
+          >
+            📍 Ma position
+          </button>
+          <button
+            type="button"
+            class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
+            :class="subMode === 'address' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
+            @click="subMode = 'address'"
+          >
+            🔍 Une adresse
           </button>
         </div>
 
-        <p v-if="subsLoading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+        <!-- GPS mode -->
+        <button
+          v-if="subMode === 'gps'"
+          type="button"
+          class="self-start rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          :disabled="locating"
+          @click="locateMe"
+        >
+          {{ locating ? '⏳ Localisation…' : subLat !== null ? '✓ Position enregistrée' : '📡 Géolocaliser' }}
+        </button>
 
-        <ul v-else class="mt-3 flex flex-col gap-2">
-          <li
-            v-for="subscription in subscriptions"
-            :key="subscription.id"
-            class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800"
-          >
-            <div>
-              <p class="font-medium text-gray-900 dark:text-gray-100">{{ subscription.name }}</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500">Rayon : {{ subscription.radius / 1000 }} km</p>
-            </div>
-            <button
-              type="button"
-              class="text-xs text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-              @click="handleDeleteSubscription(subscription.id)"
-            >
-              Supprimer
-            </button>
-          </li>
-        </ul>
-
-        <form v-if="showSubForm" class="mt-3 flex flex-col gap-3 text-sm" @submit.prevent="handleCreateSubscription">
+        <!-- Address mode -->
+        <div v-if="subMode === 'address'" class="relative">
           <input
-            v-model="subName"
+            v-model="subAddress"
             type="text"
-            placeholder="Nom du lieu (ex. Chez moi, Boulangerie…)"
-            class="rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            placeholder="Saisir une adresse…"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+            autocomplete="off"
+            @focus="suggestions.length > 0 && (showSuggestions = true)"
+            @blur="onAddressBlur"
+            @keyup.enter.prevent="geocodeAddress"
           />
-
-          <!-- Mode toggle -->
-          <div class="flex overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
-              :class="subMode === 'gps' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
-              @click="subMode = 'gps'"
-            >
-              📍 Ma position
-            </button>
-            <button
-              type="button"
-              class="flex-1 px-3 py-2 text-xs font-medium transition-colors"
-              :class="subMode === 'address' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'"
-              @click="subMode = 'address'"
-            >
-              🔍 Une adresse
-            </button>
-          </div>
-
-          <!-- GPS mode -->
-          <button
-            v-if="subMode === 'gps'"
-            type="button"
-            class="self-start rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-            :disabled="locating"
-            @click="locateMe"
+          <ul
+            v-if="showSuggestions && suggestions.length > 0"
+            class="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
-            {{ locating ? '⏳ Localisation…' : subLat !== null ? '✓ Position enregistrée' : '📡 Géolocaliser' }}
-          </button>
+            <li
+              v-for="(s, i) in suggestions"
+              :key="i"
+              class="cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              @mousedown.prevent="selectSuggestion(s)"
+            >
+              {{ simplifyAddress(s.display_name) }}
+            </li>
+          </ul>
+        </div>
+        <p v-if="geocodeError" class="text-xs text-red-600 dark:text-red-400">{{ geocodeError }}</p>
 
-          <!-- Address mode -->
-          <div v-if="subMode === 'address'" class="relative">
-            <input
-              v-model="subAddress"
-              type="text"
-              placeholder="Saisir une adresse…"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-              autocomplete="off"
-              @focus="suggestions.length > 0 && (showSuggestions = true)"
-              @blur="onAddressBlur"
-              @keyup.enter.prevent="geocodeAddress"
+        <!-- Position confirm -->
+        <p v-if="subLat !== null && subLng !== null" class="text-xs text-green-600 dark:text-green-400">
+          ✓ Position : {{ subLat.toFixed(5) }}, {{ subLng.toFixed(5) }}
+        </p>
+
+        <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+          Rayon : {{ subRadiusKm }} km
+          <input v-model.number="subRadiusKm" type="range" min="0.5" :max="MAX_RADIUS_KM" step="0.5" />
+        </label>
+
+        <p v-if="subError" class="text-xs text-red-600 dark:text-red-400">{{ subError }}</p>
+
+        <button
+          type="submit"
+          :disabled="creatingSub || !canSubmit"
+          class="self-start rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+        >
+          {{ creatingSub ? 'Ajout…' : 'Ajouter cette zone' }}
+        </button>
+      </form>
+
+      <p v-if="!canAddSubscription" class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+        Maximum {{ MAX_SUBSCRIPTIONS }} zones — supprime-en une pour en ajouter une nouvelle.
+      </p>
+    </div>
+
+    <!-- Notifications -->
+    <div class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
+      <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
+
+      <p v-if="loading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
+      <p v-else-if="notifications.length === 0" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        Aucune notification pour l'instant.
+      </p>
+
+      <ul v-else class="mt-3 flex flex-col gap-2">
+        <li
+          v-for="notification in notifications"
+          :key="notification.id"
+          class="rounded-lg border text-sm"
+          :class="
+            notification.readAt
+              ? 'border-gray-200 text-gray-500 dark:border-gray-800 dark:text-gray-400'
+              : 'border-brand-300 bg-brand-50 font-medium text-gray-900 dark:border-brand-700 dark:bg-brand-950 dark:text-gray-100'
+          "
+        >
+          <RouterLink
+            v-if="notification.type === 'NEW_ITEM_NEARBY'"
+            :to="`/monstres/${notification.data.itemId}`"
+            class="flex items-center gap-3 p-3"
+            @click="onOpen(notification)"
+          >
+            <img
+              v-if="notification.data.itemPhotoUrl"
+              :src="notification.data.itemPhotoUrl"
+              alt=""
+              class="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
             />
-            <ul
-              v-if="showSuggestions && suggestions.length > 0"
-              class="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-            >
-              <li
-                v-for="(s, i) in suggestions"
-                :key="i"
-                class="cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                @mousedown.prevent="selectSuggestion(s)"
-              >
-                {{ simplifyAddress(s.display_name) }}
-              </li>
-            </ul>
-          </div>
-          <p v-if="geocodeError" class="text-xs text-red-600 dark:text-red-400">{{ geocodeError }}</p>
-
-          <!-- Position confirm -->
-          <p v-if="subLat !== null && subLng !== null" class="text-xs text-green-600 dark:text-green-400">
-            ✓ Position : {{ subLat.toFixed(5) }}, {{ subLng.toFixed(5) }}
-          </p>
-
-          <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
-            Rayon : {{ subRadiusKm }} km
-            <input v-model.number="subRadiusKm" type="range" min="0.5" :max="MAX_RADIUS_KM" step="0.5" />
-          </label>
-
-          <p v-if="subError" class="text-xs text-red-600 dark:text-red-400">{{ subError }}</p>
-
-          <button
-            type="submit"
-            :disabled="creatingSub || !canSubmit"
-            class="self-start rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
-          >
-            {{ creatingSub ? 'Ajout…' : 'Ajouter cette zone' }}
-          </button>
-        </form>
-
-        <p v-if="!canAddSubscription" class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-          Maximum {{ MAX_SUBSCRIPTIONS }} zones — supprime-en une pour en ajouter une nouvelle.
-        </p>
-      </div>
-
-      <!-- Notifications -->
-      <div class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
-
-        <p v-if="loading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
-        <p v-else-if="notifications.length === 0" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Aucune notification pour l'instant.
-        </p>
-
-        <ul v-else class="mt-3 flex flex-col gap-2">
-          <li
-            v-for="notification in notifications"
-            :key="notification.id"
-            class="rounded-lg border text-sm"
-            :class="
-              notification.readAt
-                ? 'border-gray-200 text-gray-500 dark:border-gray-800 dark:text-gray-400'
-                : 'border-brand-300 bg-brand-50 font-medium text-gray-900 dark:border-brand-700 dark:bg-brand-950 dark:text-gray-100'
-            "
-          >
-            <RouterLink
-              v-if="notification.type === 'NEW_ITEM_NEARBY'"
-              :to="`/monstres/${notification.data.itemId}`"
-              class="flex items-center gap-3 p-3"
-              @click="onOpen(notification)"
-            >
-              <img
-                v-if="notification.data.itemPhotoUrl"
-                :src="notification.data.itemPhotoUrl"
-                alt=""
-                class="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
-              />
-              <div class="min-w-0">
-                <p class="truncate">{{ label(notification) }}</p>
-                <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</p>
-              </div>
-            </RouterLink>
-
-            <div v-else class="cursor-pointer p-3" @click="onOpen(notification)">
-              <p>{{ label(notification) }}</p>
+            <div class="min-w-0">
+              <p class="truncate">{{ label(notification) }}</p>
               <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</p>
             </div>
-          </li>
-        </ul>
-      </div>
-    </template>
-  </section>
+          </RouterLink>
+
+          <div v-else class="cursor-pointer p-3" @click="onOpen(notification)">
+            <p>{{ label(notification) }}</p>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ formatRelativeTime(notification.createdAt) }}</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
 </template>

@@ -5,6 +5,15 @@ import { sendPageView } from "@/services/analytics";
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to) {
+    if (to.hash) {
+      const el = document.querySelector(to.hash)
+      if (el) {
+        return { el, behavior: "smooth", top: 80 }
+      }
+    }
+    return { top: 0 }
+  },
   routes: [
     { path: "/", name: "home", component: HomeView },
     {
@@ -30,7 +39,7 @@ export const router = createRouter({
     },
     {
       path: "/alertes",
-      redirect: { path: "/messages", query: { tab: "alertes" } },
+      redirect: { path: "/profil", hash: "#zones-alertes" },
     },
     {
       path: "/profil",
@@ -46,8 +55,13 @@ export const router = createRouter({
     {
       path: "/messages",
       name: "messages",
-      component: () => import("@/views/InboxView.vue"),
+      component: () => import("@/views/MessagesView.vue"),
       meta: { requiresAuth: true },
+    },
+    {
+      path: "/apicat",
+      name: "api-categories",
+      component: () => import("@/views/ApiCatView.vue"),
     },
     {
       path: "/mentions-legales",

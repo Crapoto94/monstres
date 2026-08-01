@@ -2,16 +2,14 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMessagesStore } from '@/stores/messages'
-import { useNotificationsStore } from '@/stores/notifications'
 
 const route = useRoute()
 const messagesStore = useMessagesStore()
-const notificationsStore = useNotificationsStore()
 
 const links = [
   { to: '/', label: 'Accueil', icon: 'home' },
   { to: '/carte', label: 'Carte', icon: 'map' },
-  { to: '/messages', label: 'Boîte', icon: 'inbox' },
+  { to: '/messages', label: 'Messages', icon: 'inbox' },
   { to: '/profil', label: 'Profil', icon: 'user' },
 ]
 
@@ -19,9 +17,6 @@ function isActive(to: string): boolean {
   return to === '/' ? route.path === '/' : route.path.startsWith(to)
 }
 const isAdmin = computed(() => route.path.startsWith('/admin'))
-
-// Badge combiné : messages + alertes non lus, sur le même bouton (§11.4).
-const totalUnread = computed(() => messagesStore.unreadCount + notificationsStore.unreadCount)
 </script>
 
 <template>
@@ -80,10 +75,10 @@ const totalUnread = computed(() => messagesStore.unreadCount + notificationsStor
           <circle cx="19" cy="6" r="2.4" fill="currentColor" />
         </svg>
         <span
-          v-if="totalUnread > 0"
+          v-if="messagesStore.unreadCount > 0"
           class="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white"
         >
-          {{ totalUnread > 99 ? '99+' : totalUnread }}
+          {{ messagesStore.unreadCount > 99 ? '99+' : messagesStore.unreadCount }}
         </span>
       </span>
       <span>{{ links[2].label }}</span>

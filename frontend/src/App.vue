@@ -5,12 +5,10 @@ import BottomNav from '@/components/layout/BottomNav.vue'
 import { fetchPublicSettings } from '@/services/settings'
 import { useAuthStore } from '@/stores/auth'
 import { useMessagesStore } from '@/stores/messages'
-import { useNotificationsStore } from '@/stores/notifications'
 
 const route = useRoute()
 const auth = useAuthStore()
 const messagesStore = useMessagesStore()
-const notificationsStore = useNotificationsStore()
 // L'appli est mobile-first (largeur plafonnée à max-w-lg partout), mais
 // l'admin gagne à utiliser l'espace disponible sur grand écran (tableaux,
 // listes de cartes) — plafond levé uniquement à partir de lg: (desktop),
@@ -29,18 +27,15 @@ onMounted(async () => {
   }
 })
 
-// Rafraîchit les compteurs de non-lus (messages + alertes) à chaque
-// changement d'auth (connexion/déconnexion) — le badge de la BottomNav et
-// InboxView les lisent.
+// Rafraîchit le compteur de non-lus (messages) à chaque changement d'auth
+// (connexion/déconnexion) — le badge de la BottomNav le lit.
 watch(
   () => auth.isAuthenticated,
   (isAuthenticated) => {
     if (isAuthenticated) {
       messagesStore.refreshUnreadCount()
-      notificationsStore.refreshUnreadCount()
     } else {
       messagesStore.unreadCount = 0
-      notificationsStore.unreadCount = 0
     }
   },
   { immediate: true },

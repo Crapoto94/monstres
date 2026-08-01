@@ -8,6 +8,7 @@ import type { AuthUser } from '@/services/auth'
 import { resendVerification } from '@/services/auth'
 import { fetchMyItems, type MyItems, type Item } from '@/services/items'
 import { getCurrentSubscription, isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/services/push'
+import AlertsView from './AlertsView.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -627,6 +628,9 @@ async function onDeleteAccount() {
           <span class="inline-block h-4 w-4 translate-x-1 transform rounded-full bg-white" />
         </span>
       </div>
+
+      <!-- Zones d'Alertes -->
+      <AlertsView class="mt-4" />
 
       <!-- Mes Monstres -->
       <div class="mt-4">

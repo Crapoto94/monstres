@@ -196,5 +196,12 @@ onBeforeUnmount(() => {
     <p v-if="loading" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Chargement des Monstres…</p>
     <p v-else-if="error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
     <div ref="mapContainer" class="mt-3 h-[62vh] w-full rounded-lg border border-gray-300 dark:border-gray-700"></div>
+
+    <RouterLink
+      :to="auth.isAuthenticated ? '/profil#zones-alertes' : '/connexion?redirect=/profil#zones-alertes'"
+      class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+    >
+      🔔 Définir une zone d'alerte
+    </RouterLink>
   </section>
 </template>
