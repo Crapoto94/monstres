@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.28',
+    date: '1 août 2026',
+    changes: [
+      '« Quoi de neuf » : la version affichée en haut de la fenêtre correspond désormais à la version réellement installée, même quand une nouvelle entrée de nouveautés vient d\'être ajoutée',
+    ],
+  },
+  {
     version: '1.0.27',
     date: '1 août 2026',
     changes: [

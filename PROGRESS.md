@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-08-01** (v1.0.27 — bouton Alertes Géo en haut de la carte, carte ne disparaît plus)
+Dernière mise à jour : **2026-08-01** (v1.0.28 — « Quoi de neuf » : version affichée fidèle au build, pas d'auto-ouverture)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -17,6 +17,8 @@ Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
+### Récap v1.0.27 → v1.0.28 (2026-08-01)
+- **v1.0.28** : « Quoi de neuf » — l'en-tête « Version actuelle » affiche désormais `__APP_VERSION__` (version réellement compilée dans le build) au lieu de `changelog[0].version` : plus de décalage si la version est bumpée sans entrée de changelog (le symptôme « en prod c'est 1.0.28 mais la modale affiche 27 »). **Pas d'auto-ouverture de la modale** (demande utilisateur explicite — la modale reste ouverte uniquement via le lien de l'accueil). Entrée changelog 1.0.28 ajoutée.
 ### Récap v1.0.26 → v1.0.27 (2026-08-01)
 - **v1.0.27** : carte — le bouton d'ajout de zone remonte en haut, sur la même ligne que le curseur de période, renommé « Alertes Géo » (devient « ✖️ Annuler » en mode création). Correctif : la carte ne disparaît plus à l'activation du mode création. Cause : la transition CSS de hauteur (`transition-[height]` + `invalidateSize()` différé) faisait perdre la main à Leaflet pendant l'animation. Correctif : hauteur passée en style inline (`35vh`/`62vh`, sans transition) + `map.invalidateSize()` après `nextTick()`.
 ### Récap v1.0.25 → v1.0.26 (2026-08-01)

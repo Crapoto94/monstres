@@ -5,6 +5,12 @@ import { changelog } from '@/data/changelog'
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
+// La version affichée dans l'en-tête est la version réellement compilée dans
+// ce build (`__APP_VERSION__`), et non `changelog[0].version` : si la version
+// a été bumpée sans entrée de changelog (ou inversement), l'en-tête reste
+// fidèle à ce qui tourne réellement en production.
+const appVersion = __APP_VERSION__
+
 const expandedVersion = ref<string | null>(changelog[0]?.version ?? null)
 
 watch(() => props.open, (val) => {
@@ -29,7 +35,7 @@ function toggle(version: string) {
           <div class="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white/90 px-5 py-4 backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/90">
             <div>
               <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Nouveautés</h2>
-              <p class="text-xs text-gray-400 dark:text-gray-500">Version actuelle : v{{ changelog[0]?.version }}</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500">Version actuelle : v{{ appVersion }}</p>
             </div>
             <button
               type="button"
