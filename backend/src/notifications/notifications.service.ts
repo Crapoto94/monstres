@@ -100,6 +100,14 @@ export class NotificationsService {
     return { read: true };
   }
 
+  /** Nombre de notifications non lues. */
+  async getUnreadCount(userId: string) {
+    const count = await this.prisma.notification.count({
+      where: { userId, readAt: null },
+    });
+    return { count };
+  }
+
   private async buildEmail(type: NotificationType, data: unknown): Promise<{ subject: string; htmlContent: string }> {
     const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
 

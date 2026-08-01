@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import { fetchNotifications, markNotificationAsRead, type AppNotification } from '@/services/notifications'
 import {
   fetchSubscriptions,
@@ -14,6 +15,7 @@ const MAX_SUBSCRIPTIONS = 5
 const MAX_RADIUS_KM = 5
 
 const auth = useAuthStore()
+const notificationsStore = useNotificationsStore()
 const notifications = ref<AppNotification[]>([])
 const loading = ref(true)
 
@@ -42,6 +44,7 @@ const NOMINATIM_HEADERS = { 'Accept-Language': 'fr' }
 onMounted(async () => {
   if (auth.isAuthenticated) {
     notifications.value = await fetchNotifications()
+    await notificationsStore.refreshUnreadCount()
     subscriptions.value = await fetchSubscriptions()
   }
   loading.value = false
@@ -67,6 +70,7 @@ async function onOpen(notification: AppNotification) {
   if (!notification.readAt) {
     notification.readAt = new Date().toISOString()
     await markNotificationAsRead(notification.id)
+    await notificationsStore.refreshUnreadCount()
   }
 }
 

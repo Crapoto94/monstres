@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.22',
+    date: '1 août 2026',
+    changes: [
+      'Navigation : les onglets Messages et Alertes fusionnent en un seul bouton « Boîte » — compteur de non-lus combiné (messages + alertes), page unique avec onglets',
+    ],
+  },
+  {
     version: '1.0.21',
     date: '1 août 2026',
     changes: [

@@ -18,3 +18,8 @@ export async function fetchNotifications() {
 export async function markNotificationAsRead(id: string) {
   await api.patch(`/notifications/${id}/read`)
 }
+
+export async function fetchUnreadCount() {
+  const { data } = await api.get<ApiSuccess<{ count: number }>>('/notifications/unread-count')
+  return data.data.count
+}

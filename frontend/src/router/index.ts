@@ -30,8 +30,7 @@ export const router = createRouter({
     },
     {
       path: "/alertes",
-      name: "alerts",
-      component: () => import("@/views/AlertsView.vue"),
+      redirect: { path: "/messages", query: { tab: "alertes" } },
     },
     {
       path: "/profil",
@@ -47,7 +46,7 @@ export const router = createRouter({
     {
       path: "/messages",
       name: "messages",
-      component: () => import("@/views/MessagesView.vue"),
+      component: () => import("@/views/InboxView.vue"),
       meta: { requiresAuth: true },
     },
     {

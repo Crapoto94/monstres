@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-08-01** (v1.0.21 — messagerie interne 1:1 + email opt-in)
+Dernière mise à jour : **2026-08-01** (v1.0.22 — boîte de réception unifiée)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -17,7 +17,8 @@ Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
-### Récap v1.0.20 → v1.0.21 (2026-08-01)
+### Récap v1.0.21 → v1.0.22 (2026-08-01)
+- **v1.0.22** : boîte de réception unifiée. La BottomNav ne garde que 5 boutons : « Boîte » fusionne les anciens onglets Messages et Alertes, avec un badge de non-lus combiné (messages + notifications). Nouvelle vue `InboxView.vue` (onglets Messages/Alertes en haut), `GET /api/v1/notifications/unread-count` ajouté, store `notifications.ts` pour le compteur. `/alertes` redirige vers `/messages?tab=alertes`. MessagesView et AlertsView conservés tels quels, embarqués dans InboxView.
 - **v1.0.21** : messagerie interne 1:1 (Phase 11). Modèles `Conversation` (couple ordonné A < B, `@@unique`) et `Message` (senderId, readAt), champ `User.messageEmailNotifications` (opt-in email par utilisateur, indépendant des alertes système). API `/api/v1/messages/*` (conversations, messages, marquage lu, compteur non-lus) protégée par JWT. Email de notification `new_message` (template seedé, lien vers `/messages?conversation=…`). Frontend : onglet « Messages » dans la BottomNav (badge non-lus via `stores/messages.ts`), vue `MessagesView.vue` (liste + fil de discussion), boutons « Écrire » depuis la fiche Monstre (déposant) et la communauté (membres), toggle « Nouveaux messages » dans le profil.
 
 ### Récap v1.0.0 → v1.0.2 (2026-07-27)
