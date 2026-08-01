@@ -17,16 +17,26 @@ export interface FileEntry {
   modifiedAt: string;
 }
 
+export type FileRootId = 'media' | 'uploads';
+
+export interface FileRootInfo {
+  id: FileRootId;
+  label: string;
+  relativeLabel: string;
+}
+
 /**
- * Gestionnaire de fichiers de `frontend/public/media` (SUPER_ADMIN).
+ * Gestionnaire de fichiers de l'admin (SUPER_ADMIN).
  *
- * Ces fichiers sont servis publiquement (ex. `/media/image.jpg`) et vivent
- * dans le repo pour être commités/poussés. Le chemin racine est configurable
- * via `FILE_MANAGER_ROOT` (défaut : `../frontend/public/media` relatif au
- * process backend — fonctionne en dev local ; en Docker il faut monter le
- * dossier ou renseigner une variable adaptée).
+ * Deux racines sont exposées :
+ * - `media` : les fichiers servis publiquement sous `/media/` (défaut dev :
+ *   `../frontend/public/media` ; en Docker : `FILE_MANAGER_ROOT`, volume
+ *   partagé avec le frontend). Vivant dans le repo pour être commités/poussés.
+ * - `uploads` : les photos uploadées par les utilisateurs (avatars, items),
+ *   servies sous `/uploads/` (défaut : `STORAGE_PATH`, volume partagé avec
+ *   le conteneur `storage`).
  *
- * Sécurité : toutes les opérations sont bornées au dossier racine — les
+ * Sécurité : toutes les opérations sont bornées à la racine choisie — les
  * chemins traversants (`..`, absolus, séparateurs) sont refusés.
  */
 @Injectable()
@@ -35,20 +45,27 @@ export class AdminFilesService {
 
   constructor(private readonly config: ConfigService) {}
 
-  private rootDir(): string {
-    const configured = this.config.get<string>(
-      'FILE_MANAGER_ROOT',
-      '../frontend/public/media',
-    );
+  listRoots(): FileRootInfo[] {
+    return [
+      { id: 'media', label: 'Media du site', relativeLabel: '/media' },
+      { id: 'uploads', label: 'Uploads (photos)', relativeLabel: '/uploads' },
+    ];
+  }
+
+  private rootDir(root: FileRootId = 'media'): string {
+    const configured =
+      root === 'uploads'
+        ? this.config.get<string>('STORAGE_PATH', './storage')
+        : this.config.get<string>('FILE_MANAGER_ROOT', '../frontend/public/media');
     return resolve(process.cwd(), configured);
   }
 
-  /** Normalise un chemin relatif et refuse toute sortie du dossier racine. */
-  private safePath(relative: string | undefined): string {
+  /** Normalise un chemin relatif et refuse toute sortie de la racine. */
+  private safePath(root: FileRootId, relative: string | undefined): string {
     const cleaned = (relative ?? '').replace(/\\/g, '/').replace(/^\/+/, '');
-    const resolved = resolve(this.rootDir(), cleaned);
-    const root = this.rootDir();
-    if (resolved !== root && !resolved.startsWith(root + sep)) {
+    const base = this.rootDir(root);
+    const resolved = resolve(base, cleaned);
+    if (resolved !== base && !resolved.startsWith(base + sep)) {
       throw new BadRequestException('Chemin hors du dossier de fichiers.');
     }
     return resolved;
@@ -60,8 +77,8 @@ export class AdminFilesService {
     }
   }
 
-  async list(relative = ''): Promise<FileEntry[]> {
-    const dir = this.safePath(relative);
+  async list(root: FileRootId, relative = ''): Promise<FileEntry[]> {
+    const dir = this.safePath(root, relative);
     await this.ensureExists(dir);
     const entries = await readdir(dir);
     const files = await Promise.all(
@@ -81,27 +98,28 @@ export class AdminFilesService {
     });
   }
 
-  async createDirectory(relative: string): Promise<void> {
-    const dir = this.safePath(relative);
+  async createDirectory(root: FileRootId, relative: string): Promise<void> {
+    const dir = this.safePath(root, relative);
     await mkdir(dir, { recursive: true });
-    this.logger.log(`Dossier créé : ${relative}`);
+    this.logger.log(`Dossier créé : ${root}/${relative}`);
   }
 
   async saveUpload(
+    root: FileRootId,
     file: Express.Multer.File,
     relativePath: string,
   ): Promise<FileEntry> {
     if (!file || !file.path) {
       throw new BadRequestException('Aucun fichier fourni.');
     }
-    const dir = this.safePath(relativePath);
+    const dir = this.safePath(root, relativePath);
     await this.ensureExists(dir);
     const dest = join(dir, basename(file.originalname || 'fichier'));
     const source = file.path;
     await copyFile(source, dest);
     await rm(source).catch(() => undefined);
     const info = await stat(dest);
-    this.logger.log(`Fichier uploadé : ${relativePath}/${basename(dest)}`);
+    this.logger.log(`Fichier uploadé : ${root}/${relativePath}/${basename(dest)}`);
     return {
       name: basename(dest),
       type: 'file',
@@ -110,20 +128,20 @@ export class AdminFilesService {
     };
   }
 
-  download(relativePath: string): StreamableFile {
-    const filePath = this.safePath(relativePath);
+  download(root: FileRootId, relativePath: string): StreamableFile {
+    const filePath = this.safePath(root, relativePath);
     if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
       throw new NotFoundException('Fichier introuvable.');
     }
     return new StreamableFile(createReadStream(filePath));
   }
 
-  async remove(relativePath: string): Promise<void> {
-    const filePath = this.safePath(relativePath);
+  async remove(root: FileRootId, relativePath: string): Promise<void> {
+    const filePath = this.safePath(root, relativePath);
     if (!existsSync(filePath)) {
       throw new NotFoundException('Élément introuvable.');
     }
     await rm(filePath, { recursive: true });
-    this.logger.log(`Supprimé : ${relativePath}`);
+    this.logger.log(`Supprimé : ${root}/${relativePath}`);
   }
 }

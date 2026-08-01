@@ -21,6 +21,10 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL}
     restart: unless-stopped
+    volumes:
+      # Dossier media partagé avec le backend (gestionnaire de fichiers admin).
+      # Au premier démarrage, Docker copie le contenu du build dans le volume.
+      - site_media:/usr/share/nginx/html/media
 
   backend:
     build:
@@ -32,6 +36,7 @@ services:
       - backend_data:/app/data
       - storage_data:/app/storage
       - backend_backups:/app/backups
+      - site_media:/app/media
 
   storage:
     image: nginx:alpine
@@ -44,3 +49,4 @@ volumes:
   backend_data:
   storage_data:
   backend_backups:
+  site_media:

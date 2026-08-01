@@ -18,13 +18,14 @@ import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { AdminFilesService } from './admin-files.service';
+import { AdminFilesService, type FileRootId } from './admin-files.service';
 import { FileManagerPathDto } from './dto/file-manager-path.dto';
 
 /**
- * Gestionnaire de fichiers de `frontend/public/media` — réservé SUPER_ADMIN.
- * Permet de lister, télécharger, uploader et supprimer des fichiers destinés
- * à être commités/poussés puis servis publiquement (ex. `/media/xxx.jpg`).
+ * Gestionnaire de fichiers de l'admin — réservé SUPER_ADMIN. Permet de
+ * lister, télécharger, uploader, créer des dossiers et supprimer des fichiers
+ * dans les racines `media` (frontend/public/media, servis publiquement sous
+ * /media/) et `uploads` (photos utilisateurs, servies sous /uploads/).
  */
 @Controller('admin/files')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,14 +33,19 @@ import { FileManagerPathDto } from './dto/file-manager-path.dto';
 export class AdminFilesController {
   constructor(private readonly adminFilesService: AdminFilesService) {}
 
+  @Get('roots')
+  roots() {
+    return this.adminFilesService.listRoots();
+  }
+
   @Get()
   list(@Query() query: FileManagerPathDto) {
-    return this.adminFilesService.list(query.path);
+    return this.adminFilesService.list(query.root ?? 'media', query.path);
   }
 
   @Post('directory')
   createDirectory(@Body() dto: FileManagerPathDto) {
-    return this.adminFilesService.createDirectory(dto.path ?? '');
+    return this.adminFilesService.createDirectory(dto.root ?? 'media', dto.path ?? '');
   }
 
   @Post('upload')
@@ -55,12 +61,12 @@ export class AdminFilesController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: FileManagerPathDto,
   ) {
-    return this.adminFilesService.saveUpload(file, dto.path ?? '');
+    return this.adminFilesService.saveUpload(dto.root ?? 'media', file, dto.path ?? '');
   }
 
   @Get('download')
   download(@Query() query: FileManagerPathDto, @Res({ passthrough: true }) res: Response) {
-    const file = this.adminFilesService.download(query.path ?? '');
+    const file = this.adminFilesService.download(query.root ?? 'media', query.path ?? '');
     const name = (query.path ?? 'fichier').split('/').pop() ?? 'fichier';
     res.set({
       'Content-Type': 'application/octet-stream',
@@ -71,6 +77,6 @@ export class AdminFilesController {
 
   @Delete()
   remove(@Query() query: FileManagerPathDto) {
-    return this.adminFilesService.remove(query.path ?? '');
+    return this.adminFilesService.remove(query.root ?? 'media', query.path ?? '');
   }
 }

@@ -2,13 +2,17 @@
 import { onMounted, ref } from 'vue'
 import {
   fetchFiles,
+  fetchFileRoots,
   createFileDirectory,
   uploadFile,
   downloadFile,
   deleteFile,
   type FileEntry,
+  type FileRoot,
 } from '@/services/admin'
 
+const currentRoot = ref<'media' | 'uploads'>('media')
+const roots = ref<FileRoot[]>([])
 const currentPath = ref('')
 const entries = ref<FileEntry[]>([])
 const loading = ref(true)
@@ -28,7 +32,16 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} Mo`
 }
 
+function rootLabel(id: string): string {
+  return roots.value.find((r) => r.id === id)?.label ?? id
+}
+
 onMounted(async () => {
+  try {
+    roots.value = await fetchFileRoots()
+  } catch {
+    // racine par défaut conservée
+  }
   await refresh()
 })
 
@@ -36,12 +49,18 @@ async function refresh() {
   loading.value = true
   error.value = null
   try {
-    entries.value = await fetchFiles(currentPath.value)
+    entries.value = await fetchFiles(currentRoot.value, currentPath.value)
   } catch (e: any) {
     error.value = e.response?.data?.error?.message ?? 'Impossible de charger les fichiers.'
   } finally {
     loading.value = false
   }
+}
+
+function switchRoot(root: 'media' | 'uploads') {
+  currentRoot.value = root
+  currentPath.value = ''
+  refresh()
 }
 
 function openDirectory(name: string) {
@@ -62,7 +81,7 @@ async function onCreateDirectory() {
   busy.value = true
   error.value = null
   try {
-    await createFileDirectory(joinPath(currentPath.value, name))
+    await createFileDirectory(currentRoot.value, joinPath(currentPath.value, name))
     newDirName.value = ''
     success.value = `Dossier « ${name} » créé.`
     await refresh()
@@ -80,7 +99,7 @@ async function onUpload() {
   success.value = null
   try {
     for (const file of uploadFiles.value) {
-      await uploadFile(currentPath.value, file)
+      await uploadFile(currentRoot.value, currentPath.value, file)
     }
     success.value = `${uploadFiles.value.length} fichier(s) uploadé(s).`
     uploadFiles.value = []
@@ -93,7 +112,7 @@ async function onUpload() {
 }
 
 async function onDownload(entry: FileEntry) {
-  const blob = await downloadFile(joinPath(currentPath.value, entry.name))
+  const blob = await downloadFile(currentRoot.value, joinPath(currentPath.value, entry.name))
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -106,7 +125,7 @@ async function onDelete(entry: FileEntry) {
   const label = entry.type === 'directory' ? 'dossier' : 'fichier'
   if (!confirm(`Supprimer le ${label} « ${entry.name} » ?`)) return
   try {
-    await deleteFile(joinPath(currentPath.value, entry.name))
+    await deleteFile(currentRoot.value, joinPath(currentPath.value, entry.name))
     success.value = `« ${entry.name} » supprimé.`
     await refresh()
   } catch (e: any) {
@@ -118,13 +137,30 @@ async function onDelete(entry: FileEntry) {
 <template>
   <div>
     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-      Fichiers du site (frontend/public/media)
+      Fichiers du site
     </p>
     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-      Gérez les images et fichiers du dossier media — ils sont servis publiquement
-      (ex. <code>/media/xxx.jpg</code>) et peuvent être commités depuis le repo. Réservé
-      SUPER_ADMIN.
+      Gérez les fichiers du dossier media (servis publiquement sous
+      <code>/media/</code>, vivant dans le repo) ou les photos uploadées par les
+      utilisateurs (servies sous <code>/uploads/</code>). Réservé SUPER_ADMIN.
     </p>
+
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button
+        v-for="root in roots"
+        :key="root.id"
+        type="button"
+        class="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+        :class="
+          currentRoot === root.id
+            ? 'bg-brand-600 text-white'
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+        "
+        @click="switchRoot(root.id)"
+      >
+        {{ root.label }}
+      </button>
+    </div>
 
     <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
     <p v-if="success" class="mt-3 text-sm text-green-600 dark:text-green-400">{{ success }}</p>
@@ -139,7 +175,7 @@ async function onDelete(entry: FileEntry) {
         ↑ Dossier parent
       </button>
       <span class="max-w-full truncate font-mono text-xs text-gray-500 dark:text-gray-400">
-        /media{{ currentPath ? '/' + currentPath : '' }}
+        {{ rootLabel(currentRoot) }}{{ currentPath ? '/' + currentPath : '' }}
       </span>
     </div>
 

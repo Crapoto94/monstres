@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.19',
+    date: '1 août 2026',
+    changes: [
+      'Admin → Fichiers : deux racines au choix — « Media du site » (dossier media, servis sous /media/) et « Uploads » (photos des utilisateurs, servies sous /uploads/)',
+      'Admin → Fichiers : en production, le dossier media est partagé entre le backend et le frontend (volume Docker) — les fichiers uploadés apparaissent immédiatement sur le site',
+    ],
+  },
+  {
     version: '1.0.18',
     date: '1 août 2026',
     changes: [

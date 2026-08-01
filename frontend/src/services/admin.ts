@@ -705,6 +705,12 @@ export async function restoreUploadBackup(file: File) {
   return data.data;
 }
 
+export interface FileRoot {
+  id: "media" | "uploads";
+  label: string;
+  relativeLabel: string;
+}
+
 export interface FileEntry {
   name: string;
   type: "file" | "directory";
@@ -712,24 +718,30 @@ export interface FileEntry {
   modifiedAt: string;
 }
 
-export async function fetchFiles(path: string) {
+export async function fetchFileRoots() {
+  const { data } = await api.get<ApiSuccess<FileRoot[]>>("/admin/files/roots");
+  return data.data;
+}
+
+export async function fetchFiles(root: "media" | "uploads", path: string) {
   const { data } = await api.get<ApiSuccess<FileEntry[]>>("/admin/files", {
-    params: path ? { path } : {},
+    params: { root, ...(path ? { path } : {}) },
   });
   return data.data;
 }
 
-export async function createFileDirectory(path: string) {
+export async function createFileDirectory(root: "media" | "uploads", path: string) {
   const { data } = await api.post<ApiSuccess<{ ok: boolean }>>(
     "/admin/files/directory",
-    { path },
+    { root, path },
   );
   return data.data;
 }
 
-export async function uploadFile(path: string, file: File) {
+export async function uploadFile(root: "media" | "uploads", path: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("root", root);
   if (path) formData.append("path", path);
   const { data } = await api.post<ApiSuccess<FileEntry>>("/admin/files/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -737,14 +749,14 @@ export async function uploadFile(path: string, file: File) {
   return data.data;
 }
 
-export async function downloadFile(path: string) {
+export async function downloadFile(root: "media" | "uploads", path: string) {
   const { data } = await api.get(`/admin/files/download`, {
-    params: { path },
+    params: { root, path },
     responseType: "blob",
   });
   return data;
 }
 
-export async function deleteFile(path: string) {
-  await api.delete(`/admin/files`, { params: { path } });
+export async function deleteFile(root: "media" | "uploads", path: string) {
+  await api.delete(`/admin/files`, { params: { root, path } });
 }
