@@ -21,11 +21,14 @@ const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522]
 const ACTIVE_SIZE = 38
 const ARCHIVED_SIZE = 20 // "plus petits" sur la carte (demande utilisateur)
 
-/** Plage temporelle : 1 jour à 2 ans, par défaut 7 jours (curseur de la carte). */
-const MIN_DAYS = 1
-const MAX_DAYS = 730
-const DEFAULT_DAYS = 7
+/** Plages temporelles proposées par le curseur (index = position du slider). */
+const RANGE_OPTIONS = [1, 2, 3, 7, 30, 365, 730] as const
+const RANGE_LABELS = ['1 jour', '2 jours', '3 jours', '1 semaine', '1 mois', '1 an', '2 ans']
+const DEFAULT_INDEX = 3 // 1 semaine
 const PAGE_SIZE = 50
+/** Délai avant de recharger les Monstres quand on déplace le curseur (évite de
+ * vider la carte à chaque pixel de glissement). */
+const REFRESH_DEBOUNCE_MS = 400
 
 /** Icône monstre (fond noir détouré, voir frontend/src/assets/monster-marker.png).
  * Les archives sont plus petites et légèrement estompées pour se distinguer
@@ -47,23 +50,18 @@ function escapeHtml(value: string): string {
   return div.innerHTML
 }
 
-/** Libellé lisible de la plage : « 1 semaine », « 1 mois », « 6 mois », « 1 an », « 2 ans »… */
-function formatRange(days: number): string {
-  if (days < 7) return `${days} jour${days > 1 ? 's' : ''}`
-  if (days % 365 === 0) return days === 365 ? '1 an' : `${days / 365} ans`
-  if (days % 30 === 0) return days === 30 ? '1 mois' : `${days / 30} mois`
-  if (days % 7 === 0) return days === 7 ? '1 semaine' : `${days / 7} semaines`
-  return `${days} jours`
-}
-
 const router = useRouter()
 const auth = useAuthStore()
 const mapContainer = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
-const rangeDays = ref(DEFAULT_DAYS)
+const error = ref<string | null>(null)
+const rangeIndex = ref(DEFAULT_INDEX)
 let map: L.Map | null = null
 let markerLayer: L.LayerGroup | null = null
+let loadSequence = 0
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
+const rangeDays = computed(() => RANGE_OPTIONS[rangeIndex.value])
 const since = computed(() => {
   const date = new Date()
   date.setDate(date.getDate() - rangeDays.value)
@@ -72,8 +70,9 @@ const since = computed(() => {
 
 async function loadItems() {
   if (!map || !markerLayer) return
-  markerLayer.clearLayers()
   loading.value = true
+  error.value = null
+  const sequence = ++loadSequence
 
   try {
     const fetchAll = async <T>(
@@ -96,16 +95,19 @@ async function loadItems() {
       fetchAll((page) => fetchArchivedItems({ since: since.value, page, pageSize: PAGE_SIZE })),
     ])
 
-    for (const item of activeItems) {
-      addMarker(item, false)
-    }
-    for (const item of archivedItems) {
-      addMarker(item, true)
-    }
+    // Une réponse plus récente a déjà remplacé celle-ci : on ne touche plus à la carte.
+    if (sequence !== loadSequence) return
+
+    // On ne vide les marqueurs qu'après un chargement réussi : si le fetch
+    // échoue, les Monstres déjà affichés restent en place au lieu de disparaître.
+    markerLayer.clearLayers()
+    for (const item of activeItems) addMarker(item, false)
+    for (const item of archivedItems) addMarker(item, true)
 
     // §6.10 : zones surveillées de l'utilisateur, affichées en superposition.
     if (auth.isAuthenticated) {
       const subscriptions = await fetchSubscriptions()
+      if (sequence !== loadSequence) return
       for (const subscription of subscriptions) {
         L.circle([subscription.latitude, subscription.longitude], {
           radius: subscription.radius,
@@ -118,8 +120,12 @@ async function loadItems() {
           .bindPopup(`${escapeHtml(subscription.name)} (${subscription.radius / 1000} km)`)
       }
     }
+  } catch (e) {
+    if (sequence !== loadSequence) return
+    error.value = 'Impossible de charger les Monstres pour cette période.'
+    console.error(e)
   } finally {
-    loading.value = false
+    if (sequence === loadSequence) loading.value = false
   }
 }
 
@@ -128,6 +134,12 @@ function addMarker(item: Item, archived: boolean) {
   const suffix = archived ? ' <em>(archivé)</em>' : ''
   marker.bindPopup(`<strong>${escapeHtml(item.title)}</strong>${suffix}`)
   marker.on('click', () => router.push(`/monstres/${item.id}`))
+}
+
+/** Rechargement débouncé : ne part qu'une fois le curseur stabilisé. */
+function scheduleReload() {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => loadItems(), REFRESH_DEBOUNCE_MS)
 }
 
 onMounted(async () => {
@@ -149,9 +161,10 @@ onMounted(async () => {
   await loadItems()
 })
 
-watch(rangeDays, () => loadItems())
+watch(rangeIndex, () => scheduleReload())
 
 onBeforeUnmount(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
   map?.remove()
 })
 </script>
@@ -163,24 +176,25 @@ onBeforeUnmount(() => {
     <div class="mt-2 flex flex-col gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
       <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
         <label for="range-days" class="font-medium">Période affichée</label>
-        <span class="tabular-nums font-semibold text-brand-600 dark:text-brand-400">{{ formatRange(rangeDays) }}</span>
+        <span class="tabular-nums font-semibold text-brand-600 dark:text-brand-400">{{ RANGE_LABELS[rangeIndex] }}</span>
       </div>
       <input
         id="range-days"
-        v-model.number="rangeDays"
+        v-model.number="rangeIndex"
         type="range"
-        :min="MIN_DAYS"
-        :max="MAX_DAYS"
-        :step="1"
+        min="0"
+        :max="RANGE_OPTIONS.length - 1"
+        step="1"
         class="w-full accent-brand-600"
       />
       <div class="flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
-        <span>{{ formatRange(MIN_DAYS) }}</span>
-        <span>2 ans</span>
+        <span>{{ RANGE_LABELS[0] }}</span>
+        <span>{{ RANGE_LABELS[RANGE_LABELS.length - 1] }}</span>
       </div>
     </div>
 
     <p v-if="loading" class="mt-1 text-sm text-gray-500 dark:text-gray-400">Chargement des Monstres…</p>
+    <p v-else-if="error" class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
     <div ref="mapContainer" class="mt-3 h-[62vh] w-full rounded-lg border border-gray-300 dark:border-gray-700"></div>
   </section>
 </template>

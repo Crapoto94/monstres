@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.16',
+    date: '1 août 2026',
+    changes: [
+      'Carte : correction du rechargement — déplacer le curseur ne vide plus la carte (rechargement débouncé, marqueurs conservés si l\'erreur)',
+      'Carte : granularité du curseur fixée à 1 jour, 2 jours, 3 jours, 1 semaine, 1 mois, 1 an, 2 ans',
+    ],
+  },
+  {
     version: '1.0.15',
     date: '1 août 2026',
     changes: [
