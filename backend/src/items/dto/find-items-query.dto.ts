@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsLatitude, IsLongitude, IsOptional, IsPositive, IsString, Max, Min } from 'class-validator';
+import { IsDate, IsInt, IsLatitude, IsLongitude, IsOptional, IsPositive, IsString, Max, Min } from 'class-validator';
 
 export class FindItemsQueryDto {
   @IsOptional()
@@ -17,6 +17,12 @@ export class FindItemsQueryDto {
   @Type(() => Number)
   @IsPositive()
   radius?: number;
+
+  /** Filtre temporel : ne remonte que les Monstres publiés après cette date (ISO 8601). */
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  since?: Date;
 
   @IsOptional()
   @IsString()

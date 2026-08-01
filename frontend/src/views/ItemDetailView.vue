@@ -458,7 +458,7 @@ function goToItinerary(lat: number, lng: number) {
         </div>
 
         <!-- Description -->
-        <p v-if="item.description" class="break-words text-sm leading-relaxed text-gray-700 dark:text-gray-300"><span v-html="linkify(item.description)" /></p>
+        <p v-if="item.description" class="break-words text-sm leading-relaxed text-gray-700 dark:text-gray-300"><span class="html-content" v-html="linkify(item.description)" /></p>
 
         <!-- Adresse -->
         <div class="flex items-start gap-2 text-sm">
@@ -626,7 +626,7 @@ function goToItinerary(lat: number, lng: number) {
                     Supprimer
                   </button>
                 </div>
-                <p class="mt-0.5 text-sm text-gray-700 break-words dark:text-gray-300"><span v-html="linkify(comment.content)" /></p>
+                <p class="mt-0.5 text-sm text-gray-700 break-words dark:text-gray-300"><span class="html-content" v-html="linkify(comment.content)" /></p>
                 <div class="mt-1.5 flex flex-wrap items-center gap-0.5">
                   <button
                     v-for="emoji in [['LIKE', '👍'], ['LOVE', '❤️'], ['LAUGH', '😄'], ['WOW', '😮'], ['SAD', '😢'], ['ANGRY', '😡']]"

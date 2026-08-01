@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.15',
+    date: '1 août 2026',
+    changes: [
+      'Carte : nouveau curseur temporel — filtre les Monstres affichés de 1 jour à 2 ans (défaut : 1 semaine)',
+    ],
+  },
+  {
     version: '1.0.14',
     date: '1 août 2026',
     changes: [

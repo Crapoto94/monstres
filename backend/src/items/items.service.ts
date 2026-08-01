@@ -155,6 +155,7 @@ export class ItemsService {
               ],
             }),
         ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+        ...(query.since ? { createdAt: { gte: query.since } } : {}),
       },
       include: this.includeRelations(),
     });
@@ -293,13 +294,21 @@ export class ItemsService {
 
     const [items, total] = await Promise.all([
       this.prisma.item.findMany({
-        where: { status: 'ARCHIVED' },
+        where: {
+          status: 'ARCHIVED',
+          ...(query.since ? { createdAt: { gte: query.since } } : {}),
+        },
         include: this.includeRelations(),
         orderBy: [{ archivedAt: 'desc' }, { createdAt: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      this.prisma.item.count({ where: { status: 'ARCHIVED' } }),
+      this.prisma.item.count({
+        where: {
+          status: 'ARCHIVED',
+          ...(query.since ? { createdAt: { gte: query.since } } : {}),
+        },
+      }),
     ]);
 
     return {

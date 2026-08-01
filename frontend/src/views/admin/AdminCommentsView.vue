@@ -90,7 +90,7 @@ function formatDateTime(date: string) {
               <p
                 class="whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200"
               >
-                <span v-html="linkify(comment.content)" />
+                <span class="html-content" v-html="linkify(comment.content)" />
               </p>
               <p class="mt-2 text-xs text-gray-400">
                 <RouterLink

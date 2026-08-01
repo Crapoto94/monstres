@@ -48,6 +48,7 @@ export interface FindItemsParams {
   lng?: number
   radius?: number
   categoryId?: string
+  since?: string
   page?: number
   pageSize?: number
   sort?: 'recent' | 'nearby'
@@ -90,6 +91,7 @@ export async function fetchItems(params: FindItemsParams) {
 }
 
 export interface FindArchivedParams {
+  since?: string
   page?: number
   pageSize?: number
 }
