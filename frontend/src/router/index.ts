@@ -171,6 +171,12 @@ export const router = createRouter({
           meta: { requiresAdmin: true, requiresSuperAdmin: true },
         },
         {
+          path: "fichiers",
+          name: "admin-files",
+          component: () => import("@/views/admin/AdminFilesView.vue"),
+          meta: { requiresAdmin: true, requiresSuperAdmin: true },
+        },
+        {
           path: "journal",
           name: "admin-audit-log",
           component: () => import("@/views/admin/AdminAuditLogView.vue"),

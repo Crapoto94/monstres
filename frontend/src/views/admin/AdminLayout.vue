@@ -78,6 +78,11 @@ const tabs = computed(() => [
           label: "Sauvegardes",
           badge: null as number | null,
         },
+        {
+          to: "/admin/fichiers",
+          label: "Fichiers",
+          badge: null as number | null,
+        },
       ]
     : []),
 ]);

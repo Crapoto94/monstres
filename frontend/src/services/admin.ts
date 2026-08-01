@@ -704,3 +704,47 @@ export async function restoreUploadBackup(file: File) {
   );
   return data.data;
 }
+
+export interface FileEntry {
+  name: string;
+  type: "file" | "directory";
+  sizeBytes: number;
+  modifiedAt: string;
+}
+
+export async function fetchFiles(path: string) {
+  const { data } = await api.get<ApiSuccess<FileEntry[]>>("/admin/files", {
+    params: path ? { path } : {},
+  });
+  return data.data;
+}
+
+export async function createFileDirectory(path: string) {
+  const { data } = await api.post<ApiSuccess<{ ok: boolean }>>(
+    "/admin/files/directory",
+    { path },
+  );
+  return data.data;
+}
+
+export async function uploadFile(path: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (path) formData.append("path", path);
+  const { data } = await api.post<ApiSuccess<FileEntry>>("/admin/files/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data.data;
+}
+
+export async function downloadFile(path: string) {
+  const { data } = await api.get(`/admin/files/download`, {
+    params: { path },
+    responseType: "blob",
+  });
+  return data;
+}
+
+export async function deleteFile(path: string) {
+  await api.delete(`/admin/files`, { params: { path } });
+}

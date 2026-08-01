@@ -33,6 +33,8 @@ import { AdminCommentsService } from './admin-comments.service';
 import { AdminTestEmailController } from './admin-test-email.controller';
 import { AdminBackupController } from './admin-backup.controller';
 import { BackupModule } from '../backup/backup.module';
+import { AdminFilesController } from './admin-files.controller';
+import { AdminFilesService } from './admin-files.service';
 
 @Module({
   imports: [UsersModule, CategoriesModule, EmailTemplatesModule, BackupModule],
@@ -55,6 +57,7 @@ import { BackupModule } from '../backup/backup.module';
     AdminCommentsController,
     AdminTestEmailController,
     AdminBackupController,
+    AdminFilesController,
   ],
   providers: [
     AdminUsersService,
@@ -69,6 +72,7 @@ import { BackupModule } from '../backup/backup.module';
     AdminAnalyticsService,
     AdminNewsletterService,
     AdminCommentsService,
+    AdminFilesService,
   ],
 })
 export class AdminModule {}

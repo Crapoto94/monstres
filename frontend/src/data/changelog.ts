@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.18',
+    date: '1 août 2026',
+    changes: [
+      'Admin → Fichiers : gestionnaire de fichiers du dossier media (frontend/public/media) — lister, naviguer, uploader, télécharger, créer des dossiers et supprimer, réservé SUPER_ADMIN',
+    ],
+  },
+  {
     version: '1.0.17',
     date: '1 août 2026',
     changes: [
