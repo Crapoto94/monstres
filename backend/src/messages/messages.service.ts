@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SettingsService } from '../settings/settings.service';
 import { resolveAvatarUrl } from '../common/avatar.util';
 
 /**
@@ -30,6 +31,7 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly config: ConfigService,
+    private readonly settings: SettingsService,
   ) {}
 
   private resolveAvatar(avatar: string | null): string | null {
@@ -268,11 +270,23 @@ export class MessagesService {
   }
 
   /**
-   * Destinataire du bouton « Écrire au Monstre » : le SUPER_ADMIN le plus
-   * ancien (compte historique de l'appli), ou un ADMIN à défaut si aucun
-   * SUPER_ADMIN n'existe. Sert de contact support unique côté utilisateur.
+   * Destinataire du bouton « Écrire au Monstre » : le compte dont l'email
+   * correspond au setting `admin_notification_email` (déjà utilisé ailleurs
+   * comme email de contact admin, cf. AuthService — même compte, pas de
+   * nouvelle règle en dur). À défaut (email introuvable/pas de compte
+   * associé), on retombe sur le SUPER_ADMIN le plus ancien, puis un ADMIN.
    */
   async findSupportRecipient(userId: string) {
+    const contactEmail = await this.settings.getString(
+      'admin_notification_email',
+      'admin@fbc.fr',
+    );
+    const byEmail = await this.prisma.user.findUnique({
+      where: { email: contactEmail },
+      select: { id: true, name: true },
+    });
+    if (byEmail && byEmail.id !== userId) return byEmail;
+
     const admin = await this.prisma.user.findFirst({
       where: { role: 'SUPER_ADMIN', id: { not: userId } },
       orderBy: { createdAt: 'asc' },
