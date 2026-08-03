@@ -68,4 +68,9 @@ export class MessagesController {
   getUnreadCount(@CurrentUser() user: AuthenticatedUser) {
     return this.messagesService.getUnreadCount(user.id);
   }
+
+  @Get('support-recipient')
+  findSupportRecipient(@CurrentUser() user: AuthenticatedUser) {
+    return this.messagesService.findSupportRecipient(user.id);
+  }
 }

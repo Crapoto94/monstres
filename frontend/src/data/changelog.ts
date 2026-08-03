@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.29',
+    date: '3 août 2026',
+    changes: [
+      'Carte : les Monstres archivés apparaissent en niveaux de gris, derrière les actifs, et sont désormais regroupés en pastilles selon le niveau de zoom (comme les Monstres actifs) — le nombre affiché correspond au nombre de Monstres du cluster',
+      'Messages : nouveau bouton « Écrire au Monstre » pour contacter directement l\'équipe',
+    ],
+  },
+  {
     version: '1.0.28',
     date: '1 août 2026',
     changes: [

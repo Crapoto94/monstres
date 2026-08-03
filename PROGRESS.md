@@ -7,7 +7,7 @@
 > Référence fonctionnelle complète : [`LES_MONSTRES_cahier_des_charges.md`](./LES_MONSTRES_cahier_des_charges.md)
 > Règles non négociables : [`CLAUDE.md`](./CLAUDE.md)
 
-Dernière mise à jour : **2026-08-01** (v1.0.28 — « Quoi de neuf » : version affichée fidèle au build, pas d'auto-ouverture)
+Dernière mise à jour : **2026-08-03** (v1.0.29 — carte : archives grisées/regroupées par zoom, bouton « Écrire au Monstre »)
 
 **Statut : Phases 0 à 11 terminées et validées.** Le plan du cahier des
 charges (§17) est désormais entièrement construit ; il ne reste que les
@@ -17,6 +17,10 @@ Prochaine étape : à définir avec l'utilisateur. Le projet est
 déployé en production sur `https://monstres.fbc.fr` (domaine unique, voir la
 section dédiée plus bas pour l'historique des correctifs de déploiement).
 
+### Récap v1.0.28 → v1.0.29 (2026-08-03)
+- **v1.0.29** : carte — les Monstres archivés passent en niveaux de gris (filtre CSS `grayscale`) et restent visuellement "derrière" les actifs (le groupe de clusters des archives est ajouté à la carte avant celui des actifs). Regroupement (clustering) selon le niveau de zoom via `leaflet.markercluster` (nouvelle dépendance), avec une pastille personnalisée affichant le nombre de Monstres du cluster — grise pour les archives, couleur de marque pour les actifs. Deux groupes de clusters distincts (`archivedCluster`/`activeCluster`), chacun avec son propre `iconCreateFunction`.
+  Messagerie : nouveau bouton « Écrire au Monstre » dans `MessagesView.vue` (liste des conversations), qui ouvre/crée une conversation avec le contact support — nouveau endpoint `GET /api/v1/messages/support-recipient` (`MessagesService.findSupportRecipient`) qui résout le `SUPER_ADMIN` le plus ancien (fallback `ADMIN` si aucun n'existe). **Bug latent corrigé au passage** : après création d'une conversation via `openWithRecipient()` (utilisé aussi par les boutons « Écrire » existants sur la fiche Monstre/communauté), l'en-tête de la conversation restait vide le temps que la liste des conversations soit rechargée — `otherUser` ne trouvait le destinataire ni dans `conversations` (pas encore rechargée) ni dans `route.query` (écrasé par le `router.replace` vers `?conversation=`). Correctif : nouveau `pendingRecipient` rempli directement depuis la réponse de `createConversation()` (qui renvoie déjà `{id, name}` du destinataire), utilisé en filet tant que la conversation n'apparaît pas dans la liste.
+  Le badge de messages non lus sur la BottomNav (demande initiale de la session) existait déjà et fonctionnait correctement (`stores/messages.ts` + `App.vue`, rafraîchi à chaque changement d'état d'authentification) — aucun changement nécessaire.
 ### Récap v1.0.27 → v1.0.28 (2026-08-01)
 - **v1.0.28** : « Quoi de neuf » — l'en-tête « Version actuelle » affiche désormais `__APP_VERSION__` (version réellement compilée dans le build) au lieu de `changelog[0].version` : plus de décalage si la version est bumpée sans entrée de changelog (le symptôme « en prod c'est 1.0.28 mais la modale affiche 27 »). **Pas d'auto-ouverture de la modale** (demande utilisateur explicite — la modale reste ouverte uniquement via le lien de l'accueil). Entrée changelog 1.0.28 ajoutée.
 ### Récap v1.0.26 → v1.0.27 (2026-08-01)

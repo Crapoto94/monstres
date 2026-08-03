@@ -7,6 +7,7 @@ import {
   createConversation,
   fetchConversations,
   fetchMessages,
+  fetchSupportRecipient,
   markConversationRead,
   sendMessage,
   type ConversationSummary,
@@ -30,12 +31,21 @@ const sending = ref(false)
 const error = ref<string | null>(null)
 const draftInput = ref<HTMLTextAreaElement | null>(null)
 const showSmileys = ref(false)
+const contactingSupport = ref(false)
 
 const activeConversation = computed(() => conversations.value.find((c) => c.id === activeConversationId.value) ?? null)
+
+// Rempli juste après la création d'une conversation (openWithRecipient) : le
+// temps que `conversations` soit rechargée, `activeConversation` ne connaît
+// pas encore ce destinataire — sans ce filet, l'en-tête resterait vide.
+const pendingRecipient = ref<{ conversationId: string; id: string; name: string; avatar: string | null } | null>(null)
 
 const otherUser = computed(() => {
   const conv = activeConversation.value
   if (conv) return { id: conv.otherUser.id, name: conv.otherUser.name, avatar: conv.otherUser.avatar }
+  if (pendingRecipient.value && pendingRecipient.value.conversationId === activeConversationId.value) {
+    return pendingRecipient.value
+  }
   const recipientId = typeof route.query.recipient === 'string' ? route.query.recipient : null
   const recipientName = typeof route.query.recipientName === 'string' ? route.query.recipientName : null
   if (recipientId) return { id: recipientId, name: recipientName ?? '…', avatar: null }
@@ -83,6 +93,7 @@ async function openWithRecipient(recipientId: string) {
   error.value = null
   try {
     const conv = await createConversation(recipientId)
+    pendingRecipient.value = { conversationId: conv.id, id: conv.recipient.id, name: conv.recipient.name, avatar: null }
     // Positionne d'abord l'id actif pour que le watcher sur
     // route.query.conversation (déclenché par replace ci-dessous) ne
     // refasse pas un chargement en double.
@@ -93,6 +104,20 @@ async function openWithRecipient(recipientId: string) {
     error.value = "Impossible d'ouvrir la conversation."
   } finally {
     messagesLoading.value = false
+  }
+}
+
+async function onWriteToMonstre() {
+  if (contactingSupport.value) return
+  contactingSupport.value = true
+  error.value = null
+  try {
+    const support = await fetchSupportRecipient()
+    await openWithRecipient(support.id)
+  } catch {
+    error.value = "Impossible de contacter l'équipe pour l'instant."
+  } finally {
+    contactingSupport.value = false
   }
 }
 
@@ -167,10 +192,22 @@ watch(
 <template>
   <section class="flex flex-1 flex-col p-4 pb-24">
     <template v-if="!activeConversationId">
-      <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Messages</h1>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Discute en privé avec les autres membres de la communauté.
-      </p>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Messages</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Discute en privé avec les autres membres de la communauté.
+          </p>
+        </div>
+        <button
+          type="button"
+          :disabled="contactingSupport"
+          class="flex-shrink-0 rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-40"
+          @click="onWriteToMonstre"
+        >
+          👾 {{ contactingSupport ? '…' : 'Écrire au Monstre' }}
+        </button>
+      </div>
 
       <p v-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
       <p v-else-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ error }}</p>

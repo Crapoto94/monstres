@@ -266,4 +266,28 @@ export class MessagesService {
     });
     return { count };
   }
+
+  /**
+   * Destinataire du bouton « Écrire au Monstre » : le SUPER_ADMIN le plus
+   * ancien (compte historique de l'appli), ou un ADMIN à défaut si aucun
+   * SUPER_ADMIN n'existe. Sert de contact support unique côté utilisateur.
+   */
+  async findSupportRecipient(userId: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { role: 'SUPER_ADMIN', id: { not: userId } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true },
+    });
+    if (admin) return admin;
+
+    const fallback = await this.prisma.user.findFirst({
+      where: { role: 'ADMIN', id: { not: userId } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true },
+    });
+    if (!fallback) {
+      throw new NotFoundException('Aucun administrateur disponible.');
+    }
+    return fallback;
+  }
 }

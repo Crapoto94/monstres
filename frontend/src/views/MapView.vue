@@ -3,6 +3,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import monsterMarker from '@/assets/monster-marker.png'
 import { fetchItems, fetchArchivedItems, type Item } from '@/services/items'
 import { createSubscription, fetchSubscriptions, type Subscription } from '@/services/subscriptions'
@@ -31,16 +34,34 @@ const PAGE_SIZE = 50
 const REFRESH_DEBOUNCE_MS = 400
 
 /** Icône monstre (fond noir détouré, voir frontend/src/assets/monster-marker.png).
- * Les archives sont plus petites et légèrement estompées pour se distinguer
- * des Monstres actifs, sans disparaître de la carte. */
+ * Les archives sont plus petites, en niveaux de gris, pour se distinguer des
+ * Monstres actifs sans disparaître de la carte (elles restent "derrière" —
+ * voir l'ordre d'ajout des groupes de clusters dans onMounted). */
 function monsterIcon(archived: boolean): L.DivIcon {
   const size = archived ? ARCHIVED_SIZE : ACTIVE_SIZE
+  const filter = archived
+    ? 'grayscale(1) opacity(0.6) drop-shadow(0 1px 3px rgba(0,0,0,.4))'
+    : 'drop-shadow(0 1px 3px rgba(0,0,0,.45))'
   return L.divIcon({
     className: '',
-    html: `<img src="${monsterMarker}" style="width:${size}px;height:${size}px;display:block;opacity:${archived ? 0.65 : 1};filter:drop-shadow(0 1px 3px rgba(0,0,0,.45));" alt="" />`,
+    html: `<img src="${monsterMarker}" style="width:${size}px;height:${size}px;display:block;filter:${filter};" alt="" />`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2],
+  })
+}
+
+/** Pastille de cluster : regroupe les Monstres proches selon le niveau de
+ * zoom (fourni par leaflet.markercluster), affiche leur nombre. Les clusters
+ * d'archives sont grisés pour rester cohérents avec les marqueurs individuels. */
+function clusterIcon(count: number, archived: boolean): L.DivIcon {
+  const size = count < 10 ? 34 : count < 50 ? 42 : 50
+  const bg = archived ? '#9ca3af' : '#2a7877'
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:9999px;background:${bg};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${count < 100 ? 13 : 11}px;box-shadow:0 1px 4px rgba(0,0,0,.4);border:2px solid #fff;">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   })
 }
 
@@ -57,7 +78,8 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const rangeIndex = ref(DEFAULT_INDEX)
 let map: L.Map | null = null
-let markerLayer: L.LayerGroup | null = null
+let archivedCluster: L.MarkerClusterGroup | null = null
+let activeCluster: L.MarkerClusterGroup | null = null
 let subscriptionLayer: L.LayerGroup | null = null
 let zonePreviewLayer: L.LayerGroup | null = null
 let loadSequence = 0
@@ -81,7 +103,7 @@ const since = computed(() => {
 })
 
 async function loadItems() {
-  if (!map || !markerLayer) return
+  if (!map || !archivedCluster || !activeCluster) return
   loading.value = true
   error.value = null
   const sequence = ++loadSequence
@@ -112,9 +134,10 @@ async function loadItems() {
 
     // On ne vide les marqueurs qu'après un chargement réussi : si le fetch
     // échoue, les Monstres déjà affichés restent en place au lieu de disparaître.
-    markerLayer.clearLayers()
-    for (const item of activeItems) addMarker(item, false)
+    archivedCluster.clearLayers()
+    activeCluster.clearLayers()
     for (const item of archivedItems) addMarker(item, true)
+    for (const item of activeItems) addMarker(item, false)
 
     // §6.10 : zones surveillées de l'utilisateur, affichées en superposition.
     if (auth.isAuthenticated) {
@@ -135,10 +158,11 @@ async function loadItems() {
 }
 
 function addMarker(item: Item, archived: boolean) {
-  const marker = L.marker([item.latitude, item.longitude], { icon: monsterIcon(archived) }).addTo(markerLayer!)
+  const marker = L.marker([item.latitude, item.longitude], { icon: monsterIcon(archived) })
   const suffix = archived ? ' <em>(archivé)</em>' : ''
   marker.bindPopup(`<strong>${escapeHtml(item.title)}</strong>${suffix}`)
   marker.on('click', () => router.push(`/monstres/${item.id}`))
+  ;(archived ? archivedCluster : activeCluster)!.addLayer(marker)
 }
 
 function addSubscriptionCircle(subscription: Subscription) {
@@ -252,7 +276,19 @@ onMounted(async () => {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap',
   }).addTo(map)
-  markerLayer = L.layerGroup().addTo(map)
+
+  // Deux groupes de clusters distincts (regroupement automatique selon le
+  // zoom, pastille = nombre de Monstres du cluster) : les archives sont
+  // ajoutées en premier pour rester visuellement "derrière" les actifs.
+  archivedCluster = L.markerClusterGroup({
+    iconCreateFunction: (cluster) => clusterIcon(cluster.getChildCount(), true),
+  })
+  activeCluster = L.markerClusterGroup({
+    iconCreateFunction: (cluster) => clusterIcon(cluster.getChildCount(), false),
+  })
+  archivedCluster.addTo(map)
+  activeCluster.addTo(map)
+
   subscriptionLayer = L.layerGroup().addTo(map)
   map.on('click', onMapClick)
 

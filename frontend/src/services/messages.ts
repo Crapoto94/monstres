@@ -61,3 +61,8 @@ export async function fetchUnreadCount() {
   const { data } = await api.get<ApiSuccess<{ count: number }>>('/messages/unread-count')
   return data.data.count
 }
+
+export async function fetchSupportRecipient() {
+  const { data } = await api.get<ApiSuccess<{ id: string; name: string }>>('/messages/support-recipient')
+  return data.data
+}
