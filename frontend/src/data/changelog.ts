@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.30',
+    date: '3 août 2026',
+    changes: [
+      'Correctif : le bouton « Écrire au Monstre » écrit maintenant au bon compte (celui défini dans le réglage admin, admin@fbc.fr par défaut)',
+    ],
+  },
+  {
     version: '1.0.29',
     date: '3 août 2026',
     changes: [
