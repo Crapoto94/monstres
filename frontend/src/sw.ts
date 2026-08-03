@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core'
-import { createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { matchPrecache, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 
 declare const self: ServiceWorkerGlobalScope
@@ -26,8 +26,26 @@ precacheAndRoute(manifestEntries)
 // Manifeste vide en dev (`vite dev`, injectManifest ne tourne qu'au build)
 // — createHandlerBoundToURL exige que l'URL soit précachée, donc on saute
 // ce fallback en dev (le serveur Vite gère déjà le fallback SPA lui-même).
+//
+// Stratégie : réseau d'abord (network-first) plutôt que de servir le shell
+// précaché. À chaque ouverture de l'app, index.html est rechargé depuis le
+// serveur : un appareil resté sur une ancienne interface (service worker
+// obsolette mis en cache) récupère la dernière version dès le prochain
+// démarrage, sans attendre la mise à jour du service worker. Hors ligne, on
+// retombe sur le shell précaché.
 if (manifestEntries.length > 0) {
-  registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html'), { denylist: [/^\/api\//] }))
+  registerRoute(
+    new NavigationRoute(
+      async ({ request }) => {
+        try {
+          return await fetch(request)
+        } catch {
+          return (await matchPrecache('/index.html')) ?? Response.error()
+        }
+      },
+      { denylist: [/^\/api\//] },
+    ),
+  )
 }
 
 // Notifications push (opt-in explicite, voir ProfileView + src/push.ts).
