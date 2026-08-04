@@ -4,6 +4,7 @@ import {
   fetchAdminSettings,
   updateSetting,
   sendTestEmail,
+  sendTestSms,
   type AdminSetting,
 } from "@/services/admin";
 
@@ -270,6 +271,23 @@ const SETTINGS_META: Record<string, SettingMeta> = {
     description: "Nom affiché comme expéditeur des emails.",
     placeholder: "Les monstres l'appli",
   },
+  sms_api_url: {
+    label: "URL API SMS",
+    description:
+      "Adresse de la passerelle SMS (voir sms-web.fbc.fr/docs). Ne pas mettre de / final.",
+    placeholder: "https://sms-web.fbc.fr",
+  },
+  sms_api_key: {
+    label: "Clé API SMS",
+    description:
+      "Clé API de type \"web\", créée depuis la console d'administration de la passerelle SMS.",
+  },
+  sms_prefix: {
+    label: "Préfixe des SMS",
+    description:
+      "Texte ajouté automatiquement au début de chaque SMS envoyé (ex. nom de l'appli entre crochets).",
+    placeholder: "[Les Monstres] ",
+  },
 };
 
 const SECTIONS = [
@@ -349,6 +367,10 @@ const SECTIONS = [
     ],
   },
   {
+    title: "📱 SMS",
+    keys: ["sms_api_url", "sms_api_key", "sms_prefix"],
+  },
+  {
     title: "📝 Contenu",
     keys: [
       "mission_content",
@@ -369,6 +391,9 @@ function isBoolean(type: string) {
 }
 function isTextarea(key: string) {
   return key.endsWith("_content") || key === "legal_notices";
+}
+function isPassword(key: string) {
+  return key === "sms_api_key";
 }
 function hasChanged(key: string) {
   const existing = settingByKey(key);
@@ -466,6 +491,29 @@ async function onTestEmail() {
       e.response?.data?.error?.message ?? e.message ?? "Échec de l'envoi.";
   } finally {
     testSending.value = false;
+  }
+}
+
+const testSmsTo = ref("");
+const testSmsSending = ref(false);
+const testSmsResult = ref<"ok" | "err" | null>(null);
+const testSmsMessage = ref("");
+
+async function onTestSms() {
+  if (!testSmsTo.value) return;
+  testSmsSending.value = true;
+  testSmsResult.value = null;
+  testSmsMessage.value = "";
+  try {
+    await sendTestSms(testSmsTo.value);
+    testSmsResult.value = "ok";
+    testSmsMessage.value = "SMS de test mis en file d'attente avec succès.";
+  } catch (e: any) {
+    testSmsResult.value = "err";
+    testSmsMessage.value =
+      e.response?.data?.error?.message ?? e.message ?? "Échec de l'envoi.";
+  } finally {
+    testSmsSending.value = false;
   }
 }
 </script>
@@ -951,7 +999,7 @@ async function onTestEmail() {
               <div v-else class="mt-3 flex items-center gap-2">
                 <input
                   v-model="drafts[key]"
-                  type="text"
+                  :type="isPassword(key) ? 'password' : 'text'"
                   :placeholder="meta(key).placeholder"
                   class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
                   @keyup.enter="onSave(key)"
@@ -986,6 +1034,50 @@ async function onTestEmail() {
                   }}
                 </button>
               </div>
+            </div>
+
+            <!-- Test SMS -->
+            <div
+              v-if="section.title === '📱 SMS'"
+              class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            >
+              <label class="text-sm font-medium text-gray-800 dark:text-gray-200"
+                >Envoi de SMS de test</label
+              >
+              <p
+                class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+              >
+                Envoie un SMS de test au numéro choisi pour vérifier que la
+                configuration fonctionne.
+              </p>
+              <div class="mt-3 flex items-center gap-2">
+                <input
+                  v-model="testSmsTo"
+                  type="tel"
+                  placeholder="+33612345678"
+                  class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-brand-500"
+                  @keyup.enter="onTestSms"
+                />
+                <button
+                  type="button"
+                  :disabled="testSmsSending || !testSmsTo"
+                  class="flex-shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-40"
+                  @click="onTestSms"
+                >
+                  {{ testSmsSending ? "…" : "Envoyer" }}
+                </button>
+              </div>
+              <p
+                v-if="testSmsMessage"
+                class="mt-2 text-xs"
+                :class="
+                  testSmsResult === 'ok'
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
+                "
+              >
+                {{ testSmsMessage }}
+              </p>
             </div>
           </div>
         </template>

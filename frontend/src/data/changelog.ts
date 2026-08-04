@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.31',
+    date: '4 août 2026',
+    changes: [
+      'Admin : nouveaux réglages pour l\'envoi de SMS (URL et clé de l\'API passerelle, préfixe ajouté à chaque message) avec bouton d\'envoi de SMS de test',
+    ],
+  },
+  {
     version: '1.0.30',
     date: '3 août 2026',
     changes: [

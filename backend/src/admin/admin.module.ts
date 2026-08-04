@@ -31,6 +31,7 @@ import { AdminNewsletterService } from './admin-newsletter.service';
 import { AdminCommentsController } from './admin-comments.controller';
 import { AdminCommentsService } from './admin-comments.service';
 import { AdminTestEmailController } from './admin-test-email.controller';
+import { AdminTestSmsController } from './admin-test-sms.controller';
 import { AdminBackupController } from './admin-backup.controller';
 import { BackupModule } from '../backup/backup.module';
 import { AdminFilesController } from './admin-files.controller';
@@ -56,6 +57,7 @@ import { AdminFilesService } from './admin-files.service';
     AdminNewsletterController,
     AdminCommentsController,
     AdminTestEmailController,
+    AdminTestSmsController,
     AdminBackupController,
     AdminFilesController,
   ],

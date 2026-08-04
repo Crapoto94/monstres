@@ -657,6 +657,14 @@ export async function sendTestEmail(to: string) {
   return data.data;
 }
 
+export async function sendTestSms(to: string) {
+  const { data } = await api.post<ApiSuccess<{ message: string }>>(
+    "/admin/test-sms",
+    { to },
+  );
+  return data.data;
+}
+
 export interface AdminCommentEntry {
   id: string;
   content: string;
