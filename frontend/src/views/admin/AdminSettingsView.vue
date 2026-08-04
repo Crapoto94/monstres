@@ -176,6 +176,17 @@ const SETTINGS_META: Record<string, SettingMeta> = {
       "Adresse email qui reçoit les alertes (nouveaux inscrits, etc.). Par défaut : admin@fbc.fr.",
     placeholder: "admin@fbc.fr",
   },
+  new_user_admin_sms_notification_enabled: {
+    label: "Alerte SMS nouvel inscrit",
+    description:
+      "Envoie un SMS à l'administrateur à chaque nouvelle inscription sur l'application (en plus de l'email). Nécessite la configuration de l'API SMS ci-dessous.",
+  },
+  admin_notification_phone: {
+    label: "Téléphone de notification admin",
+    description:
+      "Numéro qui reçoit les alertes SMS (nouveaux inscrits, etc.).",
+    placeholder: "+33650175343",
+  },
   newsletter_frequency_days: {
     label: "Fréquence newsletter",
     description:
@@ -347,6 +358,8 @@ const SECTIONS = [
     keys: [
       "new_user_admin_notification_enabled",
       "admin_notification_email",
+      "new_user_admin_sms_notification_enabled",
+      "admin_notification_phone",
       "newsletter_frequency_days",
     ],
   },

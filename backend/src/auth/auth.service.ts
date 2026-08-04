@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import { EmailService } from '../email/email.service';
+import { SmsService } from '../sms/sms.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService, SafeUser } from '../users/users.service';
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
     private readonly emailService: EmailService,
+    private readonly smsService: SmsService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -81,16 +83,30 @@ export class AuthService {
    * Alerte l'admin (email configurable, `admin_notification_email`) à
    * chaque nouvel inscrit — désactivable via `new_user_admin_notification_enabled`
    * (admin → Paramètres). N'empêche jamais l'inscription en cas d'échec.
+   *
+   * Alerte SMS optionnelle (numéro configurable, `admin_notification_phone`)
+   * — désactivable séparément via `new_user_admin_sms_notification_enabled`
+   * (admin → Paramètres), activée par défaut.
    */
   private async notifyAdminOfNewUser(user: { name: string; email: string }): Promise<void> {
     const enabled = await this.settings.getBoolean('new_user_admin_notification_enabled', true);
-    if (!enabled) return;
+    if (enabled) {
+      const adminEmail = await this.settings.getString('admin_notification_email', 'admin@fbc.fr');
+      try {
+        await this.emailService.sendNewUserAlert(adminEmail, user);
+      } catch (error) {
+        this.logger.error(`Échec envoi alerte nouvel inscrit à ${adminEmail}`, error as Error);
+      }
+    }
 
-    const adminEmail = await this.settings.getString('admin_notification_email', 'admin@fbc.fr');
-    try {
-      await this.emailService.sendNewUserAlert(adminEmail, user);
-    } catch (error) {
-      this.logger.error(`Échec envoi alerte nouvel inscrit à ${adminEmail}`, error as Error);
+    const smsEnabled = await this.settings.getBoolean('new_user_admin_sms_notification_enabled', true);
+    if (smsEnabled) {
+      const adminPhone = await this.settings.getString('admin_notification_phone', '+33650175343');
+      try {
+        await this.smsService.sendSms(adminPhone, `Nouvel inscrit : ${user.name} (${user.email})`);
+      } catch (error) {
+        this.logger.error(`Échec envoi SMS alerte nouvel inscrit à ${adminPhone}`, error as Error);
+      }
     }
   }
 

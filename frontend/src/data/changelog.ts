@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.32',
+    date: '4 août 2026',
+    changes: [
+      'Un SMS est désormais envoyé à l\'administrateur à chaque nouvelle inscription (en plus de l\'email), décochable dans Admin > Paramètres',
+    ],
+  },
+  {
     version: '1.0.31',
     date: '4 août 2026',
     changes: [
