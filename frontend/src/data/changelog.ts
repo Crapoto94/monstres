@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.35',
+    date: '1 septembre 2026',
+    changes: [
+      "Admin → Utilisateurs : nouveau bouton « Modifier » pour éditer le nom, l'email et la photo (emoji ou upload) de n'importe quel compte",
+    ],
+  },
+  {
     version: '1.0.34',
     date: '1 septembre 2026',
     changes: [

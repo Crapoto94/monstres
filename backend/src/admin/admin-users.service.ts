@@ -2,12 +2,16 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImageService } from '../images/image.service';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
+import { SettingsService } from '../settings/settings.service';
 import { UserRole } from '../generated/prisma/enums';
 import { resolveAvatarUrl } from '../common/avatar.util';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
@@ -17,10 +21,14 @@ const ELEVATED_ROLES: UserRole[] = ['ADMIN', 'SUPER_ADMIN'];
 
 @Injectable()
 export class AdminUsersService {
+  private readonly logger = new Logger(AdminUsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly imageService: ImageService,
+    private readonly emailService: EmailService,
+    private readonly settings: SettingsService,
     private readonly config: ConfigService,
   ) {}
 
@@ -211,6 +219,70 @@ export class AdminUsersService {
     );
 
     return { deleted: true };
+  }
+
+  /**
+   * Édition du nom/email d'un compte quelconque par un admin. Réutilise
+   * `UsersService.updateProfile` (même logique que l'auto-édition côté
+   * utilisateur) : un changement d'email remet `emailVerifiedAt` à zéro et
+   * génère un nouveau lien de vérification, envoyé au titulaire — même un
+   * admin ne peut pas s'attribuer silencieusement un email non prouvé.
+   */
+  async updateProfile(
+    id: string,
+    updates: { name?: string; email?: string },
+    actingUser: AuthenticatedUser,
+  ) {
+    const target = await this.findOrThrow(id);
+    this.assertCanModerate(actingUser, target);
+    if (updates.name === undefined && updates.email === undefined) {
+      throw new BadRequestException('Rien à mettre à jour.');
+    }
+
+    const result = await this.usersService.updateProfile(id, updates, async () => {
+      const token = randomBytes(32).toString('hex');
+      const ttlHours = await this.settings.getNumber('email_verification_token_ttl_hours', 24);
+      return { token, ttlHours };
+    });
+
+    if (result.emailChanged) {
+      const dbUser = await this.prisma.user.findUnique({ where: { id } });
+      if (dbUser?.emailVerificationToken) {
+        try {
+          await this.emailService.sendEmailVerification(
+            result.email,
+            result.name,
+            dbUser.emailVerificationToken,
+          );
+        } catch (error) {
+          this.logger.error(`Échec envoi email de vérification à ${result.email}`, error as Error);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /** Avatar emoji/préréglage (même DTO que l'auto-édition). */
+  async updateAvatar(id: string, avatar: string | null, actingUser: AuthenticatedUser) {
+    const target = await this.findOrThrow(id);
+    this.assertCanModerate(actingUser, target);
+    return this.usersService.updateAvatar(id, avatar);
+  }
+
+  /**
+   * Upload d'une photo de profil pour n'importe quel compte — sans le
+   * quota "3 Monstres publiés" qui s'applique à l'auto-upload (§10), un
+   * admin doit pouvoir corriger n'importe quel avatar dès maintenant.
+   */
+  async uploadAvatar(id: string, file: Express.Multer.File | undefined, actingUser: AuthenticatedUser) {
+    const target = await this.findOrThrow(id);
+    this.assertCanModerate(actingUser, target);
+    if (!file) throw new BadRequestException('Aucun fichier envoyé.');
+    this.imageService.validateFormat(file.mimetype);
+
+    const avatarPath = await this.imageService.processAvatar(file.buffer, id);
+    return this.usersService.updateAvatar(id, avatarPath);
   }
 
   async verifyEmail(id: string) {

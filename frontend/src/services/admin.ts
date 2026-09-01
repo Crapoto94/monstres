@@ -224,6 +224,36 @@ export async function unbanUser(id: string) {
   return data.data;
 }
 
+export async function updateUserProfile(
+  id: string,
+  payload: { name?: string; email?: string },
+) {
+  const { data } = await api.patch<ApiSuccess<AdminUserSummary>>(
+    `/admin/users/${id}/profile`,
+    payload,
+  );
+  return data.data;
+}
+
+export async function updateUserAvatar(id: string, avatar: string | null) {
+  const { data } = await api.patch<ApiSuccess<AdminUserSummary>>(
+    `/admin/users/${id}/avatar`,
+    { avatar },
+  );
+  return data.data;
+}
+
+export async function uploadUserAvatar(id: string, file: File) {
+  const formData = new FormData();
+  formData.append("avatar", file);
+  const { data } = await api.post<ApiSuccess<AdminUserSummary>>(
+    `/admin/users/${id}/avatar/upload`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return data.data;
+}
+
 export async function verifyUserEmail(id: string) {
   const { data } = await api.patch<ApiSuccess<AdminUserSummary>>(
     `/admin/users/${id}/verify-email`,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import {
   fetchAdminUsers,
@@ -10,6 +10,9 @@ import {
   unbanUser,
   verifyUserEmail,
   deleteUser,
+  updateUserProfile,
+  updateUserAvatar,
+  uploadUserAvatar,
   type AdminUserSummary,
 } from "@/services/admin";
 
@@ -95,6 +98,71 @@ function onDelete(user: AdminUserSummary) {
 
 function onVerifyEmail(user: AdminUserSummary) {
   withBusy(user.id, () => verifyUserEmail(user.id));
+}
+
+// Édition d'un compte (nom, email, avatar) par un admin.
+const editingUser = ref<AdminUserSummary | null>(null)
+const editName = ref("")
+const editEmail = ref("")
+const editAvatarEmoji = ref("")
+const editAvatarFile = ref<File | null>(null)
+const savingEdit = ref(false)
+const editError = ref<string | null>(null)
+
+function isPhotoAvatar(avatar: string | null): boolean {
+  return !!avatar && (avatar.startsWith("/") || avatar.startsWith("http"))
+}
+
+function onEdit(user: AdminUserSummary) {
+  editError.value = null
+  editingUser.value = user
+  editName.value = user.name
+  editEmail.value = user.email
+  editAvatarEmoji.value = isPhotoAvatar(user.avatar) ? "" : (user.avatar ?? "")
+  editAvatarFile.value = null
+}
+
+function onAvatarFileChange(event: Event) {
+  editAvatarFile.value = (event.target as HTMLInputElement).files?.[0] ?? null
+}
+
+// Appeler URL.createObjectURL() directement dans le template le fait résoudre
+// comme une propriété du composant par vue-tsc (échec de build) plutôt que
+// comme le global JS — on passe donc par un computed exposé au template.
+const editAvatarPreviewUrl = computed(() =>
+  editAvatarFile.value ? URL.createObjectURL(editAvatarFile.value) : null,
+)
+
+async function onSaveEdit() {
+  if (!editingUser.value) return
+  const user = editingUser.value
+  savingEdit.value = true
+  editError.value = null
+  try {
+    const profileChanges: { name?: string; email?: string } = {}
+    if (editName.value.trim() && editName.value.trim() !== user.name) {
+      profileChanges.name = editName.value.trim()
+    }
+    if (editEmail.value.trim() && editEmail.value.trim() !== user.email) {
+      profileChanges.email = editEmail.value.trim()
+    }
+    if (Object.keys(profileChanges).length > 0) {
+      await updateUserProfile(user.id, profileChanges)
+    }
+
+    if (editAvatarFile.value) {
+      await uploadUserAvatar(user.id, editAvatarFile.value)
+    } else if (editAvatarEmoji.value !== (isPhotoAvatar(user.avatar) ? "" : (user.avatar ?? ""))) {
+      await updateUserAvatar(user.id, editAvatarEmoji.value.trim() || null)
+    }
+
+    editingUser.value = null
+    await load()
+  } catch (e: any) {
+    editError.value = e.response?.data?.error?.message ?? "Enregistrement impossible."
+  } finally {
+    savingEdit.value = false
+  }
 }
 
 function isSelf(user: AdminUserSummary): boolean {
@@ -310,6 +378,15 @@ function formatDateTime(date: string) {
           </select>
 
           <button
+            type="button"
+            :disabled="busyId === user.id"
+            class="rounded-lg border border-gray-300 px-2 py-1 text-xs text-gray-600 disabled:opacity-40 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            @click="onEdit(user)"
+          >
+            Modifier
+          </button>
+
+          <button
             v-if="!user.emailVerifiedAt"
             type="button"
             :disabled="busyId === user.id"
@@ -370,5 +447,104 @@ function formatDateTime(date: string) {
         Suivant
       </button>
     </div>
+
+    <!-- Modale d'édition d'un compte (nom, email, avatar) -->
+    <Teleport to="body">
+      <div
+        v-if="editingUser"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 p-4"
+      >
+        <div class="flex max-h-[90vh] w-full max-w-md flex-col rounded-xl bg-white p-4 shadow-xl dark:bg-gray-900">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Modifier le compte</h2>
+            <button
+              type="button"
+              class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+              @click="editingUser = null"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto text-sm">
+            <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+              Nom / pseudo
+              <input
+                v-model="editName"
+                type="text"
+                maxlength="50"
+                class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-gray-500 dark:text-gray-400">
+              Email
+              <input
+                v-model="editEmail"
+                type="email"
+                class="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+              <span class="text-[10px] text-gray-400">Changer l'email repasse le compte en « non vérifié » et envoie un lien de confirmation.</span>
+            </label>
+
+            <div class="flex items-center gap-3 rounded-lg border border-gray-200 p-2 dark:border-gray-800">
+              <img
+                v-if="editAvatarPreviewUrl"
+                :src="editAvatarPreviewUrl"
+                class="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                alt=""
+              />
+              <img
+                v-else-if="isPhotoAvatar(editingUser.avatar)"
+                :src="editingUser.avatar!"
+                class="h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                alt=""
+              />
+              <div
+                v-else
+                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm text-brand-700 dark:bg-brand-900 dark:text-brand-300"
+              >
+                {{ editAvatarEmoji || editName.charAt(0).toUpperCase() }}
+              </div>
+              <div class="flex min-w-0 flex-1 flex-col gap-1">
+                <input
+                  v-model="editAvatarEmoji"
+                  type="text"
+                  maxlength="10"
+                  placeholder="Emoji (ex. 🦊)"
+                  :disabled="!!editAvatarFile"
+                  class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-40 dark:border-gray-700 dark:bg-gray-900"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="text-xs text-gray-500 dark:text-gray-400"
+                  @change="onAvatarFileChange"
+                />
+              </div>
+            </div>
+
+            <p v-if="editError" class="text-xs text-red-600 dark:text-red-400">{{ editError }}</p>
+          </div>
+
+          <div class="mt-4 flex gap-2">
+            <button
+              type="button"
+              class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              @click="editingUser = null"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              :disabled="savingEdit"
+              class="flex-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
+              @click="onSaveEdit"
+            >
+              {{ savingEdit ? "Enregistrement…" : "Enregistrer" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
