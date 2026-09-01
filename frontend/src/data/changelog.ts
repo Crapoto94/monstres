@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.34',
+    date: '1 septembre 2026',
+    changes: [
+      'Script admin (scripts/clean-facebook-refs.js) pour retirer la mention "posté dans le groupe Facebook" et les liens facebook.com des Monstres importés, remplacés par un simple "Vu sur Facebook" sans lien',
+    ],
+  },
+  {
     version: '1.0.33',
     date: '1 septembre 2026',
     changes: [
