@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.37',
+    date: '1 septembre 2026',
+    changes: [
+      "Correctif : l'illustration « Pas de monstre » n'apparaissait pas en prod (fichier placé dans public/media, un dossier resservi depuis un volume Docker qui ne se met pas à jour tout seul) — déplacée dans public/, comme oops.png, et allégée (~2 Mo → ~680 Ko)",
+    ],
+  },
+  {
     version: '1.0.36',
     date: '1 septembre 2026',
     changes: [

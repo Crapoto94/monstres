@@ -226,14 +226,22 @@ function coverPhoto(item: Item) {
       <p v-else-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
 
       <!--
-        État vide : l'image media/vide.png dessine déjà les deux boutons
+        État vide : l'image vide.png dessine déjà les deux boutons
         (rectangles + icônes + texte) — on pose juste des liens invisibles
         par-dessus, en %, pour qu'ils suivent le redimensionnement de
         l'image. Coordonnées mesurées sur l'image source (1536×1024).
+
+        Volontairement hors de public/media/ : ce dossier est un volume
+        Docker persistant (site_media, voir docker-compose.yml) que Docker
+        ne peuple qu'au tout premier démarrage — un fichier ajouté ici dans
+        une image reconstruite plus tard n'apparaît jamais en prod tant que
+        le volume existe déjà. Les assets qui font partie de l'appli (pas
+        de l'espace fichiers admin) vont directement dans public/, comme
+        oops.png.
       -->
       <div v-else-if="items.length === 0" class="relative mt-4 overflow-hidden rounded-2xl">
         <img
-          src="/media/vide.png"
+          src="/vide.png"
           alt="Pas de monstre dans les environs pour le moment. Notre radar est clair, reviens plus tard."
           class="block w-full"
         />

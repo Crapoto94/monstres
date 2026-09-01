@@ -3934,3 +3934,33 @@ https://monstres.app/pourquoi`, `/robots.txt`, `/sitemap.xml`, et la
 redirection 301 de `monstres.fbc.fr`. Version bumpée à `0.5.0` (saut de
 mineure : regroupe aussi la fonctionnalité newsletter admin, terminée mais
 jamais finalisée par un bump de version).
+
+## Piège : `frontend/public/media/` est un volume Docker, pas juste un dossier (v1.0.37)
+
+**Symptôme** : `vide.png` ajouté dans `frontend/public/media/vide.png` et
+committé (v1.0.36), affiché correctement en local, mais **absent en
+prod après `git pull` + `docker compose up -d --build`** — image cassée sur
+l'accueil.
+
+**Cause** : `docker-compose.yml` monte un volume nommé `site_media` sur
+`frontend:/usr/share/nginx/html/media` (et `backend:/app/media`), pour que
+le gestionnaire de fichiers admin (§ Admin → Fichiers, v1.0.18) partage un
+dossier persistant entre les deux conteneurs. Docker ne copie le contenu de
+l'image dans un volume nommé **qu'à la toute première création de ce
+volume** — sur ce projet, c'était il y a plusieurs versions. Depuis, tout
+fichier ajouté dans `frontend/public/media/` par un commit **n'atteint
+jamais la prod** : le volume existant masque le contenu de l'image à cet
+endroit, quel que soit le nombre de rebuilds.
+
+**Règle à retenir** : `public/media/` = espace fichiers *admin* (uploads,
+contenu géré depuis l'interface), jamais un endroit où committer un asset
+qui doit faire partie de l'appli. Un asset applicatif (image d'état vide,
+illustration statique, etc.) va **directement dans `public/`**, comme
+`oops.png` — ce chemin n'est couvert par aucun volume, donc `git pull` +
+rebuild suffit toujours à le déployer, sans étape manuelle (ex. re-upload
+via Admin → Fichiers) pour synchroniser le volume.
+
+**Correctif** : `vide.png` déplacé vers `public/vide.png`, référence mise à
+jour dans `HomeView.vue`, commentaire ajouté sur place pour ne pas
+reproduire l'erreur. Fichier aussi recompressé (~2 Mo → ~680 Ko via `sharp`,
+palette PNG, vérifié visuellement identique) au passage.
