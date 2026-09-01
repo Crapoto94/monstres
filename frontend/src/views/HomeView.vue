@@ -224,9 +224,32 @@ function coverPhoto(item: Item) {
 
       <p v-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <p v-else-if="loading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">Chargement…</p>
-      <p v-else-if="items.length === 0" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-        Aucun Monstre à proximité pour l'instant.
-      </p>
+
+      <!--
+        État vide : l'image media/vide.png dessine déjà les deux boutons
+        (rectangles + icônes + texte) — on pose juste des liens invisibles
+        par-dessus, en %, pour qu'ils suivent le redimensionnement de
+        l'image. Coordonnées mesurées sur l'image source (1536×1024).
+      -->
+      <div v-else-if="items.length === 0" class="relative mt-4 overflow-hidden rounded-2xl">
+        <img
+          src="/media/vide.png"
+          alt="Pas de monstre dans les environs pour le moment. Notre radar est clair, reviens plus tard."
+          class="block w-full"
+        />
+        <RouterLink
+          to="/ajouter"
+          class="absolute rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          style="left: 39.6%; top: 71%; width: 23.6%; height: 14.6%"
+          aria-label="Déclarer un monstre"
+        />
+        <RouterLink
+          to="/archives"
+          class="absolute rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          style="left: 71.8%; top: 71%; width: 20.8%; height: 14.6%"
+          aria-label="Voir les archives"
+        />
+      </div>
 
       <ul v-else class="mt-4 flex flex-col gap-3">
         <li v-for="item in items" :key="item.id">

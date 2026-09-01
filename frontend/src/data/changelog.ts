@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.36',
+    date: '1 septembre 2026',
+    changes: [
+      "Accueil : quand il n'y a aucun Monstre à proximité, affichage d'une illustration avec boutons « Déclarer un monstre » et « Voir les archives »",
+    ],
+  },
+  {
     version: '1.0.35',
     date: '1 septembre 2026',
     changes: [
