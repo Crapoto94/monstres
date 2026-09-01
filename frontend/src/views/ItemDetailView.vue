@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchItem, collectItem, toggleVote, reportItem, type Item, type ReportType } from '@/services/items'
+import { fetchItem, collectItem, toggleVote, reportItem, coverPhotoUrl, type Item, type ReportType } from '@/services/items'
 import { toggleInterest } from '@/services/reservations'
 import { fetchComments, createComment, deleteComment, toggleReaction, type Comment } from '@/services/comments'
 import { useAuthStore } from '@/stores/auth'
@@ -168,6 +168,11 @@ const listingPhotos = computed(() => {
   return item.value?.photos.filter(p => p.type !== 'COLLECTION') ?? []
 })
 
+/** oops.png à la place de la vraie photo une fois le Monstre archivé (voir `isArchived`). */
+function photoSrc(photo: { path: string }): string {
+  return isArchived.value ? '/oops.png' : photo.path
+}
+
 const collectionPhotos = computed(() => {
   return item.value?.photos.filter(p => p.type === 'COLLECTION') ?? []
 })
@@ -189,7 +194,15 @@ useSeo({
   description: () =>
     item.value?.description?.trim() ||
     (shortAddress.value ? `Objet encombrant à récupérer gratuitement, ${shortAddress.value}.` : undefined),
-  image: () => listingPhotos.value[0]?.path,
+  image: () => {
+    if (!item.value) return undefined
+    const url = coverPhotoUrl(item.value)
+    if (!url) return undefined
+    // coverPhotoUrl renvoie une URL relative pour oops.png (asset statique du
+    // front) : og:image exige une URL absolue, contrairement aux vraies
+    // photos qui sont déjà absolues (servies depuis img.monstres.app).
+    return url.startsWith('/') ? `${window.location.origin}${url}` : url
+  },
   path: () => route.path,
   noindex: () => !!item.value && !['AVAILABLE', 'RESERVED', 'COLLECTED', 'ARCHIVED'].includes(item.value.status),
 })
@@ -385,11 +398,11 @@ function goToItinerary(lat: number, lng: number) {
           <img
             v-for="photo in listingPhotos"
             :key="photo.id"
-            :src="photo.path"
+            :src="photoSrc(photo)"
             class="w-full flex-shrink-0 cursor-zoom-in snap-center object-contain"
             style="max-height: 70vh;"
             alt=""
-            @click="openLightbox(photo.path)"
+            @click="openLightbox(photoSrc(photo))"
           />
         </div>
 

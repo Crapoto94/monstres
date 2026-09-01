@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { fetchCategories, type Category } from '@/services/categories'
-import { fetchItems, type Item } from '@/services/items'
+import { fetchItems, coverPhotoUrl, type Item } from '@/services/items'
 import { fetchPublicSettings } from '@/services/settings'
 import { formatRelativeTime } from '@/utils/time'
 import { useAuthStore } from '@/stores/auth'
@@ -110,7 +110,7 @@ watch([userLat, userLng, categoryId, sortBy], () => {
 watch(page, load)
 
 function coverPhoto(item: Item) {
-  return item.photos[0]?.thumbnailPath ?? item.photos[0]?.path ?? null
+  return coverPhotoUrl(item)
 }
 </script>
 

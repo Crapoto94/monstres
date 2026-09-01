@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.33',
+    date: '1 septembre 2026',
+    changes: [
+      'Fiche Monstre, accueil et archives : les Monstres archivés affichent désormais oops.png à la place de leur vraie photo',
+    ],
+  },
+  {
     version: '1.0.32',
     date: '4 août 2026',
     changes: [

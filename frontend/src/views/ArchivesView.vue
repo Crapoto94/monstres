@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { fetchArchivedItems, type Item } from '@/services/items'
+import { fetchArchivedItems, coverPhotoUrl, type Item } from '@/services/items'
 import { formatRelativeTime } from '@/utils/time'
 import { useSeo } from '@/composables/useSeo'
 
@@ -36,7 +36,7 @@ onMounted(load)
 watch(page, load)
 
 function coverPhoto(item: Item) {
-  return item.photos[0]?.thumbnailPath ?? item.photos[0]?.path ?? null
+  return coverPhotoUrl(item)
 }
 </script>
 

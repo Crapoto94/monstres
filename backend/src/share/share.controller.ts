@@ -64,6 +64,9 @@ export class ShareController {
     const imgBaseUrl = this.config.get<string>('IMG_BASE_URL', 'http://localhost:3000/uploads');
     const photo = item.photos[0];
     const shortAddress = item.address ? shortenAddress(item.address) : null;
+    // Monstre archivé (24h après publication) : la vraie photo n'est plus
+    // montrée publiquement, cohérent avec la SPA (ItemDetailView.vue).
+    const isArchived = item.status === 'ARCHIVED';
 
     res.type('html').send(
       this.renderHtml({
@@ -73,7 +76,7 @@ export class ShareController {
           (shortAddress
             ? `Objet encombrant à récupérer gratuitement, ${shortAddress}.`
             : 'Un Monstre à récupérer sur Les Monstres.'),
-        image: photo ? `${imgBaseUrl}/${photo.path}` : null,
+        image: isArchived ? `${frontendUrl}/oops.png` : photo ? `${imgBaseUrl}/${photo.path}` : null,
         url: pageUrl,
         address: shortAddress,
         publishedAt: item.createdAt,

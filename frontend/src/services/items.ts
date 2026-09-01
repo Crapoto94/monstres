@@ -80,6 +80,16 @@ export async function createItem(payload: CreateItemPayload) {
   return data.data
 }
 
+/**
+ * URL de la photo de couverture d'un Monstre. Une fois archivé (24h après
+ * publication), la vraie photo n'est plus affichée publiquement — on montre
+ * oops.png à la place, partout où la photo du Monstre apparaît.
+ */
+export function coverPhotoUrl(item: Pick<Item, 'status' | 'photos'>): string | null {
+  if (item.status === 'ARCHIVED') return '/oops.png'
+  return item.photos[0]?.thumbnailPath ?? item.photos[0]?.path ?? null
+}
+
 export async function fetchItem(id: string) {
   const { data } = await api.get<ApiSuccess<Item>>(`/items/${id}`)
   return data.data
