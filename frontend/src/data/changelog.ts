@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.0.38',
+    date: '1 septembre 2026',
+    changes: [
+      "Connexion Facebook retirée — email/mot de passe et Google restent les deux façons de se connecter",
+    ],
+  },
+  {
     version: '1.0.37',
     date: '1 septembre 2026',
     changes: [

@@ -9,7 +9,6 @@ import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { FacebookAuthGuard } from './guards/facebook-auth.guard';
 import type { AuthenticatedUser } from './jwt.strategy';
 import type { OAuthProfile } from './google.strategy';
 import { UsersService } from '../users/users.service';
@@ -92,17 +91,6 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request, @Res() res: Response) {
-    await this.handleOAuthCallback(req, res);
-  }
-
-  /** Déclenche la redirection vers l'écran de consentement Facebook. */
-  @Get('facebook')
-  @UseGuards(FacebookAuthGuard)
-  facebookLogin() {}
-
-  @Get('facebook/callback')
-  @UseGuards(FacebookAuthGuard)
-  async facebookCallback(@Req() req: Request, @Res() res: Response) {
     await this.handleOAuthCallback(req, res);
   }
 

@@ -21,8 +21,8 @@ precacheAndRoute(manifestEntries)
 // Fallback SPA (sert index.html pour toute navigation, pour l'usage hors
 // ligne) — sauf sur /api/, sinon le service worker sert le shell SPA en
 // cache au lieu de laisser les redirections OAuth du backend (ex.
-// /api/v1/auth/facebook/callback) atteindre le vrai endpoint : plus de
-// cookie de session posé, page blanche après connexion Google/Facebook.
+// /api/v1/auth/google/callback) atteindre le vrai endpoint : plus de
+// cookie de session posé, page blanche après connexion Google.
 // Manifeste vide en dev (`vite dev`, injectManifest ne tourne qu'au build)
 // — createHandlerBoundToURL exige que l'URL soit précachée, donc on saute
 // ce fallback en dev (le serveur Vite gère déjà le fallback SPA lui-même).

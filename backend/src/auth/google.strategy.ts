@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, type Profile, type VerifyCallback } from 'passport-google-oauth20';
 
 export interface OAuthProfile {
-  provider: 'google' | 'facebook';
+  provider: 'google';
   providerId: string;
   email: string | null;
   name: string;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import logo from '@/assets/logo-transparent.png'
@@ -35,16 +35,10 @@ async function onSubmit() {
   }
 }
 
-function oauthUrl(provider: 'google' | 'facebook') {
+function oauthUrl(provider: 'google') {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/profil'
   return `${apiBaseUrl}/auth/${provider}?redirect=${encodeURIComponent(redirect)}`
 }
-
-// Connexion Facebook masquée au public tant que l'app n'a pas ses IDs
-// définitifs validés par Meta (App Review) — bouton réel accessible via
-// ?fbtest=1 pour les tests du développeur. À retirer une fois l'app en
-// mode "Live" avec les identifiants de production.
-const facebookTestMode = computed(() => route.query.fbtest === '1')
 </script>
 
 <template>
@@ -139,22 +133,6 @@ const facebookTestMode = computed(() => route.query.fbtest === '1')
             <svg viewBox="0 0 24 24" class="h-4 w-4"><path fill="#4285F4" d="M23.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3.01h3.89c2.28-2.1 3.54-5.2 3.54-8.87Z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.86l-3.89-3.01c-1.08.73-2.46 1.15-4.04 1.15-3.11 0-5.74-2.1-6.68-4.92H1.3v3.09C3.26 21.3 7.31 24 12 24Z"/><path fill="#FBBC05" d="M5.32 14.36A7.2 7.2 0 0 1 4.93 12c0-.82.14-1.61.39-2.36V6.55H1.3A11.98 11.98 0 0 0 0 12c0 1.93.46 3.76 1.3 5.45l4.02-3.09Z"/><path fill="#EA4335" d="M12 4.75c1.76 0 3.35.6 4.59 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.3 6.55l4.02 3.09C6.26 6.85 8.89 4.75 12 4.75Z"/></svg>
             Continuer avec Google
           </a>
-          <a
-            v-if="facebookTestMode"
-            :href="oauthUrl('facebook')"
-            class="flex items-center justify-center gap-2.5 rounded-xl bg-[#1877F2] py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#1465d8]"
-          >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.16 8.44 9.94v-7.03H7.9v-2.9h2.54V9.85c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33V22c4.78-.78 8.44-4.94 8.44-9.94Z"/></svg>
-            Continuer avec Facebook
-          </a>
-          <div
-            v-else
-            class="flex cursor-not-allowed items-center justify-center gap-2.5 rounded-xl bg-gray-100 py-2.5 text-sm font-medium text-gray-400 dark:bg-gray-800 dark:text-gray-500"
-            title="La connexion Facebook sera activée une fois l'app validée par Meta."
-          >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.16 8.44 9.94v-7.03H7.9v-2.9h2.54V9.85c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.45 2.9h-2.33V22c4.78-.78 8.44-4.94 8.44-9.94Z"/></svg>
-            Facebook — bientôt disponible
-          </div>
         </div>
 
         <p class="mt-5 text-center text-sm text-gray-500 dark:text-gray-400">

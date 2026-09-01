@@ -150,7 +150,8 @@ export class AuthService {
   }
 
   /**
-   * §10/Phase 11 : connexion Google/Facebook. Retrouve le compte lié via
+   * §10/Phase 11 : connexion Google (générique, réutilisable pour un futur
+   * provider OAuth — voir `OAuthProfile`). Retrouve le compte lié via
    * `SocialAccount` ; à défaut, rattache le fournisseur à un compte existant
    * du même email (évite un doublon) ; sinon crée un nouveau compte. L'email
    * fourni par le fournisseur OAuth est considéré déjà vérifié — aucun envoi

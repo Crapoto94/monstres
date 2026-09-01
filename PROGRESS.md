@@ -3964,3 +3964,37 @@ via Admin → Fichiers) pour synchroniser le volume.
 jour dans `HomeView.vue`, commentaire ajouté sur place pour ne pas
 reproduire l'erreur. Fichier aussi recompressé (~2 Mo → ~680 Ko via `sharp`,
 palette PNG, vérifié visuellement identique) au passage.
+
+## Connexion Facebook retirée (v1.0.38)
+
+Décision utilisateur : ne garder que email/mot de passe et Google. La
+connexion Facebook était déjà masquée au public depuis la Phase 11 (bouton
+réel accessible seulement via `?fbtest=1`, en attente de la validation Meta
+App Review qui n'a jamais été finalisée) — retrait complet plutôt que
+laisser du code mort en attente d'une validation qui n'arrivera pas.
+
+- **Backend** : `facebook.strategy.ts` et `guards/facebook-auth.guard.ts`
+  supprimés ; routes `GET /auth/facebook` et `/auth/facebook/callback`
+  retirées d'`auth.controller.ts` ; `FacebookStrategy`/`FacebookAuthGuard`
+  retirés des providers d'`auth.module.ts` ; `OAuthProfile.provider` réduit
+  à `'google'` (`google.strategy.ts`). Dépendances `passport-facebook` et
+  `@types/passport-facebook` désinstallées.
+- **Frontend** : bouton Facebook (et son état "bientôt disponible") retiré
+  de `LoginView.vue` et `RegisterView.vue` ; `oauthUrl()` n'accepte plus que
+  `'google'`.
+- **Config** : `FACEBOOK_CLIENT_ID`/`FACEBOOK_CLIENT_SECRET` retirés de
+  `.env.example` (racine et `backend/`) — un `.env` de prod qui les
+  contiendrait encore reste inoffensif (plus rien ne les lit).
+- **Non touché, volontairement** : les `SocialAccount` déjà liées en base
+  avec `provider = 'facebook'` (comptes qui s'étaient connectés via
+  Facebook avant ce retrait) restent en base — elles continuent
+  simplement à ne plus servir à la connexion ; ces utilisateurs se
+  connectent via email/mot de passe (ou "mot de passe oublié" pour en
+  définir un). Aucune migration de données nécessaire (`SocialAccount.
+  provider` est un `String` libre, pas un enum). L'import Facebook (groupe
+  → Monstres) et le partage/notifications WhatsApp (API Graph Facebook)
+  sont des fonctionnalités indépendantes, non concernées par ce retrait.
+
+Testé : `tsc`/`nest build` (backend) et `vue-tsc`/`vite build` (frontend)
+sans erreur. Vérifié en navigateur local : `/connexion` et `/inscription`
+n'affichent plus que "Continuer avec Google" après "ou".
